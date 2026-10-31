@@ -388,6 +388,7 @@
 .vt-page { view-transition-name: page; }
 .vt-rail-indicator { view-transition-name: rail-indicator; }
 .vt-rail-icon { view-transition-name: match-element; view-transition-class: rail-icon; }
+.vt-toolbar { view-transition-name: toolbar; }
 
 /* NAVIGATION */
 ::view-transition-old(root),
@@ -405,13 +406,36 @@
 }
 
 ::view-transition-group(rail-indicator) {
-    animation-duration: var(--duration-slow);
+    animation-duration: var(--duration-base);
     animation-timing-function: var(--ease-in-out);
 }
 
 /* Icons get layers of their own above the gliding indicator, inside the rail's they would sit below it */
 ::view-transition-group(*.rail-icon) {
     z-index: 1;
+}
+
+/* Parts on both pages show live instead of crossfading, so icons keep their colour change and the toolbar holds still */
+::view-transition-old(*.rail-icon),
+::view-transition-old(toolbar) {
+    display: none;
+}
+
+::view-transition-new(*.rail-icon),
+::view-transition-new(toolbar) {
+    animation: none;
+}
+
+/* Present on one side only, they come and go with the page */
+::view-transition-old(*.rail-icon):only-child,
+::view-transition-old(toolbar):only-child {
+    display: block;
+    animation: vt-page-out var(--duration-fast) var(--ease-in) both;
+}
+
+::view-transition-new(*.rail-icon):only-child,
+::view-transition-new(toolbar):only-child {
+    animation: vt-page-in var(--duration-page) var(--ease-out) calc(var(--duration-fast) * 0.6) both;
 }
 
 @keyframes vt-page-out {
@@ -426,7 +450,8 @@
 :root[data-transition='theme'] .vt-rail,
 :root[data-transition='theme'] .vt-page,
 :root[data-transition='theme'] .vt-rail-indicator,
-:root[data-transition='theme'] .vt-rail-icon {
+:root[data-transition='theme'] .vt-rail-icon,
+:root[data-transition='theme'] .vt-toolbar {
     view-transition-name: none;
 }
 

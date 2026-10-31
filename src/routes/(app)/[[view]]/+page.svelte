@@ -14,7 +14,7 @@
 	import { defaultSort, emptyFilter, groupReminders, matchesView, noteText, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
 	import { Check, Ellipsis, ListFilter, Plus, Search, X } from '@lucide/svelte';
 	import { ContextMenu, DropdownMenu, Popover } from 'bits-ui';
-	import { tick } from 'svelte';
+	import { tick, untrack } from 'svelte';
 	import type { TransitionConfig } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getLabels } from '../../api/labels.remote';
@@ -98,7 +98,7 @@
 	async function openSearch() {
 		searchOpen = true;
 		await tick();
-		searchInput?.focus();
+		searchInput?.focus({ preventScroll: true }); // Scrolling into view would slide the field under the icon while it is still narrow
 	}
 
 	function closeSearch() {
@@ -127,7 +127,10 @@
 		busy = busy.then(async () => {
 			if (note && editing?.id === note.id) return;
 			await fold();
-			if (!note) origin = createButton?.getBoundingClientRect() ?? null;
+			if (!note) {
+				await editor.load(); // One glide only, a late editor would move the grid a second time
+				origin = createButton?.getBoundingClientRect() ?? null;
+			}
 			frozen = visible.map((item) => item.id);
 			snapshot();
 			editing = { key: ++opened, id: note?.id ?? null, fresh: !note, focus };
@@ -167,18 +170,19 @@
 	let grid = $state<HTMLElement>();
 	let before: Map<string, DOMRect> | undefined;
 
-	// Rects before the next change, the first one wins until its glide ran
+	// Rects before the next change, the first one wins until its glide ran | the button joins it even then
 	function snapshot() {
-		if (!grid || before) return;
-		before = measure(grid);
+		if (!grid) return;
+		before ??= measure(grid);
 		if (origin) before.set('new', origin);
 		origin = null;
 	}
 
 	// Opening and closing take the snapshot themselves, a card may change before this runs then
+	// Untracked, the grid binding alone would leave a snapshot that no glide ever takes
 	$effect.pre(() => {
 		void [visible, editing?.id, editing?.key, editor.loaded];
-		snapshot();
+		untrack(snapshot);
 	});
 
 	// Waits for the effects of the cells too, the editor fills in its text only then
@@ -204,32 +208,40 @@
 	// A saved new note makes room for its card at once, an empty one shrinks back into the button
 	function retreat(node: HTMLElement): TransitionConfig {
 		delete node.dataset.flip;
-		const target = createButton?.getBoundingClientRect();
+		const button = createButton;
 		const body = node.querySelector<HTMLElement>('[data-flip-body]');
 		const card = body?.querySelector<HTMLElement>('.card');
-		if (!returning || !target || !grid || !body || !card) {
+		if (!returning || !button || !grid || !body || !card) {
 			node.style.display = 'none';
 			return {};
 		}
 
-		// Out of the grid flow so the other cards can glide into its place meanwhile
+		// Starts where it is seen, an open glide still running included
 		const from = node.getBoundingClientRect();
-		const frame = grid.getBoundingClientRect();
-		Object.assign(node.style, { position: 'absolute', left: `${from.left - frame.left}px`, top: `${from.top - frame.top}px`, width: `${from.width}px`, zIndex: '1' });
+		[node, body].forEach((part) => part.getAnimations().forEach((animation) => animation.cancel()));
+		const radius = parseFloat(getComputedStyle(card).borderTopLeftRadius);
+
+		// Out of the grid flow so the other cards can glide into its place meanwhile
+		Object.assign(node.style, { position: 'absolute', width: `${from.width}px`, height: '', zIndex: '1' });
 		body.dataset.resizing = '';
 
-		const dx = target.left - from.left;
-		const dy = target.top - from.top;
-		const radius = parseFloat(getComputedStyle(card).borderTopLeftRadius);
+		// Grid and button both move while the others settle, so both are read every frame
+		const place = (t: number, u: number) => {
+			const target = button.getBoundingClientRect();
+			const frame = grid!.getBoundingClientRect();
+			node.style.left = `${target.left + t * (from.left - target.left) - frame.left}px`;
+			node.style.top = `${target.top + t * (from.top - target.top) - frame.top}px`;
+			body.style.width = `${target.width + t * (from.width - target.width)}px`;
+			body.style.height = `${target.height + t * (from.height - target.height)}px`;
+			card.style.borderRadius = `${radius + u * (target.height / 2 - radius)}px`;
+		};
+		place(1, 0);
+
 		return {
 			duration: duration('slow'),
 			easing: easing('emphasized'),
-			css: (t, u) => `translate: ${u * dx}px ${u * dy}px; opacity: ${Math.min(1, t * 3)};`,
-			tick: (t, u) => {
-				body.style.width = `${target.width + t * (from.width - target.width)}px`;
-				body.style.height = `${target.height + t * (from.height - target.height)}px`;
-				card.style.borderRadius = `${radius + u * (target.height / 2 - radius)}px`;
-			}
+			css: (t) => `opacity: ${Math.min(1, t * 3)};`,
+			tick: place
 		};
 	}
 
@@ -372,7 +384,7 @@
 </div>
 
 <!-- TOOLBAR | floats at the bottom, above the phone rail -->
-<div class="toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-center px-gutter sm:left-rail">
+<div class="toolbar vt-toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-center px-gutter sm:left-rail">
 	{#if selection.length}
 		<!-- SELECTION BAR | stands in for the toolbar while notes are selected -->
 		<div class="pointer-events-auto flex items-center gap-1 rounded-full border border-line bg-raised/85 p-1 pl-5 shadow-xl backdrop-blur-xl" in:rise={{ y: 8, duration: 'base' }}>
@@ -402,7 +414,7 @@
 						bind:value={search}
 						placeholder="Search"
 						aria-label="Search notes"
-						class="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink-faint"
+						class="min-w-0 flex-1 bg-transparent pr-2 pl-1 text-ink outline-none placeholder:text-ink-faint"
 						onblur={() => { if (!search) searchOpen = false; }}
 						onkeydown={(event) => { if (event.key === 'Escape') closeSearch(); }}
 					/>
@@ -444,7 +456,7 @@
 		</div>
 
 		<!-- CREATE | grows into a blank note at the front of the grid, gone while that one is open -->
-		<button bind:this={createButton} class={['create grid size-16 shrink-0 place-items-center rounded-full text-on-accent', editing?.fresh && 'away']} aria-label="New note" tabindex={editing?.fresh ? -1 : 0} onclick={() => edit(null)} {@attach tip('New note')}>
+		<button bind:this={createButton} class={['create grid size-16 shrink-0 place-items-center rounded-full text-on-accent', editing?.fresh && 'away']} aria-label="New note" tabindex={editing?.fresh ? -1 : 0} onpointerenter={editor.load} onfocus={editor.load} onclick={() => edit(null)} {@attach tip('New note')}>
 			<Plus class="plus size-7" strokeWidth={2.25} />
 		</button>
 	</div>
@@ -465,11 +477,17 @@
 
 	.search {
 		width: 3rem;
-		transition: width var(--duration-base) var(--ease-spring);
+		overflow: clip;
+		transition: width var(--duration-slow) var(--ease-emphasized);
 	}
 
 	.search.open {
 		width: min(22rem, calc(100vw - 2 * var(--layout-gutter) - 8.5rem));
+	}
+
+	/* The field and its close button fade in while the pill slides open */
+	.search > :not(:first-child) {
+		animation: fade-in var(--duration-base) var(--ease-out) var(--duration-fast) both;
 	}
 
 	/* CREATE | the fill glows from within, hover lets the light spill out and sweeps a sheen across */
@@ -483,10 +501,15 @@
 		transition:
 			scale var(--duration-base) var(--ease-spring),
 			box-shadow var(--duration-base) var(--ease-out),
-			opacity var(--duration-base) var(--ease-out);
+			opacity var(--duration-base) var(--ease-out),
+			width var(--duration-slow) var(--ease-emphasized),
+			margin var(--duration-slow) var(--ease-emphasized);
 	}
 
+	/* Gives up its room too, the gap included, so search and filter glide to the centre */
 	.create.away {
+		width: 0;
+		margin-left: -0.75rem;
 		opacity: 0;
 		scale: 0.6;
 		pointer-events: none;

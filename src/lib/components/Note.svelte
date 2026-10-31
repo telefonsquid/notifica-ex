@@ -7,11 +7,13 @@
 
     function loadEditor(){
         loading ??= import('#lib/components/MarkdownEditor.svelte').then((module) => MarkdownEditor = module.default)
+        return loading
     }
 
     // For the page, which glides the open card again once the editor took the place of the skeleton
     export const editor = {
-        get loaded(){ return !!MarkdownEditor }
+        get loaded(){ return !!MarkdownEditor },
+        load: loadEditor
     }
 </script>
 

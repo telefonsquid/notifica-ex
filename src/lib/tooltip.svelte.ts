@@ -7,7 +7,7 @@ import type { Attachment } from 'svelte/attachments';
 
 export const tooltip = $state<{ text: string, anchor: HTMLElement | null }>({ text: '', anchor: null })
 
-const DELAY = 450
+const DELAY = 250
 const COOLDOWN = 300
 
 let timer: ReturnType<typeof setTimeout> | undefined

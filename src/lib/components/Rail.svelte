@@ -102,9 +102,11 @@
         opacity: 0.5;
     }
 
+    /* Takes on the colour in step with the indicator gliding in */
     .item.active {
         color: var(--theme-on-accent);
         background: transparent;
+        transition: color var(--duration-base) var(--ease-in-out);
     }
 
     /* Icons tilt a little on hover and spring back | the press squeezes the icon, scaling the item would move the fixed tooltip */
