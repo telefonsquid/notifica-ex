@@ -1,7 +1,8 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/archivo/wdth.css';
-@import './lib/themes/charcoal.css';
+/* Default first, a chosen theme has to win over its :root */
 @import './lib/themes/platinum.css';
+@import './lib/themes/charcoal.css';
 @import './lib/note_colors.css';
 
 /*

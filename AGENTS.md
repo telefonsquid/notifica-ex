@@ -73,7 +73,7 @@ Until the `theming` and `motion` skills exist:
 - **Groups are labels**: a note can carry several, groups act as filters. Each label has a colour from the note palette and shows as a folder tab on the card's edge, named only on hover.
 - **Accounts by admin invite** with a set-password link, as in fsd-flight-check. No open signup.
 - **Android via Tauri 2 mobile**, reusing the Svelte UI; Kotlin plugin for share target and notification actions.
-- **Dark-first**: Charcoal base, Platinum text, Tangerine accent, Powder Blue secondary. Light theme derived from it.
+- **Light by default**: Platinum theme first, Charcoal (dark) second. Tangerine accent, Powder Blue secondary in both.
 - **UI language**: English.
 - **Live UI through PocketBase realtime**: the root layout hands the auth token to the browser (the cookie stays httpOnly), the `(app)` layout connects once, pages subscribe with `onCollectionChange()` from `#lib/realtime.ts` (bursts coalesce into one refresh) and react with `query().refresh()` for remote queries, `invalidateAll()` for load data. Collection rules decide which events a user receives, so every new collection needs list/view rules before it gets subscribed to. After a reconnect everything is invalidated once to catch missed events.
 - **Deactivated users** lose running sessions: `hooks.server.ts` rejects them on every request.

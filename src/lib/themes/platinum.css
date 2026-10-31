@@ -1,4 +1,5 @@
-/* PLATINUM | light paper look, also roomier with tighter corners to show that layout tokens are themeable too */
+/* PLATINUM | light default, a paper look, also roomier with tighter corners to show that layout tokens are themeable too */
+:root,
 [data-theme='platinum'] {
     color-scheme: light;
 
