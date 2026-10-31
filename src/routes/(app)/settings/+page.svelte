@@ -75,6 +75,22 @@
 		confirmDelete = null;
 	}
 
+	// TABS | one section at a time, or every section like a long page
+	const TABS = [
+		{ id: 'all', label: 'All Settings' },
+		{ id: 'appearance', label: 'Appearance' },
+		{ id: 'views', label: 'Views' },
+		{ id: 'behaviour', label: 'Behaviour' },
+		{ id: 'account', label: 'Account' },
+		{ id: 'users', label: 'Users', admin: true }
+	] as const;
+
+	type Tab = (typeof TABS)[number]['id'];
+	let tab = $state<Tab>('all');
+	let tabs = $derived(TABS.filter((item) => !('admin' in item) || hasPermission(data.user, 'admin')));
+
+	const shown = (id: Tab) => tab === 'all' || tab === id;
+
 	// ACCOUNT | the same mail an invite sends, valid for 7 days
 	let sendingLink = $state(false);
 
@@ -93,9 +109,19 @@
 
 <PageHeader eyebrow="Preferences" title="Settings" />
 
-<div class="grid">
+<div class="layout">
+
+<!-- TABS | a column on wide screens, a scrolling row on phones -->
+<div class="tabs" role="tablist" aria-label="Settings sections">
+	{#each tabs as item (item.id)}
+		<button role="tab" class={['tab', tab === item.id && 'active']} aria-selected={tab === item.id} onclick={() => (tab = item.id)}>{item.label}</button>
+	{/each}
+</div>
+
+<div class="grid min-w-0">
 
 	<!-- APPEARANCE -->
+	{#if shown('appearance')}
 	<section class="section">
 		<header>
 			<h2 class="type-title text-2xl text-ink">Appearance</h2>
@@ -113,8 +139,10 @@
 			</div>
 		</div>
 	</section>
+	{/if}
 
 	<!-- VIEWS -->
+	{#if shown('views')}
 	<section class="section">
 		<header>
 			<h2 class="type-title text-2xl text-ink">Views</h2>
@@ -124,8 +152,10 @@
 			<ViewSettings {labels} />
 		</div>
 	</section>
+	{/if}
 
 	<!-- BEHAVIOUR -->
+	{#if shown('behaviour')}
 	<section class="section">
 		<header>
 			<h2 class="type-title text-2xl text-ink">Behaviour</h2>
@@ -188,8 +218,10 @@
 			</div>
 		</div>
 	</section>
+	{/if}
 
 	<!-- ACCOUNT -->
+	{#if shown('account')}
 	<section class="section">
 		<header>
 			<h2 class="type-title text-2xl text-ink">Account</h2>
@@ -216,9 +248,10 @@
 			</dl>
 		</div>
 	</section>
+	{/if}
 
 	<!-- USERS -->
-	{#if hasPermission(data.user, 'admin')}
+	{#if hasPermission(data.user, 'admin') && shown('users')}
 		<section class="section">
 			<header>
 				<h2 class="type-title text-2xl text-ink">Users</h2>
@@ -234,7 +267,61 @@
 
 </div>
 
+</div>
+
 <style>
+	/* TABS */
+	.layout {
+		display: grid;
+		gap: 2rem;
+	}
+
+	@media (width >= 64rem) {
+		.layout {
+			grid-template-columns: 11rem minmax(0, 1fr);
+			gap: 3rem;
+			align-items: start;
+		}
+	}
+
+	.tabs {
+		display: flex;
+		gap: 0.25rem;
+		margin-inline: calc(var(--layout-gutter) * -1);
+		padding-inline: var(--layout-gutter);
+		overflow-x: auto;
+		scrollbar-width: none;
+	}
+
+	@media (width >= 64rem) {
+		.tabs {
+			position: sticky;
+			top: 3rem;
+			flex-direction: column;
+			margin-inline: 0;
+			padding-inline: 0;
+		}
+	}
+
+	.tab {
+		padding: 0.5rem 0.875rem;
+		border-radius: var(--layout-radius-control);
+		color: var(--theme-ink-muted);
+		text-align: left;
+		white-space: nowrap;
+		transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+	}
+
+	.tab:hover {
+		color: var(--theme-ink);
+		background: var(--theme-line);
+	}
+
+	.tab.active {
+		color: var(--theme-on-accent);
+		background: var(--theme-accent);
+	}
+
 	/* SECTIONS | heading beside the content once there is room, a hairline between them */
 	.section {
 		display: grid;
