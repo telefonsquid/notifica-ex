@@ -62,3 +62,17 @@ export function onRecordChange<T extends RecordModel = RecordModel>(
         unsubscribe?.().catch(() => {})
     }
 }
+
+// ON COLLECTION CHANGE | a burst of events, like a reorder touching every record, turns into one call
+export function onCollectionChange(collection: Collection, callback: () => void, wait = 60): () => void {
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const stop = onRecordChange(collection, () => {
+        clearTimeout(timer)
+        timer = setTimeout(callback, wait)
+    })
+
+    return () => {
+        clearTimeout(timer)
+        stop()
+    }
+}

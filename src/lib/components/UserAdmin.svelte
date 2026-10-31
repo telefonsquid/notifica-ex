@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { notify } from '#lib/notifications.svelte.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
-	import { onRecordChange } from '#lib/realtime.ts';
+	import { onCollectionChange } from '#lib/realtime.ts';
 	import type { AuthorizationLevel, UserSummary } from '#lib/schemas.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import Input from '#lib/ui/Input.svelte';
@@ -16,7 +16,7 @@
 	let active = $derived(users.filter((user) => user.state === 'active'));
 	let inactive = $derived(users.filter((user) => user.state === 'inactive'));
 
-	$effect(() => onRecordChange('users', () => getUsers().refresh()));
+	$effect(() => onCollectionChange('users', () => getUsers().refresh()));
 
 	const ROLES: { value: AuthorizationLevel; label: string }[] = [
 		{ value: 'user', label: 'User' },
