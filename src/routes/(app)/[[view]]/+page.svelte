@@ -5,16 +5,18 @@
 	import FilterEditor from '#lib/components/FilterEditor.svelte';
 	import NoteCard from '#lib/components/NoteCard.svelte';
 	import NoteEditor from '#lib/components/NoteEditor.svelte';
+	import NoteMenu from '#lib/components/NoteMenu.svelte';
 	import { toggleTask } from '#lib/markdown.ts';
 	import { morph, rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
 	import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts';
 	import { defaultSort, emptyFilter, groupReminders, matchesView, noteText, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
-	import { Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
-	import { Popover } from 'bits-ui';
+	import { Check, Ellipsis, ListFilter, Plus, Search, X } from '@lucide/svelte';
+	import { ContextMenu, DropdownMenu, Popover } from 'bits-ui';
 	import { tick } from 'svelte';
 	import { flip } from 'svelte/animate';
+	import { SvelteSet } from 'svelte/reactivity';
 	import { getLabels } from '../../api/labels.remote';
 	import { getNotes, updateNote } from '../../api/notes.remote';
 	import { getReminders, setReminderDone } from '../../api/reminders.remote';
@@ -42,6 +44,7 @@
 	afterNavigate(() => {
 		draft = null;
 		naming = false;
+		selected.clear();
 	});
 
 	let filter = $derived(draft?.filter ?? view?.filter ?? emptyFilter());
@@ -49,7 +52,7 @@
 	let tweaked = $derived(!!draft && !!view && (!sameFilter(draft.filter, view.filter) || JSON.stringify(draft.sort) !== JSON.stringify(view.sort)));
 
 	// EDITOR STATE | a key per opening, so every note starts with a fresh draft
-	let editing = $state<{ key: number; id: string | null; fresh: boolean } | null>(null);
+	let editing = $state<{ key: number; id: string | null; fresh: boolean; focus?: string } | null>(null);
 	let frozen = $state.raw<string[] | null>(null);
 	let opened = 0;
 
@@ -109,11 +112,11 @@
 	}
 
 	// EDITING | one card at a time opens in place, a new note starts as a blank card up front
-	async function edit(note: Note | null) {
+	async function edit(note: Note | null, focus?: string) {
 		if (note && editing?.id === note.id) return;
 		await morph(() => {
 			frozen = visible.map((item) => item.id);
-			editing = { key: ++opened, id: note?.id ?? null, fresh: !note };
+			editing = { key: ++opened, id: note?.id ?? null, fresh: !note, focus };
 		});
 		document.querySelector('.editor')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 	}
@@ -134,6 +137,26 @@
 		replaceState(resolve('/(app)/[[view]]', { view: page.params.view }), {});
 	});
 
+	// SELECTION | a card click toggles while anything is selected, notes that vanished drop out on their own
+	const selected = new SvelteSet<string>();
+	let selection = $derived(notes.filter((note) => selected.has(note.id)));
+
+	function toggleSelected(id: string) {
+		if (selected.has(id)) selected.delete(id);
+		else selected.add(id);
+	}
+
+	// A right click on a selected card acts on the whole selection
+	function targetsOf(note: Note): Note[] {
+		return selected.has(note.id) ? selection : [note];
+	}
+
+	function onKey(event: KeyboardEvent) {
+		const menuOpen = event.defaultPrevented || document.querySelector('[role=menu]'); // Escape closes the menu first, the selection stays
+		if (event.key === 'Escape' && selection.length && !editing && !menuOpen) selected.clear();
+		else focusSearch(event);
+	}
+
 	// QUICK ACTIONS ON CARDS
 	function tickTask(note: Note, index: number) {
 		safeAction(updateNote({ id: note.id, body: toggleTask(note.body, index) }));
@@ -148,7 +171,7 @@
 	<title>{view?.name ?? 'Notes'} · notifica-ex</title>
 </svelte:head>
 
-<svelte:window onkeydown={focusSearch} />
+<svelte:window onkeydown={onKey} />
 
 <!-- Centered as a whole while few notes are around, the page scrolls once they fill the screen -->
 <div class="my-auto flex flex-col pb-24 sm:pb-20">
@@ -178,18 +201,39 @@
 								{note}
 								{labels}
 								reminders={remindersByNote.get(note.id) ?? []}
+								focus={editing.focus}
 								onclose={closeEditor}
 							/>
 						{/key}
 					{:else}
-						<NoteCard
-							{note}
-							labels={labelsById}
-							reminders={remindersByNote.get(note.id) ?? []}
-							onopen={() => edit(note)}
-							ontoggle={(index) => tickTask(note, index)}
-							ondone={markDone}
-						/>
+						<!-- A finger opens the menu with a long press, selecting goes through it -->
+						<ContextMenu.Root>
+							<ContextMenu.Trigger class="block">
+								<NoteCard
+									{note}
+									labels={labelsById}
+									reminders={remindersByNote.get(note.id) ?? []}
+									selected={selected.has(note.id)}
+									onopen={() => (selection.length ? toggleSelected(note.id) : edit(note))}
+									onlongpress={() => toggleSelected(note.id)}
+									ontoggle={(index) => tickTask(note, index)}
+									ondone={markDone}
+								/>
+							</ContextMenu.Trigger>
+							<ContextMenu.Portal>
+								<ContextMenu.Content class="menu" collisionPadding={12}>
+									<NoteMenu
+										notes={targetsOf(note)}
+										{labels}
+										reminders={remindersByNote}
+										selected={selected.has(note.id)}
+										onselect={() => toggleSelected(note.id)}
+										onedit={(target, focus) => edit(target, focus)}
+										onfinish={() => selected.clear()}
+									/>
+								</ContextMenu.Content>
+							</ContextMenu.Portal>
+						</ContextMenu.Root>
 					{/if}
 				</div>
 			{/each}
@@ -227,7 +271,24 @@
 
 <!-- TOOLBAR | floats at the bottom, above the phone rail -->
 <div class="toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-center px-gutter sm:left-rail">
-	<div class="pointer-events-auto flex min-w-0 items-center gap-3">
+	{#if selection.length}
+		<!-- SELECTION BAR | stands in for the toolbar while notes are selected -->
+		<div class="pointer-events-auto flex items-center gap-1 rounded-full border border-line bg-raised/85 p-1 pl-5 shadow-xl backdrop-blur-xl" in:rise={{ y: 8, duration: 'base' }}>
+			<span class="type-meta mr-2 text-ink">{selection.length} selected</span>
+			<DropdownMenu.Root>
+				<DropdownMenu.Trigger class="motion-interactive grid size-10 place-items-center rounded-full bg-accent text-on-accent hover:brightness-110" aria-label="Actions for the selection">
+					<Ellipsis class="size-5" />
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Portal>
+					<DropdownMenu.Content class="menu" side="top" sideOffset={10} collisionPadding={12}>
+						<NoteMenu notes={selection} {labels} reminders={remindersByNote} onfinish={() => selected.clear()} />
+					</DropdownMenu.Content>
+				</DropdownMenu.Portal>
+			</DropdownMenu.Root>
+			<button class="icon-button rounded-full" aria-label="Clear selection" onclick={() => selected.clear()}><X class="size-4" /></button>
+		</div>
+	{:else}
+	<div class="pointer-events-auto flex min-w-0 items-center gap-3" in:rise={{ y: 8, duration: 'base' }}>
 		<div class="flex min-w-0 items-center gap-1 rounded-full border border-line bg-raised/85 p-0 shadow-xl backdrop-blur-xl">
 			<div class={['search motion-interactive flex h-12 items-center rounded-full text-ink-muted', searchOpen && 'open']}>
 				<button class="grid size-12 shrink-0 place-items-center rounded-full hover:text-ink" aria-label="Search notes" aria-expanded={searchOpen} onclick={() => (searchOpen ? searchInput?.focus() : openSearch())}>
@@ -285,6 +346,7 @@
 			<Plus class="plus size-7" strokeWidth={2.25} />
 		</button>
 	</div>
+	{/if}
 </div>
 
 <style>

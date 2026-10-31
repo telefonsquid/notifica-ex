@@ -1,7 +1,15 @@
 import { parseTimestamp } from '#lib/reminders.ts';
-import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TINTS, type NoteColor, type NoteContent, type Reminder } from '#lib/schemas.ts';
+import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type NoteColor, type NoteContent, type Reminder } from '#lib/schemas.ts';
 
 // COLORS ====================================================================================================
+
+// Order of the palette wherever a color gets picked
+export const COLOR_GROUPS: { name: string, colors: readonly NoteColor[] }[] = [
+    { name: 'Soft', colors: ['', ...NOTE_TINTS] },
+    { name: 'Solid', colors: NOTE_SOLIDS },
+    { name: 'Sticky', colors: NOTE_STICKIES },
+    { name: 'Texture', colors: NOTE_TEXTURES },
+]
 
 // New labels pick one so they never all look alike
 export function randomLabelColor(): NoteColor {

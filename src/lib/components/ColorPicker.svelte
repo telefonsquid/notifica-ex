@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { colorName } from '#lib/notes.ts';
-    import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type NoteColor } from '#lib/schemas.ts';
+    import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
+    import type { NoteColor } from '#lib/schemas.ts';
     import { Check } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
 
@@ -16,13 +16,6 @@
         label?: string                          // what gets colored, for screen readers
         class?: string
     } = $props()
-
-    const GROUPS: { name: string, colors: readonly NoteColor[] }[] = [
-        { name: 'Soft', colors: ['', ...NOTE_TINTS] },
-        { name: 'Solid', colors: NOTE_SOLIDS },
-        { name: 'Sticky', colors: NOTE_STICKIES },
-        { name: 'Texture', colors: NOTE_TEXTURES },
-    ]
 </script>
 
 <!-- Stays open while picking, so colors can be tried on the note behind it -->
@@ -39,7 +32,7 @@
             collisionPadding={12}
             class="palette z-[60] grid gap-4 rounded-card border border-line-strong bg-raised p-4 text-ink shadow-2xl"
         >
-            {#each GROUPS as group (group.name)}
+            {#each COLOR_GROUPS as group (group.name)}
                 <div>
                     <p class="type-meta mb-2 text-ink-faint">{group.name}</p>
                     <div class="grid grid-cols-[repeat(6,1.75rem)] gap-1.5 min-[24rem]:grid-cols-[repeat(9,1.75rem)]" role="radiogroup" aria-label={group.name}>

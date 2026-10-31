@@ -1,22 +1,27 @@
 <script lang="ts">
     import ReminderList from '#lib/components/ReminderList.svelte';
+    import { rise } from '#lib/motion.ts';
     import type { Label, Note, Reminder } from '#lib/schemas.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Pin } from '@lucide/svelte';
+    import { Check, Pin } from '@lucide/svelte';
 
     // PROPS
     let {
         note,
         labels,
         reminders,
+        selected = false,
         onopen,
+        onlongpress,
         ontoggle,
         ondone
     }: {
         note: Note
         labels: Map<string, Label>
         reminders: Reminder[]
-        onopen: () => void                                      // the card turns into the editor in place
+        selected?: boolean
+        onopen: () => void                                      // the card turns into the editor in place, or joins the selection
+        onlongpress: () => void                                 // mouse only, a finger opens the context menu instead
         ontoggle: (task: number) => void                        // ticks a checklist entry right on the card, counted in reading order
         ondone: (reminder: Reminder) => void                    // ticks off an open task reminder
     } = $props()
@@ -29,11 +34,57 @@
         const tasks = [...(event.currentTarget as HTMLElement).querySelectorAll('input.task')]
         ontoggle(tasks.indexOf(box))
     }
+
+    // LONG PRESS | held still for a moment, the click that follows the release gets swallowed
+    const HOLD = 500
+    let timer: ReturnType<typeof setTimeout> | undefined
+    let start = { x: 0, y: 0 }
+    let held = false
+
+    function press(event: PointerEvent){
+        if(event.pointerType !== 'mouse' || event.button !== 0) return
+        start = { x: event.clientX, y: event.clientY }
+        held = false
+        timer = setTimeout(() => {
+            held = true
+            onlongpress()
+        }, HOLD)
+    }
+
+    function drift(event: PointerEvent){
+        if(timer && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) release()
+    }
+
+    function release(){
+        clearTimeout(timer)
+        timer = undefined
+    }
+
+    function swallow(event: MouseEvent){
+        if(!held) return
+        held = false
+        event.stopPropagation()
+        event.preventDefault()
+    }
 </script>
 
 <!-- The whole card opens the editor, only the checkboxes and the done button sit above that button -->
-<article class="card note-surface motion-interactive relative flex flex-col gap-3 rounded-card border border-line p-card text-ink hover:border-line-strong" data-note={note.color || undefined}>
-    <button class="absolute inset-0 rounded-card" aria-label={`Open ${note.title || 'note'}`} onclick={onopen}></button>
+<article
+    class={['card note-surface motion-interactive relative flex flex-col gap-3 rounded-card border border-line p-card text-ink hover:border-line-strong', selected && 'selected']}
+    data-note={note.color || undefined}
+    onpointerdown={press}
+    onpointermove={drift}
+    onpointerup={release}
+    onpointerleave={release}
+    onclickcapture={swallow}
+>
+    <button class="absolute inset-0 rounded-card" aria-label={`Open ${note.title || 'note'}`} aria-pressed={selected || undefined} onclick={onopen}></button>
+
+    {#if selected}
+        <span class="badge pointer-events-none absolute -top-2 -right-2 z-10 grid size-6 place-items-center rounded-full bg-accent text-on-accent shadow-md" in:rise={{ y: 0, scale: 0.6, duration: 'fast' }}>
+            <Check class="size-3.5" strokeWidth={3} />
+        </span>
+    {/if}
 
     <!-- LABELS | folder tabs on the top or bottom edge, they only show their name while the card is hovered -->
     {#if tabs.length}
@@ -75,6 +126,11 @@
 
     .card:has(> button:first-child:active) {
         scale: 0.985;
+    }
+
+    .card.selected {
+        outline: 2px solid var(--theme-accent);
+        outline-offset: 3px;
     }
 
     /* TABS | inset by the corner radius so they sit on the straight part of the edge */

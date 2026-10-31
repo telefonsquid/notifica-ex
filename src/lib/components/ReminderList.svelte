@@ -7,11 +7,13 @@
         reminders,
         ensureNote,
         editable = false,
+        focus,
         ondone
     }: {
         reminders: Reminder[]
         ensureNote: () => Promise<string | null>
         editable?: boolean                          // an open card edits them and can add more
+        focus?: string                              // reminder id to start open, 'new' starts the add form
         ondone: (reminder: Reminder) => void
     } = $props()
 
@@ -23,11 +25,11 @@
 {#if reminders.length || editable}
     <footer class={['band -mx-card mt-auto -mb-card flex flex-col px-card py-1 text-ink-muted', !editable && 'pointer-events-none']}>
         {#each reminders as reminder (reminder.id)}
-            <ReminderEditor {reminder} {ensureNote} {editable} ondone={() => ondone(reminder)} />
+            <ReminderEditor {reminder} {ensureNote} {editable} open={focus === reminder.id} ondone={() => ondone(reminder)} />
         {/each}
         {#if editable}
             {#key added}
-                <ReminderEditor {ensureNote} editable onclose={() => added++} />
+                <ReminderEditor {ensureNote} editable open={focus === 'new' && !added} onclose={() => added++} />
             {/key}
         {/if}
     </footer>

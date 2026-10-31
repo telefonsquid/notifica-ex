@@ -16,12 +16,14 @@
         note,
         labels,
         reminders,
+        focus,
         oncreate,
         onclose
     }: {
         note: Note | null                       // null starts a new note
         labels: Label[]
         reminders: Reminder[]
+        focus?: string                          // reminder to open right away, see ReminderList
         oncreate?: (id: string) => void         // a new note got stored, the page follows it by id from then on
         onclose: () => void
     } = $props()
@@ -144,7 +146,7 @@
     </div>
 
     <!-- BODY -->
-    <MarkdownEditor bind:value={draft.body} autofocus={!initial?.title} />
+    <MarkdownEditor bind:value={draft.body} autofocus={!initial?.title && !focus} />
 
     <!-- TOOLBAR -->
     <div class="-mx-2 -mt-2 flex items-center gap-1">
@@ -162,7 +164,7 @@
     </div>
 
     <!-- REMINDERS -->
-    <ReminderList {reminders} {ensureNote} editable ondone={(reminder) => safeAction(setReminderDone({ id: reminder.id, done: true }))} />
+    <ReminderList {reminders} {ensureNote} {focus} editable ondone={(reminder) => safeAction(setReminderDone({ id: reminder.id, done: true }))} />
 </article>
 
 <style>
