@@ -16,7 +16,7 @@
         note: Note
         labels: Map<string, Label>
         reminders: Reminder[]
-        onopen: (origin: { x: number, y: number }) => void      // top center of the card, the editor grows from there
+        onopen: () => void                                      // the card turns into the editor in place
         ontoggle: (task: number) => void                        // ticks a checklist entry right on the card, counted in reading order
         ondone: (reminder: Reminder) => void                    // ticks off an open task reminder
     } = $props()
@@ -29,16 +29,11 @@
         const tasks = [...(event.currentTarget as HTMLElement).querySelectorAll('input.task')]
         ontoggle(tasks.indexOf(box))
     }
-
-    function openFrom(target: HTMLElement){
-        const box = target.getBoundingClientRect()
-        onopen({ x: box.left + box.width / 2, y: box.top })
-    }
 </script>
 
 <!-- The whole card opens the editor, only the checkboxes and the done button sit above that button -->
 <article class="card note-surface motion-interactive relative flex flex-col gap-3 rounded-card border border-line p-card text-ink hover:border-line-strong" data-note={note.color || undefined}>
-    <button class="absolute inset-0 rounded-card" aria-label={`Open ${note.title || 'note'}`} onclick={(event) => openFrom(event.currentTarget)}></button>
+    <button class="absolute inset-0 rounded-card" aria-label={`Open ${note.title || 'note'}`} onclick={onopen}></button>
 
     <!-- LABELS | folder tabs on the top or bottom edge, they only show their name while the card is hovered -->
     {#if tabs.length}

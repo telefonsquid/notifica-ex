@@ -1,4 +1,5 @@
 import { browser } from '$app/env';
+import { tick } from 'svelte';
 import { cubicOut } from 'svelte/easing';
 import { prefersReducedMotion } from 'svelte/motion';
 import type { TransitionConfig } from 'svelte/transition';
@@ -131,6 +132,26 @@ export function sink(_node: Element, options: RiseOptions = {}): TransitionConfi
             transform: translateY(${u * y}px) scale(${scale + (1 - scale) * t});
             filter: blur(${u * blur}px);
         `
+    }
+}
+
+// MORPH | elements named for it in app.css glide to their new place and size while the update lands
+export async function morph(update: () => void){
+    const root = document.documentElement
+
+    if(!document.startViewTransition || prefersReducedMotion.current){
+        update()
+        return
+    }
+
+    root.dataset.transition = 'morph'
+    try {
+        await document.startViewTransition(async () => {
+            update()
+            await tick()
+        }).finished
+    } finally {
+        delete root.dataset.transition
     }
 }
 

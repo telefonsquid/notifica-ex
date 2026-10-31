@@ -6,7 +6,7 @@
 	import NoteCard from '#lib/components/NoteCard.svelte';
 	import NoteEditor from '#lib/components/NoteEditor.svelte';
 	import { toggleTask } from '#lib/markdown.ts';
-	import { rise, stagger } from '#lib/motion.ts';
+	import { morph, rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
 	import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts';
@@ -48,12 +48,26 @@
 	let sort = $derived(draft?.sort ?? view?.sort ?? defaultSort());
 	let tweaked = $derived(!!draft && !!view && (!sameFilter(draft.filter, view.filter) || JSON.stringify(draft.sort) !== JSON.stringify(view.sort)));
 
+	// EDITOR STATE | a key per opening, so every note starts with a fresh draft
+	let editing = $state<{ key: number; id: string | null; fresh: boolean } | null>(null);
+	let frozen = $state.raw<string[] | null>(null);
+	let opened = 0;
+
+	// The open note stays even once it stops matching, a new one keeps its blank card up front
 	let visible = $derived.by(() => {
 		if (!view) return [];
 		const context = { reminders: remindersByNote, now: new Date() };
 		const words = wordsOf(search);
-		const shown = notes.filter((note) => matchesView(note, filter, context) && words.every((word) => noteText(note).includes(word)));
-		return sortNotes(shown, sort, remindersByNote);
+		const shown = notes.filter((note) => {
+			if (note.id === editing?.id) return !editing.fresh;
+			return matchesView(note, filter, context) && words.every((word) => noteText(note).includes(word));
+		});
+		const sorted = sortNotes(shown, sort, remindersByNote);
+		if (!frozen) return sorted;
+
+		// Order holds still while a card is open, every autosave would reshuffle it otherwise
+		const rank = new Map(frozen.map((id, index) => [id, index]));
+		return sorted.toSorted((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1));
 	});
 
 	async function saveToView() {
@@ -94,18 +108,21 @@
 		openSearch();
 	}
 
-	// EDITOR | a key per opening, so every note starts with a fresh draft
-	type Origin = { x: number; y: number };
-	let editing = $state<{ key: number; note: Note | null; origin?: Origin } | null>(null);
-	let opened = 0;
-
-	function edit(note: Note | null, origin?: Origin) {
-		editing = { key: ++opened, note, origin };
+	// EDITING | one card at a time opens in place, a new note starts as a blank card up front
+	async function edit(note: Note | null) {
+		if (note && editing?.id === note.id) return;
+		await morph(() => {
+			frozen = visible.map((item) => item.id);
+			editing = { key: ++opened, id: note?.id ?? null, fresh: !note };
+		});
+		document.querySelector('.editor')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 	}
 
-	function create(button: HTMLElement) {
-		const box = button.getBoundingClientRect();
-		edit(null, { x: box.left + box.width / 2, y: box.top + box.height / 2 });
+	function closeEditor() {
+		morph(() => {
+			editing = null;
+			frozen = null;
+		});
 	}
 
 	// Notification taps land on /?note=id
@@ -136,21 +153,47 @@
 <!-- Centered as a whole while few notes are around, the page scrolls once they fill the screen -->
 <div class="my-auto flex flex-col pb-24 sm:pb-20">
 
-<!-- NOTES -->
-{#if visible.length}
-	<div class="note-grid items-start" style:--notes={visible.length}>
-		{#each visible as note, index (note.id)}
-			<div animate:flip={{ duration: 280 }} in:rise={{ delay: stagger(index) }}>
-				<NoteCard
-					{note}
-					labels={labelsById}
-					reminders={remindersByNote.get(note.id) ?? []}
-					onopen={(origin) => edit(note, origin)}
-					ontoggle={(index) => tickTask(note, index)}
-					ondone={markDone}
-				/>
-			</div>
-		{/each}
+<!-- NOTES | the open card counts twice, it spans two columns where they fit -->
+{#if visible.length || editing?.fresh}
+	<div class="@container">
+		<div class="note-grid grid-flow-row-dense items-start" style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
+			{#if editing?.fresh}
+				{#key editing.key}
+					<div class="note-cell vt-note wide" style:--vt-name="note-{editing.id ?? 'new'}" in:rise>
+						<NoteEditor
+							note={null}
+							{labels}
+							reminders={(editing.id && remindersByNote.get(editing.id)) || []}
+							oncreate={(id) => editing && (editing.id = id)}
+							onclose={closeEditor}
+						/>
+					</div>
+				{/key}
+			{/if}
+			{#each visible as note, index (note.id)}
+				<div class={['note-cell vt-note', editing?.id === note.id && 'wide']} style:--vt-name="note-{note.id}" animate:flip={{ duration: 280 }} in:rise={{ delay: stagger(index) }}>
+					{#if editing?.id === note.id}
+						{#key editing.key}
+							<NoteEditor
+								{note}
+								{labels}
+								reminders={remindersByNote.get(note.id) ?? []}
+								onclose={closeEditor}
+							/>
+						{/key}
+					{:else}
+						<NoteCard
+							{note}
+							labels={labelsById}
+							reminders={remindersByNote.get(note.id) ?? []}
+							onopen={() => edit(note)}
+							ontoggle={(index) => tickTask(note, index)}
+							ondone={markDone}
+						/>
+					{/if}
+				</div>
+			{/each}
+		</div>
 	</div>
 {:else}
 	<!-- EMPTY STATE -->
@@ -237,24 +280,12 @@
 			</Popover.Root>
 		</div>
 
-		<!-- CREATE | the editor grows out of this button -->
-		<button class="create grid size-16 shrink-0 place-items-center rounded-full text-on-accent" aria-label="New note" onclick={(event) => create(event.currentTarget)}>
+		<!-- CREATE | opens a blank card at the front of the grid -->
+		<button class="create grid size-16 shrink-0 place-items-center rounded-full text-on-accent" aria-label="New note" onclick={() => edit(null)}>
 			<Plus class="plus size-7" strokeWidth={2.25} />
 		</button>
 	</div>
 </div>
-
-{#if editing}
-	{#key editing.key}
-		<NoteEditor
-			note={editing.note}
-			origin={editing.origin}
-			{labels}
-			reminders={remindersByNote}
-			onclose={() => (editing = null)}
-		/>
-	{/key}
-{/if}
 
 <style>
 	/* TOOLBAR | clears the phone rail, sits low on wider screens */

@@ -66,6 +66,7 @@ Until the `theming` and `motion` skills exist:
 - **Settings page** has four sections: Appearance (device preferences), Behaviour, Account, Users (admin only).
 - **Motion tokens** (`--ease-*`, `--duration-*`) live in CSS. `#lib/motion.ts` reads them for JS transitions (`rise`, `sink`, `stagger`) and returns 0 durations under reduced motion.
 - **Page changes** use view transitions from the root layout; `.vt-rail`, `.vt-page` and `.vt-rail-indicator` name the moving parts.
+- **In-place changes** go through `morph()` from `#lib/motion.ts`: it sets `data-transition='morph'`, which hands the view transition names to the `.vt-note` cells instead of rail and page.
 
 ## Decisions
 
@@ -85,3 +86,4 @@ Until the `theming` and `motion` skills exist:
 - **Views** replace fixed pages: each is a saved filter and sort (`#lib/views.ts`, matched in the browser) with a rail slot and an icon stored by name (`#lib/view_icons.ts`). Route `(app)/[[view]]`, the first view lives at `/`. New accounts get Notes and Reminders, the last view can't be deleted.
 - **Rail views render unkeyed**: a keyed `#each` there froze the page on the second reorder (Svelte 5.57).
 - **Notes are markdown only**: the body is the single source, checklists included as `- [ ]` lines. `MarkdownEditor` edits it rich through Tiptap or raw in a textarea. Cards tick tasks by index through `toggleTask()`. Prose and checklist styles for both renderers live in `#lib/markdown.css`.
+- **Notes edit in place**, no modal: the open card turns into `NoteEditor`, spans two grid columns when there is room, and saves on a click outside, Escape or Done. The grid order is frozen while a card is open so autosaves don't move it. Labels show there as tabs with a remove button, `LabelAdder` sits as the last tab.

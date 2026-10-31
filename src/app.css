@@ -237,6 +237,13 @@
     margin-inline: auto;
 }
 
+/* OPEN CARD | two columns need room for two minimum width notes and the gap */
+@container (width >= 31rem) {
+    .note-cell.wide {
+        grid-column: span 2;
+    }
+}
+
 /* TRANSITION SHORTHAND | for hover and press states on interactive elements */
 @utility motion-interactive {
     transition-property: color, background-color, border-color, box-shadow, opacity, transform, translate, scale;
@@ -345,4 +352,27 @@
 
 :root[data-transition='theme']::view-transition-new(root) {
     z-index: 1;
+}
+
+/* MORPH | only the note cells move, see morph() in #lib/motion.ts */
+:root[data-transition='morph'] .vt-rail,
+:root[data-transition='morph'] .vt-page,
+:root[data-transition='morph'] .vt-rail-indicator {
+    view-transition-name: none;
+}
+
+:root[data-transition='morph'] .vt-note {
+    view-transition-name: var(--vt-name);
+    view-transition-class: note;
+}
+
+::view-transition-group(*.note) {
+    animation-duration: var(--duration-slow);
+    animation-timing-function: var(--ease-emphasized);
+}
+
+::view-transition-old(*.note),
+::view-transition-new(*.note) {
+    height: 100%;
+    animation-duration: var(--duration-base);
 }
