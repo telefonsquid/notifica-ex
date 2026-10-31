@@ -499,21 +499,6 @@
                 "hidden": false,
                 "presentable": false,
                 "system": false,
-                "id": "select1700047514",
-                "maxSelect": 1,
-                "name": "kind",
-                "required": true,
-                "type": "select",
-                "values": [
-                    "text",
-                    "list",
-                    "markdown"
-                ]
-            },
-            {
-                "hidden": false,
-                "presentable": false,
-                "system": false,
                 "autogeneratePattern": "",
                 "id": "text1700055433",
                 "max": 20000,
@@ -523,16 +508,6 @@
                 "primaryKey": false,
                 "required": false,
                 "type": "text"
-            },
-            {
-                "hidden": false,
-                "presentable": false,
-                "system": false,
-                "id": "json1700063352",
-                "maxSize": 0,
-                "name": "items",
-                "required": false,
-                "type": "json"
             },
             {
                 "hidden": false,

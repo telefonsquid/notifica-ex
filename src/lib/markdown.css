@@ -1,0 +1,137 @@
+/* PROSE | rendered notes on cards and the rich editor share one look */
+.markdown :where(p, ul, ol, pre, blockquote, table, h1, h2, h3, h4) + * {
+    margin-top: 0.6em;
+}
+
+.markdown :where(h1, h2, h3, h4) {
+    font-stretch: 112%;
+    font-weight: 650;
+    color: var(--theme-ink);
+}
+
+.markdown h1 { font-size: 1.25em; }
+.markdown h2 { font-size: 1.12em; }
+
+.markdown strong { color: var(--theme-ink); }
+
+.markdown ul { list-style: disc; padding-left: 1.2em; }
+.markdown ol { list-style: decimal; padding-left: 1.4em; }
+.markdown li + li { margin-top: 0.15em; }
+
+.markdown a {
+    color: var(--theme-accent);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.markdown code {
+    padding: 0.1em 0.35em;
+    border-radius: 0.3em;
+    background: var(--theme-line);
+    font-size: 0.9em;
+}
+
+.markdown pre {
+    overflow-x: auto;
+    padding: 0.75em;
+    border-radius: var(--layout-radius-control);
+    background: var(--theme-line);
+}
+
+.markdown pre code {
+    padding: 0;
+    background: none;
+}
+
+.markdown blockquote {
+    padding-left: 0.8em;
+    border-left: 2px solid var(--theme-line-strong);
+    color: var(--theme-ink-muted);
+}
+
+.markdown img {
+    max-width: 100%;
+    border-radius: var(--layout-radius-control);
+}
+
+
+
+/* CHECKLISTS ==================================================================================================== */
+/* Marked puts the box straight into the item, the editor wraps it in a label next to the text */
+.markdown ul[data-type='taskList'] {
+    list-style: none;
+    padding-left: 0;
+}
+
+/* Per item, a list may mix tasks and plain bullets */
+.markdown li:has(> input.task, > p > input.task) {
+    list-style: none;
+    margin-left: -1.2em;
+}
+
+.markdown ul[data-type='taskList'] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5em;
+}
+
+.markdown ul[data-type='taskList'] li > div {
+    flex: 1;
+    min-width: 0;
+}
+
+.markdown ul[data-type='taskList'] ul[data-type='taskList'] {
+    margin-top: 0.15em;
+}
+
+.markdown li > ul,
+.markdown li > div > ul {
+    padding-left: 1.2em;
+}
+
+.markdown input[type='checkbox'] {
+    appearance: none;
+    position: relative;
+    flex-shrink: 0;
+    width: 1em;
+    height: 1em;
+    margin: 0 0.5em 0 0;
+    vertical-align: -0.15em;
+    border: 1.5px solid var(--theme-line-strong);
+    border-radius: 0.3em;
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+}
+
+.markdown ul[data-type='taskList'] input[type='checkbox'] {
+    margin: 0.3em 0 0;
+}
+
+.markdown input[type='checkbox']:hover {
+    border-color: var(--theme-ink-muted);
+}
+
+.markdown input[type='checkbox']:checked {
+    border-color: var(--theme-accent);
+    background: var(--theme-accent);
+}
+
+/* Tick drawn from two borders, so it follows the theme without an icon */
+.markdown input[type='checkbox']:checked::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 45%;
+    width: 0.28em;
+    height: 0.52em;
+    border: solid var(--theme-on-accent);
+    border-width: 0 0.12em 0.12em 0;
+    translate: -50% -50%;
+    rotate: 45deg;
+}
+
+.markdown li:has(> input.task:checked, > p > input.task:checked),
+.markdown li[data-checked='true'] > div {
+    color: var(--theme-ink-faint);
+    text-decoration: line-through;
+}

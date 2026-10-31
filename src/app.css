@@ -4,6 +4,7 @@
 @import './lib/themes/platinum.css';
 @import './lib/themes/charcoal.css';
 @import './lib/note_colors.css';
+@import './lib/markdown.css';
 
 /*
     Three layers, outermost first:

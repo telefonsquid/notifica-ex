@@ -1,3 +1,4 @@
+import { tasksOf } from '#lib/markdown.ts';
 import { isOpenTask } from '#lib/notes.ts';
 import { parseTimestamp } from '#lib/reminders.ts';
 import { viewFilterSchema, viewSortSchema, type DateRange, type Note, type Reminder, type ViewContent, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
@@ -69,7 +70,6 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
     if(filter.archived === 'only' && !note.archived) return false
     if(filter.pinned === 'only' && !note.pinned) return false
     if(filter.pinned === 'hide' && note.pinned) return false
-    if(filter.kinds.length && !filter.kinds.includes(note.kind)) return false
     if(filter.colors.length && !filter.colors.includes(note.color)) return false
 
     // LABELS
@@ -81,11 +81,11 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
         if(filter.labelMatch === 'all' ? carried < filter.include.length : carried === 0) return false
     }
 
-    // CHECKLIST | only list notes have progress, every other kind drops out
+    // CHECKLIST | notes without one drop out
     if(filter.list !== 'any'){
-        const items = (note.items ?? []).filter((item) => item.text.trim())
-        if(note.kind !== 'list' || !items.length) return false
-        const complete = items.every((item) => item.done)
+        const tasks = tasksOf(note.body)
+        if(!tasks.length) return false
+        const complete = tasks.every(Boolean)
         if(filter.list === 'open' ? complete : !complete) return false
     }
 
@@ -108,7 +108,7 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
 // Lowercased, ready to look for words in
 export function noteText(note: Note, titleOnly = false): string {
     if(titleOnly) return note.title.toLowerCase()
-    return [note.title, note.body, ...(note.items ?? []).map((item) => item.text)].join(' ').toLowerCase()
+    return `${note.title} ${note.body}`.toLowerCase()
 }
 
 export function wordsOf(value: string): string[] {

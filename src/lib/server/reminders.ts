@@ -70,9 +70,7 @@ export function doneSubject(id: string, occurrence: string){
     return `reminder-done:${id}:${occurrence}`
 }
 
-// Open list items or the first lines of text, ntfy cuts long messages anyway
+// First lines as plain text, ntfy cuts long messages anyway
 function preview(note: Note): string {
-    if(note.kind === 'list') return (note.items ?? []).filter((item) => !item.done).map((item) => `☐ ${item.text}`).join('\n').slice(0, 500)
-    if(note.kind === 'markdown') return markdownToText(note.body).slice(0, 500)
-    return note.body.slice(0, 500)
+    return markdownToText(note.body).slice(0, 500)
 }

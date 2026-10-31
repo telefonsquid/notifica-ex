@@ -1,6 +1,6 @@
 <script lang="ts">
     import { colorName } from '#lib/notes.ts';
-    import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type DateRange, type Label, type NoteColor, type NoteKind, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
+    import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type DateRange, type Label, type NoteColor, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
     import { ArrowDownWideNarrow, ArrowUpNarrowWide, Check, ChevronDown, Minus } from '@lucide/svelte';
     import { slide } from 'svelte/transition';
 
@@ -22,7 +22,6 @@
     function updateSort(patch: Partial<ViewSort>){ onchange(filter, { ...sort, ...patch }) }
 
     // OPTIONS
-    const KINDS: [NoteKind, string][] = [['text', 'Text'], ['list', 'List'], ['markdown', 'Markdown']]
     const PINNED: [ViewFilter['pinned'], string][] = [['any', 'Any'], ['only', 'Only'], ['hide', 'Hide']]
     const ARCHIVED: [ViewFilter['archived'], string][] = [['hide', 'Hide'], ['only', 'Only'], ['any', 'Both']]
     const CHECKLIST: [ViewFilter['list'], string][] = [['any', 'Any'], ['open', 'Open'], ['complete', 'Done']]
@@ -119,19 +118,8 @@
         </div>
     </fieldset>
 
-    <!-- KIND AND STATE -->
+    <!-- STATE -->
     <div class="grid gap-6 min-[28rem]:grid-cols-2">
-        <fieldset>
-            <legend class="type-meta">Type</legend>
-            <div class="flex flex-wrap gap-1.5">
-                {#each KINDS as [kind, text] (kind)}
-                    {@const on = filter.kinds.includes(kind)}
-                    <button type="button" class={['chip', on && 'on']} aria-pressed={on} onclick={() => update({ kinds: toggle(filter.kinds, kind) })}>
-                        {#if on}<Check class="size-3" />{/if}{text}
-                    </button>
-                {/each}
-            </div>
-        </fieldset>
         <fieldset>
             <legend class="type-meta">Checklist</legend>
             {@render segmented('Checklist', CHECKLIST, filter.list, (value) => update({ list: value as ViewFilter['list'] }))}

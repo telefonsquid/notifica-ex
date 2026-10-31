@@ -200,22 +200,10 @@ export const labelSchema = recordModelSchema.extend({
 
 
 // TYPES => NOTES ===================================================================
-export type NoteKind = z.infer<typeof noteKindSchema>;
-export const noteKindSchema = z.enum(['text', 'list', 'markdown']);
-
-export type NoteItem = z.infer<typeof noteItemSchema>;
-export const noteItemSchema = z.object({
-    id: idSchema, // generated in the browser, keeps rows stable while editing
-    text: limitedText('Item', LIMITS.NOTE_ITEM),
-    done: z.boolean()
-});
-
 export type NoteContent = z.infer<typeof noteContentSchema>;
 export const noteContentSchema = z.object({
     title: limitedText('Title', LIMITS.NOTE_TITLE).trim(),
-    kind: noteKindSchema,
-    body: limitedText('Text', LIMITS.NOTE_BODY),
-    items: z.array(noteItemSchema).max(LIMITS.NOTE_ITEMS, `A note holds at most ${LIMITS.NOTE_ITEMS} items.`),
+    body: limitedText('Text', LIMITS.NOTE_BODY), // markdown, checklists included
     color: noteColorSchema,
     labels: z.array(idSchema).max(LIMITS.NOTE_LABELS, `A note carries at most ${LIMITS.NOTE_LABELS} labels.`),
     pinned: z.boolean(),
@@ -225,8 +213,7 @@ export const noteContentSchema = z.object({
 export type Note = z.infer<typeof noteSchema>;
 export const noteSchema = recordModelSchema.extend({
     owner: idSchema,
-    ...noteContentSchema.shape,
-    items: noteContentSchema.shape.items.nullable() // pocketbase returns null for a json field never written
+    ...noteContentSchema.shape
 });
 
 
@@ -306,7 +293,6 @@ export const viewFilterSchema = z.object({
     exclude: z.array(idSchema).max(LIMITS.VIEW_LABELS).default([]),
     labelMatch: z.enum(['any', 'all']).default('any'), // how included labels combine
     labelled: z.enum(['any', 'with', 'without']).default('any'),
-    kinds: z.array(noteKindSchema).max(noteKindSchema.options.length).default([]), // empty means every kind
     colors: z.array(noteColorSchema).max(NOTE_COLORS.length + 1).default([]), // empty means every color
     pinned: z.enum(['any', 'only', 'hide']).default('any'),
     archived: z.enum(['hide', 'only', 'any']).default('hide'),

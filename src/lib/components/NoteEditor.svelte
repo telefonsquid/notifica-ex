@@ -1,13 +1,12 @@
 <script lang="ts">
-    import ChecklistEditor from '#lib/components/ChecklistEditor.svelte';
     import ColorPicker from '#lib/components/ColorPicker.svelte';
     import LabelChip from '#lib/components/LabelChip.svelte';
+    import MarkdownEditor from '#lib/components/MarkdownEditor.svelte';
     import ReminderList from '#lib/components/ReminderList.svelte';
-    import { convertKind, emptyNote, isEmpty, randomLabelColor } from '#lib/notes.ts';
+    import { emptyNote, isEmpty, randomLabelColor } from '#lib/notes.ts';
     import { safeAction } from '#lib/pocketbase.ts';
-    import type { Label, Note, NoteContent, NoteKind, Reminder } from '#lib/schemas.ts';
-    import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Eye, Pencil, Pin, PinOff, Plus, Trash2, X } from '@lucide/svelte';
+    import type { Label, Note, NoteContent, Reminder } from '#lib/schemas.ts';
+    import { Archive, ArchiveRestore, Pin, PinOff, Plus, Trash2, X } from '@lucide/svelte';
     import { Dialog } from 'bits-ui';
     import { untrack } from 'svelte';
     import { createLabel } from '../../routes/api/labels.remote';
@@ -17,40 +16,31 @@
     // PROPS
     let {
         note,
-        kind = 'text',
         labels,
         reminders,
         origin,
         onclose
     }: {
-        note: Note | null                       // null starts a new note of the given kind
-        kind?: NoteKind
+        note: Note | null                       // null starts a new note
         labels: Label[]
         reminders: Map<string, Reminder[]>      // by note id, a new note finds its reminders once saved
         origin?: { x: number, y: number }       // viewport point the dialog grows out of and shrinks back into
         onclose: () => void
     } = $props()
 
-    const KINDS: { value: NoteKind, label: string }[] = [
-        { value: 'text', label: 'Text' },
-        { value: 'list', label: 'List' },
-        { value: 'markdown', label: 'Markdown' },
-    ]
-
     // DRAFT | edited freely, the page's copy only changes once a save went through
     const initial = untrack(() => note)
     let id = $state(initial?.id)
     let noteReminders = $derived((id && reminders.get(id)) || [])
-    let draft = $state<NoteContent>(initial ? contentOf(initial) : emptyNote(untrack(() => kind)))
+    let draft = $state<NoteContent>(initial ? contentOf(initial) : emptyNote())
     let saved = untrack(() => JSON.stringify(draft))
     let open = $state(true)
-    let preview = $state(initial?.kind === 'markdown' && !!initial.body)
     let confirmDelete = $state(false)
     let deleted = false
 
     function contentOf(note: Note): NoteContent {
-        const { title, kind, body, color, labels, pinned, archived } = note
-        return { title, kind, body, items: $state.snapshot(note.items ?? []), color, labels: [...labels], pinned, archived }
+        const { title, body, color, labels, pinned, archived } = note
+        return { title, body, color, labels: [...labels], pinned, archived }
     }
 
     // SAVING | one save at a time, a new note gets created exactly once
@@ -88,12 +78,6 @@
     }
 
     // ACTIONS
-    function switchKind(next: NoteKind){
-        if(next === draft.kind) return
-        draft = convertKind(draft, next)
-        preview = false
-    }
-
     function toggleLabel(labelId: string){
         draft.labels = draft.labels.includes(labelId) ? draft.labels.filter((item) => item !== labelId) : [...draft.labels, labelId]
     }
@@ -153,38 +137,8 @@
                     </button>
                 </div>
 
-                <!-- KIND -->
-                <div class="flex items-center gap-1 self-start rounded-control bg-line p-1" role="group" aria-label="Kind">
-                    {#each KINDS as option (option.value)}
-                        <button
-                            class={['type-meta motion-interactive rounded-[calc(var(--layout-radius-control)-0.25rem)] px-3 py-1.5', draft.kind === option.value ? 'bg-raised text-ink' : 'text-ink-faint hover:text-ink-muted']}
-                            aria-pressed={draft.kind === option.value}
-                            onclick={() => switchKind(option.value)}
-                        >{option.label}</button>
-                    {/each}
-                    {#if draft.kind === 'markdown'}
-                        <button class="icon-button ml-1" aria-label={preview ? 'Edit' : 'Preview'} aria-pressed={preview} onclick={() => preview = !preview}>
-                            {#if preview}<Pencil class="size-3.5" />{:else}<Eye class="size-3.5" />{/if}
-                        </button>
-                    {/if}
-                </div>
-
                 <!-- BODY -->
-                {#if draft.kind === 'list'}
-                    <ChecklistEditor bind:items={draft.items} />
-                {:else if draft.kind === 'markdown' && preview}
-                    <button class="flex min-h-32 flex-col text-left text-ink-muted" aria-label="Edit text" onclick={() => preview = false}>
-                        <Markdown source={draft.body || '*Nothing written yet*'} />
-                    </button>
-                {:else}
-                    <textarea
-                        bind:value={draft.body}
-                        placeholder={draft.kind === 'markdown' ? 'Write in markdown' : 'Write something'}
-                        aria-label="Text"
-                        class="field-sizing-content min-h-32 resize-none bg-transparent leading-relaxed text-ink-muted outline-none placeholder:text-ink-faint"
-                        {@attach (node) => { if(!untrack(() => draft.title)) node.focus() }}
-                    ></textarea>
-                {/if}
+                <MarkdownEditor bind:value={draft.body} autofocus={!initial?.title} />
 
                 <!-- LABELS -->
                 <div class="flex flex-wrap items-center gap-1.5">

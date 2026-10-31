@@ -1,7 +1,8 @@
 import { dev } from '$app/env';
 import * as env from '$app/env/private';
 import { unwrap } from '#lib/pocketbase.ts';
-import { findOne, getCollection, importCollections, insertOnePartial, updateSettings } from '#lib/server/queries.ts';
+import type { Note } from '#lib/schemas.ts';
+import { findOne, getAll, getCollection, importCollections, insertOnePartial, updateOnePartial, updateSettings } from '#lib/server/queries.ts';
 import type { CollectionModel } from 'pocketbase';
 import pbSchema from '../../../pocketbase/pb_schema.json';
 
@@ -16,6 +17,7 @@ export async function bootstrap(){ // setup for a fresh pocketbase install
         await markSnapshotMigrations() // a fresh install always has the latest schema
     }
     else if(dev){
+        await foldListNotes()
         await createSchema() // no versioned migrations before the first release, local dev follows pb_schema.json
     }
 
@@ -34,6 +36,17 @@ async function isFreshInstall(){
 
 async function createSchema(){
     unwrap(await importCollections(pbSchema as unknown as CollectionModel[]))
+}
+
+// One off for dev databases from before notes were markdown only, drop once they all ran it
+async function foldListNotes(){
+    const result = await getAll('notes', { filter: "kind = 'list'" })
+    if(!result.success){ return } // fields already gone
+
+    for(const note of result.data as (Note & { items: { text: string, done: boolean }[] | null })[]){
+        const tasks = (note.items ?? []).filter((item) => item.text.trim()).map((item) => `- [${item.done ? 'x' : ' '}] ${item.text}`)
+        unwrap(await updateOnePartial('notes', note.id, { body: [note.body, tasks.join('\n')].filter(Boolean).join('\n\n') }))
+    }
 }
 
 async function markSnapshotMigrations(){

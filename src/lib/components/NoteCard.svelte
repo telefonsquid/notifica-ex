@@ -2,7 +2,7 @@
     import ReminderList from '#lib/components/ReminderList.svelte';
     import type { Label, Note, Reminder } from '#lib/schemas.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Pin, Square, SquareCheck } from '@lucide/svelte';
+    import { Pin } from '@lucide/svelte';
 
     // PROPS
     let {
@@ -17,19 +17,18 @@
         labels: Map<string, Label>
         reminders: Reminder[]
         onopen: (origin: { x: number, y: number }) => void      // top center of the card, the editor grows from there
-        ontoggle: (itemId: string) => void                      // checks a list item off right on the card
+        ontoggle: (task: number) => void                        // ticks a checklist entry right on the card, counted in reading order
         ondone: (reminder: Reminder) => void                    // ticks off an open task reminder
     } = $props()
 
-    // Long lists end in a count instead of growing the card forever
-    const SHOWN_ITEMS = 8
-
-    let items = $derived(note.items ?? [])
-    let open = $derived(items.filter((item) => !item.done))
-    let done = $derived(items.filter((item) => item.done))
-    let shown = $derived([...open, ...done].slice(0, SHOWN_ITEMS))
-
     let tabs = $derived(note.labels.map((id) => labels.get(id)).filter((label) => !!label))
+
+    function toggleTask(event: MouseEvent){
+        const box = event.target
+        if(!(box instanceof HTMLInputElement) || !box.classList.contains('task')) return
+        const tasks = [...(event.currentTarget as HTMLElement).querySelectorAll('input.task')]
+        ontoggle(tasks.indexOf(box))
+    }
 
     function openFrom(target: HTMLElement){
         const box = target.getBoundingClientRect()
@@ -60,30 +59,12 @@
         </header>
     {/if}
 
-    <!-- CONTENT -->
-    {#if note.kind === 'list'}
-        <ul class="flex flex-col gap-1">
-            {#each shown as item (item.id)}
-                <li class={['flex items-start gap-1', item.done ? 'text-ink-faint line-through' : 'text-ink-muted']}>
-                    <button
-                        class="motion-interactive relative -m-1 shrink-0 rounded-md p-1 hover:text-ink"
-                        aria-label={`${item.done ? 'Uncheck' : 'Check'} ${item.text || 'item'}`}
-                        aria-pressed={item.done}
-                        onclick={() => ontoggle(item.id)}
-                    >
-                        {#if item.done}<SquareCheck class="mt-0.5 size-4" />{:else}<Square class="mt-0.5 size-4" />{/if}
-                    </button>
-                    <span class="pointer-events-none ml-1 break-words">{item.text}</span>
-                </li>
-            {/each}
-        </ul>
-        {#if items.length > SHOWN_ITEMS}
-            <p class="type-meta pointer-events-none text-ink-faint">+{items.length - SHOWN_ITEMS} more</p>
-        {/if}
-    {:else if note.kind === 'markdown'}
-        <Markdown source={note.body} class="pointer-events-none line-clamp-[12] text-ink-muted" />
-    {:else if note.body}
-        <p class="pointer-events-none line-clamp-[12] break-words whitespace-pre-line text-ink-muted">{note.body}</p>
+    <!-- CONTENT | only the checkboxes take clicks, the rest falls through to the card button -->
+    {#if note.body}
+        <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+        <div class="content pointer-events-none" onclick={toggleTask}>
+            <Markdown source={note.body} class="line-clamp-[12] text-ink-muted" />
+        </div>
     {/if}
 
     <!-- REMINDERS -->
@@ -91,6 +72,12 @@
 </article>
 
 <style>
+    /* Raised above the card button, which comes first */
+    .content :global(input.task) {
+        pointer-events: auto;
+        position: relative;
+    }
+
     .card:has(> button:first-child:active) {
         scale: 0.985;
     }

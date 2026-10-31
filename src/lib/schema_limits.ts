@@ -23,7 +23,6 @@ export const LIMITS = {
     // TEXT => NOTES
     NOTE_TITLE: 200,
     NOTE_BODY: 20000,
-    NOTE_ITEM: 1000,
 
     // TEXT => VIEWS
     VIEW_WORDS: 200,                    // words a view looks for or leaves out
@@ -36,7 +35,6 @@ export const LIMITS = {
 
     // COLLECTION SIZES
     EXPAND_KEYS: 32,                    // relations pocketbase may expand into one record
-    NOTE_ITEMS: 500,                    // checklist entries per note
     NOTE_LABELS: 50,
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them

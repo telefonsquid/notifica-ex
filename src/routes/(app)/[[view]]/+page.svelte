@@ -5,6 +5,7 @@
 	import FilterEditor from '#lib/components/FilterEditor.svelte';
 	import NoteCard from '#lib/components/NoteCard.svelte';
 	import NoteEditor from '#lib/components/NoteEditor.svelte';
+	import { toggleTask } from '#lib/markdown.ts';
 	import { rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
@@ -117,9 +118,8 @@
 	});
 
 	// QUICK ACTIONS ON CARDS
-	function toggleItem(note: Note, itemId: string) {
-		const items = (note.items ?? []).map((item) => (item.id === itemId ? { ...item, done: !item.done } : item));
-		safeAction(updateNote({ id: note.id, items }));
+	function tickTask(note: Note, index: number) {
+		safeAction(updateNote({ id: note.id, body: toggleTask(note.body, index) }));
 	}
 
 	function markDone(reminder: Reminder) {
@@ -146,7 +146,7 @@
 					labels={labelsById}
 					reminders={remindersByNote.get(note.id) ?? []}
 					onopen={(origin) => edit(note, origin)}
-					ontoggle={(itemId) => toggleItem(note, itemId)}
+					ontoggle={(index) => tickTask(note, index)}
 					ondone={markDone}
 				/>
 			</div>

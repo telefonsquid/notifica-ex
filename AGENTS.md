@@ -27,7 +27,7 @@ Live in `.claude/skills/<name>/SKILL.md`. Status `planned` means the file doesn'
 
 ## Stack
 
-Bun, SvelteKit 3 + adapter-node, Svelte 5 (runes, experimental remote functions and async), TypeScript 6, PocketBase, Tailwind 4, lucide, zod. bits-ui for dialogs and menus, marked for markdown notes (`#lib/markdown.ts` escapes raw HTML and filters link schemes). Docker compose for deployment.
+Bun, SvelteKit 3 + adapter-node, Svelte 5 (runes, experimental remote functions and async), TypeScript 6, PocketBase, Tailwind 4, lucide, zod. bits-ui for dialogs and menus, marked renders notes (`#lib/markdown.ts` escapes raw HTML and filters link schemes), Tiptap edits them. Docker compose for deployment.
 
 Ports: dev server 55560, PocketBase 8091, ntfy 8092. `.claude/launch.json` starts the dev server for the preview pane.
 
@@ -84,3 +84,4 @@ Until the `theming` and `motion` skills exist:
 - **Note colours** are names from `NOTE_COLORS` (tints, solids, stickies, textures), shared by notes and labels and stored as the name, never a hex value. Adding one means `schemas.ts`, both `color` selects in `pb_schema.json` and `note_colors.css`. Elements set `data-note`, `#lib/note_colors.css` paints `.note-surface` and `.note-mark` from it. Tints and stickies come from each theme's `--theme-note-*`. Its WHITE INK and DARK INK groups override the `--theme-*` tokens inside the note, so components get readable ink without knowing.
 - **Views** replace fixed pages: each is a saved filter and sort (`#lib/views.ts`, matched in the browser) with a rail slot and an icon stored by name (`#lib/view_icons.ts`). Route `(app)/[[view]]`, the first view lives at `/`. New accounts get Notes and Reminders, the last view can't be deleted.
 - **Rail views render unkeyed**: a keyed `#each` there froze the page on the second reorder (Svelte 5.57).
+- **Notes are markdown only**: the body is the single source, checklists included as `- [ ]` lines. `MarkdownEditor` edits it rich through Tiptap or raw in a textarea. Cards tick tasks by index through `toggleTask()`. Prose and checklist styles for both renderers live in `#lib/markdown.css`.

@@ -1,5 +1,5 @@
 import { parseTimestamp } from '#lib/reminders.ts';
-import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TINTS, type NoteColor, type NoteContent, type NoteItem, type NoteKind, type Reminder } from '#lib/schemas.ts';
+import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TINTS, type NoteColor, type NoteContent, type Reminder } from '#lib/schemas.ts';
 
 // COLORS ====================================================================================================
 
@@ -19,29 +19,12 @@ export function colorName(color: NoteColor): string {
 
 
 // CONTENT ====================================================================================================
-export function emptyNote(kind: NoteKind): NoteContent {
-    return { title: '', kind, body: '', items: kind === 'list' ? [newItem()] : [], color: '', labels: [], pinned: false, archived: false }
-}
-
-export function newItem(text = ''): NoteItem {
-    return { id: crypto.randomUUID(), text, done: false }
+export function emptyNote(): NoteContent {
+    return { title: '', body: '', color: '', labels: [], pinned: false, archived: false }
 }
 
 export function isEmpty(note: NoteContent): boolean {
-    return !note.title.trim() && !note.body.trim() && !note.items.some((item) => item.text.trim())
-}
-
-// SWITCH KIND | text turns into one item per line and back, so nothing typed gets lost
-export function convertKind(note: NoteContent, kind: NoteKind): NoteContent {
-    if(kind === 'list' && note.kind !== 'list'){
-        const lines = note.body.split('\n').map((line) => line.trim()).filter(Boolean)
-        return { ...note, kind, body: '', items: lines.length ? lines.map((line) => newItem(line)) : [newItem()] }
-    }
-    if(kind !== 'list' && note.kind === 'list'){
-        const body = note.items.map((item) => item.text).filter((text) => text.trim()).join('\n')
-        return { ...note, kind, body, items: [] }
-    }
-    return { ...note, kind }
+    return !note.title.trim() && !note.body.trim()
 }
 
 
