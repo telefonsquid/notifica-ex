@@ -146,6 +146,26 @@
     --layout-radius-card: 1.25rem;
     --layout-radius-control: 0.75rem;
 
+    /* NOTE SOLIDS | the same strong colors in every theme */
+    --theme-note-ochre-solid: var(--color-ochre-600);
+    --theme-note-tangerine-solid: var(--color-tangerine-600);
+    --theme-note-coral-solid: var(--color-coral-600);
+    --theme-note-cherry-solid: var(--color-cherry-600);
+    --theme-note-rose-solid: var(--color-rose-600);
+    --theme-note-magenta-solid: var(--color-magenta-600);
+    --theme-note-plum-solid: var(--color-plum-600);
+    --theme-note-violet-solid: var(--color-violet-600);
+    --theme-note-midnight-solid: var(--color-midnight-600);
+    --theme-note-cobalt-solid: var(--color-cobalt-600);
+    --theme-note-sky-solid: var(--color-sky-600);
+    --theme-note-powder-solid: var(--color-powder-600);
+    --theme-note-teal-solid: var(--color-teal-600);
+    --theme-note-mint-solid: var(--color-mint-600);
+    --theme-note-moss-solid: var(--color-moss-600);
+    --theme-note-forest-solid: var(--color-forest-600);
+    --theme-note-slate-solid: var(--color-slate-600);
+    --theme-note-platinum-solid: var(--color-platinum-700);
+
     /* DENSITY | scales every Tailwind spacing utility at once */
     --spacing: 0.25rem;
 
