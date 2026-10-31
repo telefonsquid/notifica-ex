@@ -1,25 +1,24 @@
 <script lang="ts">
-    import { formatMoment, isOpenTask } from '#lib/notes.ts';
-    import { describeRule } from '#lib/reminders.ts';
+    import ReminderList from '#lib/components/ReminderList.svelte';
     import type { Label, Note, Reminder } from '#lib/schemas.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Bell, Check, Pin, Square, SquareCheck } from '@lucide/svelte';
+    import { Pin, Square, SquareCheck } from '@lucide/svelte';
 
     // PROPS
     let {
         note,
         labels,
-        reminder,
+        reminders,
         onopen,
         ontoggle,
         ondone
     }: {
         note: Note
         labels: Map<string, Label>
-        reminder?: Reminder
+        reminders: Reminder[]
         onopen: (origin: { x: number, y: number }) => void      // top center of the card, the editor grows from there
         ontoggle: (itemId: string) => void                      // checks a list item off right on the card
-        ondone: () => void                                      // ticks off an open task reminder
+        ondone: (reminder: Reminder) => void                    // ticks off an open task reminder
     } = $props()
 
     // Long lists end in a count instead of growing the card forever
@@ -87,21 +86,8 @@
         <p class="pointer-events-none line-clamp-[12] break-words whitespace-pre-line text-ink-muted">{note.body}</p>
     {/if}
 
-    <!-- REMINDER | a darker band across the bottom, hatched while a task waits to be checked off -->
-    {#if reminder}
-        {@const due = isOpenTask(reminder)}
-        <footer class={['band pointer-events-none -mx-card mt-auto -mb-card flex min-h-11 items-center gap-2 px-card py-2 text-ink-muted', due && 'due']}>
-            <Bell class="size-3.5 shrink-0" />
-            <span class="type-meta min-w-0 truncate">
-                {describeRule(reminder)}{reminder.next ? ` · ${formatMoment(reminder.next, reminder.timezone)}` : ''}
-            </span>
-            {#if due}
-                <button class="type-meta motion-interactive pointer-events-auto relative ml-auto flex shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-on-accent hover:brightness-110" onclick={ondone}>
-                    <Check class="size-3" /> Done
-                </button>
-            {/if}
-        </footer>
-    {/if}
+    <!-- REMINDERS -->
+    <ReminderList {reminders} ensureNote={async () => note.id} {ondone} />
 </article>
 
 <style>
@@ -149,17 +135,5 @@
     .card:focus-within .name {
         opacity: 1;
         transition-delay: calc(var(--duration-fast) * 0.5);
-    }
-
-    /* BAND | the shade comes from the theme or the note color, so it darkens every surface alike */
-    .band {
-        border-bottom-left-radius: calc(var(--layout-radius-card) - 1px);
-        border-bottom-right-radius: calc(var(--layout-radius-card) - 1px);
-        background-color: var(--theme-note-shade);
-    }
-
-    .band.due {
-        color: var(--theme-ink);
-        background-image: repeating-linear-gradient(-45deg, transparent 0 0.375rem, color-mix(in oklab, var(--theme-accent) 20%, transparent) 0.375rem 0.75rem);
     }
 </style>

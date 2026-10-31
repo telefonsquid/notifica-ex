@@ -8,8 +8,8 @@
 	import { rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
-	import type { Note, ViewFilter, ViewSort } from '#lib/schemas.ts';
-	import { defaultSort, emptyFilter, matchesView, noteText, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
+	import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts';
+	import { defaultSort, emptyFilter, groupReminders, matchesView, noteText, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
 	import { Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
 	import { Popover } from 'bits-ui';
 	import { tick } from 'svelte';
@@ -23,7 +23,7 @@
 	let [notes, labels, reminders, views] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews()]));
 
 	let labelsById = $derived(new Map(labels.map((label) => [label.id, label])));
-	let remindersByNote = $derived(new Map(reminders.map((reminder) => [reminder.note, reminder])));
+	let remindersByNote = $derived(groupReminders(reminders));
 
 	$effect(() => onCollectionChange('notes', () => getNotes().refresh()));
 	$effect(() => onCollectionChange('labels', () => getLabels().refresh()));
@@ -122,9 +122,8 @@
 		safeAction(updateNote({ id: note.id, items }));
 	}
 
-	function markDone(note: Note) {
-		const reminder = remindersByNote.get(note.id);
-		if (reminder) safeAction(setReminderDone({ id: reminder.id, done: true }));
+	function markDone(reminder: Reminder) {
+		safeAction(setReminderDone({ id: reminder.id, done: true }));
 	}
 </script>
 
@@ -145,10 +144,10 @@
 				<NoteCard
 					{note}
 					labels={labelsById}
-					reminder={remindersByNote.get(note.id)}
+					reminders={remindersByNote.get(note.id) ?? []}
 					onopen={(origin) => edit(note, origin)}
 					ontoggle={(itemId) => toggleItem(note, itemId)}
-					ondone={() => markDone(note)}
+					ondone={markDone}
 				/>
 			</div>
 		{/each}

@@ -48,12 +48,21 @@ export function sameFilter(a: ViewFilter, b: ViewFilter): boolean {
 
 // MATCHING ====================================================================================================
 export type MatchContext = {
-    reminders: Map<string, Reminder>    // keyed by note id
+    reminders: Map<string, Reminder[]>  // keyed by note id
     now: Date
 }
 
+// Soonest first, finished ones last
+export function groupReminders(reminders: Reminder[]): Map<string, Reminder[]> {
+    const grouped = new Map<string, Reminder[]>()
+    for(const reminder of reminders.toSorted((a, b) => Number(!a.next) - Number(!b.next) || a.next.localeCompare(b.next))){
+        grouped.set(reminder.note, [...(grouped.get(reminder.note) ?? []), reminder])
+    }
+    return grouped
+}
+
 export function matchesView(note: Note, filter: ViewFilter, context: MatchContext): boolean {
-    const reminder = context.reminders.get(note.id)
+    const reminders = context.reminders.get(note.id) ?? []
 
     // STATE
     if(filter.archived === 'hide' && note.archived) return false
@@ -81,12 +90,12 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
     }
 
     // REMINDER
-    if(!matchesReminder(reminder, filter.reminder)) return false
+    if(!matchesReminders(reminders, filter.reminder)) return false
 
     // DATES
     if(!inRange(parseTimestamp(note.created), filter.created, context.now, 'past')) return false
     if(!inRange(parseTimestamp(note.updated), filter.updated, context.now, 'past')) return false
-    if(filter.due.mode !== 'any' && !inRange(parseTimestamp(reminder?.next), filter.due, context.now, 'future')) return false
+    if(filter.due.mode !== 'any' && !reminders.some((reminder) => inRange(parseTimestamp(reminder.next), filter.due, context.now, 'future'))) return false
 
     // WORDS
     const text = noteText(note, filter.titleOnly)
@@ -106,16 +115,17 @@ export function wordsOf(value: string): string[] {
     return value.toLowerCase().split(/\s+/).filter(Boolean)
 }
 
-function matchesReminder(reminder: Reminder | undefined, state: ViewFilter['reminder']): boolean {
+// Finished needs every reminder of the note through, the rest just one match
+function matchesReminders(reminders: Reminder[], state: ViewFilter['reminder']): boolean {
     switch(state){
         case 'any': return true
-        case 'with': return !!reminder
-        case 'without': return !reminder
-        case 'upcoming': return !!reminder?.next
-        case 'repeating': return !!reminder && reminder.repeat !== 'never'
-        case 'tasks': return !!reminder?.task
-        case 'waiting': return !!reminder && isOpenTask(reminder)
-        case 'finished': return !!reminder && !reminder.next
+        case 'with': return reminders.length > 0
+        case 'without': return reminders.length === 0
+        case 'upcoming': return reminders.some((reminder) => reminder.next)
+        case 'repeating': return reminders.some((reminder) => reminder.repeat !== 'never')
+        case 'tasks': return reminders.some((reminder) => reminder.task)
+        case 'waiting': return reminders.some(isOpenTask)
+        case 'finished': return reminders.length > 0 && reminders.every((reminder) => !reminder.next)
     }
 }
 
@@ -145,14 +155,14 @@ function shift(date: Date, amount: number, unit: DateRange['unit']): Date {
 
 
 // SORTING ====================================================================================================
-export function sortNotes(notes: Note[], sort: ViewSort, reminders: Map<string, Reminder>): Note[] {
+export function sortNotes(notes: Note[], sort: ViewSort, reminders: Map<string, Reminder[]>): Note[] {
     const sign = sort.direction === 'asc' ? 1 : -1
 
     // Notes without a reminder always go last, whichever way the rest runs
     const compare = (a: Note, b: Note): number => {
         if(sort.by === 'title') return sign * (a.title || '￿').localeCompare(b.title || '￿')
         if(sort.by === 'reminder'){
-            const nextA = reminders.get(a.id)?.next, nextB = reminders.get(b.id)?.next
+            const nextA = reminders.get(a.id)?.[0]?.next, nextB = reminders.get(b.id)?.[0]?.next
             if(!nextA || !nextB) return Number(!nextA) - Number(!nextB)
             return sign * nextA.localeCompare(nextB)
         }

@@ -139,13 +139,6 @@ export async function getDueReminders(now: Date) {
     return await pbErrorHandler(pb.collection('reminders').getFullList({ filter, expand: 'note,owner' }) as Promise<Reminder[]>)
 }
 
-// Fails when the note has no reminder yet
-export async function getReminderOfNote(note: string, owner: string) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('note = {:note} && owner = {:owner}', { note, owner })
-    return await pbErrorHandler(pb.collection('reminders').getFirstListItem(filter) as Promise<Reminder>)
-}
-
 // Sends the set password mail, the same one invites use
 export async function requestPasswordReset(email: string) {
     const pb = await getPbAdminConnection()

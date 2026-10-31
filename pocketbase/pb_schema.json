@@ -826,7 +826,7 @@
             }
         ],
         "indexes": [
-            "CREATE UNIQUE INDEX `idx_reminders_note` ON `reminders` (`note`)",
+            "CREATE INDEX `idx_reminders_note` ON `reminders` (`note`)",
             "CREATE INDEX `idx_reminders_next` ON `reminders` (`next`)"
         ],
         "system": false

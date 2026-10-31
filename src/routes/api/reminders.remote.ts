@@ -2,9 +2,9 @@ import { getRequestEvent } from '$app/server';
 import { unwrap } from '#lib/pocketbase.ts';
 import { occurrenceAfter } from '#lib/reminders.ts';
 import { idSchema } from '#lib/schema_limits.ts';
-import { ntfyTopicSchema, reminderRuleSchema } from '#lib/schemas.ts';
+import { ntfyTopicSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
 import { publish } from '#lib/server/ntfy.ts';
-import { deleteOne, getAllOwned, getOwned, getReminderOfNote, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
@@ -19,33 +19,40 @@ export const getReminders = query(async () => {
 
 });
 
-// One reminder per note | setting it again replaces the rule and starts over
-export const setReminder = command(reminderRuleSchema.extend({ note: idSchema }), async ({ note, ...rule }) => {
+// A note holds as many as wanted
+export const addReminder = command(reminderRuleSchema.extend({ note: idSchema }), async ({ note, ...rule }) => {
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
     unwrap(await getOwned('notes', note, locals.user.id), 'Note not found.')
 
-    const next = occurrenceAfter(rule, new Date())
-    if(!next) error(400, 'That time has already passed.')
-
-    const fields = { ...rule, at: new Date(rule.at).toISOString(), next: next.toISOString(), sent: '', done: '' }
-    const existing = await getReminderOfNote(note, locals.user.id)
-    const reminder = existing.success
-        ? unwrap(await updateOnePartial('reminders', existing.data.id, fields), 'Could not save the reminder.')
-        : unwrap(await insertOnePartial('reminders', { ...fields, note, owner: locals.user.id }), 'Could not save the reminder.')
+    const reminder = unwrap(await insertOnePartial('reminders', { ...ruleFields(rule), note, owner: locals.user.id }), 'Could not save the reminder.')
 
     await getReminders().refresh()
     return reminder
 
 });
 
-export const removeReminder = command(idSchema, async (note) => {
+// A changed rule starts over, earlier sends no longer count
+export const updateReminder = command(reminderRuleSchema.extend({ id: idSchema }), async ({ id, ...rule }) => {
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    const reminder = unwrap(await getReminderOfNote(note, locals.user.id), 'Reminder not found.')
-    unwrap(await deleteOne('reminders', reminder.id), 'Could not remove the reminder.')
+    unwrap(await getOwned('reminders', id, locals.user.id), 'Reminder not found.')
+
+    const reminder = unwrap(await updateOnePartial('reminders', id, ruleFields(rule)), 'Could not save the reminder.')
+
+    await getReminders().refresh()
+    return reminder
+
+});
+
+export const removeReminder = command(idSchema, async (id) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    unwrap(await getOwned('reminders', id, locals.user.id), 'Reminder not found.')
+    unwrap(await deleteOne('reminders', id), 'Could not remove the reminder.')
 
     await getReminders().refresh()
     return true
@@ -65,6 +72,15 @@ export const setReminderDone = command(z.object({ id: idSchema, done: z.boolean(
     return updated
 
 });
+
+
+
+// HELPERS ============================================================
+function ruleFields(rule: ReminderRule) {
+    const next = occurrenceAfter(rule, new Date())
+    if(!next) error(400, 'That time has already passed.')
+    return { ...rule, at: new Date(rule.at).toISOString(), next: next.toISOString(), sent: '', done: '' }
+}
 
 
 

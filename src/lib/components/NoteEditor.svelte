@@ -2,7 +2,7 @@
     import ChecklistEditor from '#lib/components/ChecklistEditor.svelte';
     import ColorPicker from '#lib/components/ColorPicker.svelte';
     import LabelChip from '#lib/components/LabelChip.svelte';
-    import ReminderEditor from '#lib/components/ReminderEditor.svelte';
+    import ReminderList from '#lib/components/ReminderList.svelte';
     import { convertKind, emptyNote, isEmpty, randomLabelColor } from '#lib/notes.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import type { Label, Note, NoteContent, NoteKind, Reminder } from '#lib/schemas.ts';
@@ -12,6 +12,7 @@
     import { untrack } from 'svelte';
     import { createLabel } from '../../routes/api/labels.remote';
     import { createNote, deleteNote, updateNote } from '../../routes/api/notes.remote';
+    import { setReminderDone } from '../../routes/api/reminders.remote';
 
     // PROPS
     let {
@@ -25,7 +26,7 @@
         note: Note | null                       // null starts a new note of the given kind
         kind?: NoteKind
         labels: Label[]
-        reminders: Map<string, Reminder>        // by note id, a new note finds its reminder once saved
+        reminders: Map<string, Reminder[]>      // by note id, a new note finds its reminders once saved
         origin?: { x: number, y: number }       // viewport point the dialog grows out of and shrinks back into
         onclose: () => void
     } = $props()
@@ -39,7 +40,7 @@
     // DRAFT | edited freely, the page's copy only changes once a save went through
     const initial = untrack(() => note)
     let id = $state(initial?.id)
-    let reminder = $derived(id ? reminders.get(id) : undefined)
+    let noteReminders = $derived((id && reminders.get(id)) || [])
     let draft = $state<NoteContent>(initial ? contentOf(initial) : emptyNote(untrack(() => kind)))
     let saved = untrack(() => JSON.stringify(draft))
     let open = $state(true)
@@ -201,8 +202,8 @@
                     </form>
                 </div>
 
-                <!-- REMINDER -->
-                <ReminderEditor {reminder} {ensureNote} />
+                <!-- REMINDERS -->
+                <ReminderList reminders={noteReminders} {ensureNote} editable ondone={(reminder) => safeAction(setReminderDone({ id: reminder.id, done: true }))} />
 
             </div>
 
