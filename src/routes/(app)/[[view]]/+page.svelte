@@ -12,6 +12,7 @@
 	import { defaultSort, emptyFilter, matchesView, noteText, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
 	import { Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
 	import { Popover } from 'bits-ui';
+	import { tick } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import { getLabels } from '../../api/labels.remote';
 	import { getNotes, updateNote } from '../../api/notes.remote';
@@ -69,14 +70,27 @@
 		await goto(resolve('/(app)/[[view]]', { view: created.id }));
 	}
 
-	// Slash jumps to the search like on most sites
+	// SEARCH | an icon until opened, stays open while it holds text
 	let searchInput = $state<HTMLInputElement>();
+	let searchOpen = $state(false);
 
+	async function openSearch() {
+		searchOpen = true;
+		await tick();
+		searchInput?.focus();
+	}
+
+	function closeSearch() {
+		search = '';
+		searchOpen = false;
+	}
+
+	// Slash jumps to the search like on most sites
 	function focusSearch(event: KeyboardEvent) {
 		const target = event.target as HTMLElement;
 		if (event.key !== '/' || target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
 		event.preventDefault();
-		searchInput?.focus();
+		openSearch();
 	}
 
 	// EDITOR | a key per opening, so every note starts with a fresh draft
@@ -121,62 +135,11 @@
 <svelte:window onkeydown={focusSearch} />
 
 <!-- Centered as a whole while few notes are around, the page scrolls once they fill the screen -->
-<div class="my-auto flex flex-col gap-[clamp(2.5rem,9dvh,6.5rem)]">
-
-<!-- TOOLBAR -->
-<div class="mx-auto flex w-full max-w-xl items-center gap-3">
-	<label class="motion-interactive flex h-12 min-w-0 flex-1 items-center gap-1.5 rounded-full border border-line bg-card pr-2 pl-4 text-ink-faint focus-within:border-accent hover:border-line-strong">
-		<Search class="size-4 shrink-0" />
-		<!-- Keeps the caret clear of the input edge -->
-		<input bind:this={searchInput} bind:value={search} placeholder="Search" aria-label="Search notes" class="min-w-0 flex-1 bg-transparent pl-1 text-ink outline-none placeholder:text-ink-faint" />
-		{#if search}
-			<button class="icon-button rounded-full p-1.5" aria-label="Clear search" onclick={() => (search = '')}><X class="size-4" /></button>
-		{:else}
-			<kbd class="type-meta mr-1.5 hidden rounded-md border border-line px-1.5 py-0.5 text-ink-faint sm:block" aria-hidden="true">/</kbd>
-		{/if}
-	</label>
-
-	<!-- FILTER | tweaks the open view, saving writes them into it -->
-	<Popover.Root>
-		<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full border bg-card hover:border-line-strong hover:text-ink', tweaked ? 'border-accent text-accent' : 'border-line text-ink-faint']} aria-label="Filter">
-			<ListFilter class="size-5" />
-			{#if tweaked}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
-		</Popover.Trigger>
-		<Popover.Portal>
-			<Popover.Content sideOffset={10} collisionPadding={12} class="filters z-40 flex max-h-[min(42rem,var(--bits-popover-content-available-height))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl">
-				<div class="min-h-0 overflow-y-auto p-5">
-					<FilterEditor {filter} {sort} {labels} onchange={(changedFilter, changedSort) => (draft = { filter: changedFilter, sort: changedSort })} />
-				</div>
-
-				<footer class="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
-					{#if naming}
-						<form class="flex min-w-0 flex-1 gap-2" onsubmit={(event) => { event.preventDefault(); saveAsView(); }}>
-							<!-- svelte-ignore a11y_autofocus -->
-							<input bind:value={newName} autofocus placeholder="Name of the new view" aria-label="Name of the new view" class="min-w-0 flex-1 rounded-control border border-line bg-card px-3 py-1.5 outline-none focus:border-accent" />
-							<button class="action primary" disabled={!newName.trim()}><Check class="size-3.5" />Create</button>
-							<button type="button" class="action" aria-label="Cancel" onclick={() => (naming = false)}><X class="size-3.5" /></button>
-						</form>
-					{:else}
-						<button class="action" onclick={() => (naming = true)}>Save as new view</button>
-						{#if tweaked}
-							<button class="action" onclick={() => (draft = null)}>Reset</button>
-							<button class="action primary ml-auto" onclick={saveToView}><Check class="size-3.5" />Save to {view?.name}</button>
-						{/if}
-					{/if}
-				</footer>
-			</Popover.Content>
-		</Popover.Portal>
-	</Popover.Root>
-
-	<!-- CREATE | the editor grows out of this button -->
-	<button class="create grid size-16 shrink-0 place-items-center rounded-full" aria-label="New note" onclick={(event) => create(event.currentTarget)}>
-		<Plus class="plus size-7" strokeWidth={2.25} />
-	</button>
-</div>
+<div class="my-auto flex flex-col pb-24 sm:pb-20">
 
 <!-- NOTES -->
 {#if visible.length}
-	<div class="note-grid items-start">
+	<div class="note-grid items-start" style:--notes={visible.length}>
 		{#each visible as note, index (note.id)}
 			<div animate:flip={{ duration: 280 }} in:rise={{ delay: stagger(index) }}>
 				<NoteCard
@@ -220,6 +183,68 @@
 
 </div>
 
+<!-- TOOLBAR | floats at the bottom, above the phone rail -->
+<div class="toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-center px-gutter sm:left-rail">
+	<div class="pointer-events-auto flex min-w-0 items-center gap-3">
+		<div class="flex min-w-0 items-center gap-1 rounded-full border border-line bg-raised/85 p-0 shadow-xl backdrop-blur-xl">
+			<div class={['search motion-interactive flex h-12 items-center rounded-full text-ink-muted', searchOpen && 'open']}>
+				<button class="grid size-12 shrink-0 place-items-center rounded-full hover:text-ink" aria-label="Search notes" aria-expanded={searchOpen} onclick={() => (searchOpen ? searchInput?.focus() : openSearch())}>
+					<Search class="size-5" />
+				</button>
+				{#if searchOpen}
+					<input
+						bind:this={searchInput}
+						bind:value={search}
+						placeholder="Search"
+						aria-label="Search notes"
+						class="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink-faint"
+						onblur={() => { if (!search) searchOpen = false; }}
+						onkeydown={(event) => { if (event.key === 'Escape') closeSearch(); }}
+					/>
+					<button class="icon-button mr-1.5 rounded-full p-1.5" aria-label="Close search" onclick={closeSearch}><X class="size-4" /></button>
+				{/if}
+			</div>
+
+			<!-- FILTER | tweaks the open view, saving writes them into it -->
+			<Popover.Root>
+				<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full hover:text-ink', tweaked ? 'text-accent' : 'text-ink-muted']} aria-label="Filter">
+					<ListFilter class="size-5" />
+					{#if tweaked}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
+				</Popover.Trigger>
+				<Popover.Portal>
+					<Popover.Content side="top" sideOffset={12} collisionPadding={12} class="filters z-40 flex max-h-[min(42rem,var(--bits-popover-content-available-height))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl">
+						<div class="min-h-0 overflow-y-auto p-5">
+							<FilterEditor {filter} {sort} {labels} onchange={(changedFilter, changedSort) => (draft = { filter: changedFilter, sort: changedSort })} />
+						</div>
+
+						<footer class="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
+							{#if naming}
+								<form class="flex min-w-0 flex-1 gap-2" onsubmit={(event) => { event.preventDefault(); saveAsView(); }}>
+									<!-- svelte-ignore a11y_autofocus -->
+									<input bind:value={newName} autofocus placeholder="Name of the new view" aria-label="Name of the new view" class="min-w-0 flex-1 rounded-control border border-line bg-card px-3 py-1.5 outline-none focus:border-accent" />
+									<button class="action primary" disabled={!newName.trim()}><Check class="size-3.5" />Create</button>
+									<button type="button" class="action" aria-label="Cancel" onclick={() => (naming = false)}><X class="size-3.5" /></button>
+								</form>
+							{:else}
+								<button class="action" onclick={() => (naming = true)}>Save as new view</button>
+								{#if tweaked}
+									<button class="action" onclick={() => (draft = null)}>Reset</button>
+									<button class="action primary ml-auto" onclick={saveToView}><Check class="size-3.5" />Save to {view?.name}</button>
+								{/if}
+							{/if}
+						</footer>
+					</Popover.Content>
+				</Popover.Portal>
+			</Popover.Root>
+		</div>
+
+		<!-- CREATE | the editor grows out of this button -->
+		<button class="create grid size-16 shrink-0 place-items-center rounded-full text-on-accent" aria-label="New note" onclick={(event) => create(event.currentTarget)}>
+			<Plus class="plus size-7" strokeWidth={2.25} />
+		</button>
+	</div>
+</div>
+
 {#if editing}
 	{#key editing.key}
 		<NoteEditor
@@ -233,14 +258,35 @@
 {/if}
 
 <style>
-	/* CREATE | quiet ink button, hover lifts it a pixel and fades in a hairline ring */
+	/* TOOLBAR | clears the phone rail, sits low on wider screens */
+	.toolbar {
+		bottom: calc(5.5rem + env(safe-area-inset-bottom));
+	}
+
+	@media (width >= 40rem) {
+		.toolbar {
+			bottom: 1.5rem;
+		}
+	}
+
+	.search {
+		width: 3rem;
+		transition: width var(--duration-base) var(--ease-spring);
+	}
+
+	.search.open {
+		width: min(22rem, calc(100vw - 2 * var(--layout-gutter) - 8.5rem));
+	}
+
+	/* CREATE | the fill glows from within, hover lets the light spill out and sweeps a sheen across */
 	.create {
 		position: relative;
-		background: var(--theme-ink);
-		color: var(--theme-canvas);
-		box-shadow: 0 0.5rem 1.25rem -0.75rem rgb(0 0 0 / 0.6);
+		isolation: isolate;
+		background: radial-gradient(circle at 32% 28%, color-mix(in oklab, var(--theme-accent) 72%, white), var(--theme-accent) 62%);
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.35),
+			0 0.75rem 1.75rem -0.75rem color-mix(in oklab, var(--theme-accent) 70%, transparent);
 		transition:
-			translate var(--duration-base) var(--ease-spring),
 			scale var(--duration-base) var(--ease-spring),
 			box-shadow var(--duration-base) var(--ease-out);
 	}
@@ -248,29 +294,46 @@
 	.create::before {
 		content: '';
 		position: absolute;
-		inset: -0.3125rem;
-		border: 1px solid var(--theme-ink);
+		inset: 0;
+		z-index: -1;
 		border-radius: inherit;
-		opacity: 0;
-		scale: 0.92;
-		transition: opacity var(--duration-base) var(--ease-out), scale var(--duration-slow) var(--ease-spring);
+		background: var(--theme-accent);
+		filter: blur(1rem);
+		opacity: 0.3;
+		scale: 0.8;
+		transition: opacity var(--duration-slow) var(--ease-out), scale var(--duration-slow) var(--ease-spring);
+	}
+
+	.create::after {
+		content: '';
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 0.45) 50%, transparent 65%) 150% 0 / 250% 100% no-repeat;
+		pointer-events: none;
 	}
 
 	.create:hover,
 	.create:focus-visible {
-		translate: 0 -1px;
-		box-shadow: 0 0.75rem 1.5rem -0.75rem rgb(0 0 0 / 0.7);
+		scale: 1.06;
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.45),
+			0 1rem 2.5rem -0.75rem var(--theme-accent);
 	}
 
 	.create:hover::before,
 	.create:focus-visible::before {
-		opacity: 0.3;
-		scale: 1;
+		opacity: 0.75;
+		scale: 1.45;
+		animation: breathe 2.4s var(--ease-in-out) infinite alternate;
+	}
+
+	.create:hover::after {
+		animation: sheen 0.9s var(--ease-out) forwards;
 	}
 
 	.create:active {
-		translate: 0 0;
-		scale: 0.94;
+		scale: 0.92;
 	}
 
 	.create :global(.plus) {
@@ -279,6 +342,20 @@
 
 	.create:hover :global(.plus) {
 		rotate: 90deg;
+	}
+
+	@keyframes breathe {
+		to { opacity: 0.45; scale: 1.25; }
+	}
+
+	@keyframes sheen {
+		from { background-position: 150% 0; }
+		to { background-position: -50% 0; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.create:hover::before,
+		.create:hover::after { animation: none; }
 	}
 
 	/* FILTERS */

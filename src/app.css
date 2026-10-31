@@ -228,6 +228,11 @@
     grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--layout-note-min)), var(--layout-note-max)));
     justify-content: center;
     gap: calc(var(--layout-note-gap) + 0.5rem) var(--layout-note-gap);
+
+    /* Only as wide as the notes in it, empty columns would push a short row off center */
+    width: 100%;
+    max-width: calc(var(--notes, 99) * (var(--layout-note-max) + var(--layout-note-gap)) - var(--layout-note-gap));
+    margin-inline: auto;
 }
 
 /* TRANSITION SHORTHAND | for hover and press states on interactive elements */
