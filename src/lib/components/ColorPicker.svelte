@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { colorName } from '#lib/notes.ts';
     import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type NoteColor } from '#lib/schemas.ts';
     import { Check } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
@@ -22,13 +23,6 @@
         { name: 'Sticky', colors: NOTE_STICKIES },
         { name: 'Texture', colors: NOTE_TEXTURES },
     ]
-
-    // Turns 'cobalt-solid' into 'Cobalt solid'
-    function nameOf(color: NoteColor): string {
-        if(!color) return 'Plain'
-        const words = color.replace('-', ' ')
-        return words[0].toUpperCase() + words.slice(1)
-    }
 </script>
 
 <!-- Stays open while picking, so colors can be tried on the note behind it -->
@@ -36,8 +30,8 @@
     <Popover.Trigger
         class={['swatch note-surface motion-interactive size-6 shrink-0 rounded-full border border-line-strong hover:scale-110', className]}
         data-note={value || undefined}
-        aria-label={`${label}: ${nameOf(value)}`}
-        title={nameOf(value)}
+        aria-label={`${label}: ${colorName(value)}`}
+        title={colorName(value)}
     />
     <Popover.Portal>
         <Popover.Content
@@ -55,8 +49,8 @@
                                 data-note={color || undefined}
                                 role="radio"
                                 aria-checked={value === color}
-                                aria-label={nameOf(color)}
-                                title={nameOf(color)}
+                                aria-label={colorName(color)}
+                                title={colorName(color)}
                                 onclick={() => onpick(color)}
                             >
                                 {#if value === color}<Check class="size-3.5" strokeWidth={3} />{/if}

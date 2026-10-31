@@ -1,61 +1,73 @@
 <script lang="ts">
-	import { replaceState } from '$app/navigation';
+	import { afterNavigate, goto, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
+	import FilterEditor from '#lib/components/FilterEditor.svelte';
 	import NoteCard from '#lib/components/NoteCard.svelte';
 	import NoteEditor from '#lib/components/NoteEditor.svelte';
 	import { rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
-	import { onRecordChange } from '#lib/realtime.ts';
-	import type { Note } from '#lib/schemas.ts';
+	import { onCollectionChange } from '#lib/realtime.ts';
+	import type { Note, ViewFilter, ViewSort } from '#lib/schemas.ts';
+	import { defaultSort, emptyFilter, matchesView, noteText, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
 	import { Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
 	import { Popover } from 'bits-ui';
 	import { flip } from 'svelte/animate';
-	import { getLabels } from '../api/labels.remote';
-	import { getNotes, updateNote } from '../api/notes.remote';
-	import { getReminders, setReminderDone } from '../api/reminders.remote';
+	import { getLabels } from '../../api/labels.remote';
+	import { getNotes, updateNote } from '../../api/notes.remote';
+	import { getReminders, setReminderDone } from '../../api/reminders.remote';
+	import { createView, getViews, updateView } from '../../api/views.remote';
 
 	// DATA | refreshed by every command and by realtime events from other devices
-	let [notes, labels, reminders] = $derived(await Promise.all([getNotes(), getLabels(), getReminders()]));
+	let [notes, labels, reminders, views] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews()]));
 
 	let labelsById = $derived(new Map(labels.map((label) => [label.id, label])));
 	let remindersByNote = $derived(new Map(reminders.map((reminder) => [reminder.note, reminder])));
 
-	$effect(() => onRecordChange('notes', () => getNotes().refresh()));
-	$effect(() => onRecordChange('labels', () => getLabels().refresh()));
-	$effect(() => onRecordChange('reminders', () => getReminders().refresh()));
+	$effect(() => onCollectionChange('notes', () => getNotes().refresh()));
+	$effect(() => onCollectionChange('labels', () => getLabels().refresh()));
+	$effect(() => onCollectionChange('reminders', () => getReminders().refresh()));
 
-	// FILTERS
-	type View = 'notes' | 'reminders' | 'archive';
-	const VIEWS: { value: View; label: string }[] = [
-		{ value: 'notes', label: 'Notes' },
-		{ value: 'reminders', label: 'Reminders' },
-		{ value: 'archive', label: 'Archive' }
-	];
+	// VIEW | the first one lives at the root, a deleted one leaves an empty page behind
+	let view = $derived(page.params.view ? views.find((item) => item.id === page.params.view) : views[0]);
 
-	let view = $state<View>('notes');
-	let label = $state<string | null>(null);
+	// TWEAKS | a scratch copy of the view's filter until it gets saved, dropped on every navigation
+	let draft = $state<{ filter: ViewFilter; sort: ViewSort } | null>(null);
 	let search = $state('');
-	let filtered = $derived(view !== 'notes' || !!label);
+	let naming = $state(false);
+	let newName = $state('');
+
+	afterNavigate(() => {
+		draft = null;
+		naming = false;
+	});
+
+	let filter = $derived(draft?.filter ?? view?.filter ?? emptyFilter());
+	let sort = $derived(draft?.sort ?? view?.sort ?? defaultSort());
+	let tweaked = $derived(!!draft && !!view && (!sameFilter(draft.filter, view.filter) || JSON.stringify(draft.sort) !== JSON.stringify(view.sort)));
 
 	let visible = $derived.by(() => {
-		const words = search.toLowerCase().split(/\s+/).filter(Boolean);
-		const shown = notes.filter((note) => {
-			if (view === 'archive' ? !note.archived : note.archived) return false;
-			if (view === 'reminders' && !remindersByNote.has(note.id)) return false;
-			if (label && !note.labels.includes(label)) return false;
-			const text = [note.title, note.body, ...(note.items ?? []).map((item) => item.text)].join(' ').toLowerCase();
-			return words.every((word) => text.includes(word));
-		});
-
-		// Reminders run in the order they go off, notes put pinned ones first
-		if (view === 'reminders') {
-			const next = (note: Note) => remindersByNote.get(note.id)?.next || '9999';
-			return shown.toSorted((a, b) => next(a).localeCompare(next(b)));
-		}
-		if (view === 'notes') return shown.toSorted((a, b) => Number(b.pinned) - Number(a.pinned));
-		return shown;
+		if (!view) return [];
+		const context = { reminders: remindersByNote, now: new Date() };
+		const words = wordsOf(search);
+		const shown = notes.filter((note) => matchesView(note, filter, context) && words.every((word) => noteText(note).includes(word)));
+		return sortNotes(shown, sort, remindersByNote);
 	});
+
+	async function saveToView() {
+		if (!view || !draft) return;
+		if (await safeAction(updateView({ id: view.id, filter: draft.filter, sort: draft.sort }))) draft = null;
+	}
+
+	// SAVE AS NEW VIEW | asks for a name right in the popover, then opens the new view
+	async function saveAsView() {
+		const name = newName.trim();
+		if (!name) return;
+		const created = await safeAction(createView({ name, icon: 'star', filter, sort }));
+		if (!created) return;
+		newName = '';
+		await goto(resolve('/(app)/[[view]]', { view: created.id }));
+	}
 
 	// Slash jumps to the search like on most sites
 	let searchInput = $state<HTMLInputElement>();
@@ -87,7 +99,7 @@
 		if (!id) return;
 		const note = notes.find((item) => item.id === id);
 		if (note) edit(note);
-		replaceState(resolve('/(app)'), {});
+		replaceState(resolve('/(app)/[[view]]', { view: page.params.view }), {});
 	});
 
 	// QUICK ACTIONS ON CARDS
@@ -103,7 +115,7 @@
 </script>
 
 <svelte:head>
-	<title>Notes · notifica-ex</title>
+	<title>{view?.name ?? 'Notes'} · notifica-ex</title>
 </svelte:head>
 
 <svelte:window onkeydown={focusSearch} />
@@ -113,9 +125,10 @@
 
 <!-- TOOLBAR -->
 <div class="mx-auto flex w-full max-w-xl items-center gap-3">
-	<label class="motion-interactive flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-line bg-card pr-2 pl-4 text-ink-faint focus-within:border-accent hover:border-line-strong">
+	<label class="motion-interactive flex h-12 min-w-0 flex-1 items-center gap-1.5 rounded-full border border-line bg-card pr-2 pl-4 text-ink-faint focus-within:border-accent hover:border-line-strong">
 		<Search class="size-4 shrink-0" />
-		<input bind:this={searchInput} bind:value={search} placeholder="Search" aria-label="Search notes" class="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink-faint" />
+		<!-- Keeps the caret clear of the input edge -->
+		<input bind:this={searchInput} bind:value={search} placeholder="Search" aria-label="Search notes" class="min-w-0 flex-1 bg-transparent pl-1 text-ink outline-none placeholder:text-ink-faint" />
 		{#if search}
 			<button class="icon-button rounded-full p-1.5" aria-label="Clear search" onclick={() => (search = '')}><X class="size-4" /></button>
 		{:else}
@@ -123,56 +136,40 @@
 		{/if}
 	</label>
 
-	<!-- FILTER -->
+	<!-- FILTER | tweaks the open view, saving writes them into it -->
 	<Popover.Root>
-		<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full border bg-card hover:border-line-strong hover:text-ink', filtered ? 'border-accent text-accent' : 'border-line text-ink-faint']} aria-label="Filter">
+		<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full border bg-card hover:border-line-strong hover:text-ink', tweaked ? 'border-accent text-accent' : 'border-line text-ink-faint']} aria-label="Filter">
 			<ListFilter class="size-5" />
-			{#if filtered}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
+			{#if tweaked}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
 		</Popover.Trigger>
 		<Popover.Portal>
-			<Popover.Content sideOffset={10} collisionPadding={12} class="filters z-40 grid w-72 gap-5 rounded-card border border-line-strong bg-raised p-4 text-ink shadow-2xl">
-				<div class="grid grid-cols-3 gap-1 rounded-control bg-line p-1" role="group" aria-label="View">
-					{#each VIEWS as option (option.value)}
-						<button
-							class={['type-meta motion-interactive rounded-[calc(var(--layout-radius-control)-0.25rem)] py-2', view === option.value ? 'bg-card text-ink' : 'text-ink-faint hover:text-ink-muted']}
-							aria-pressed={view === option.value}
-							onclick={() => (view = option.value)}
-						>
-							{option.label}
-						</button>
-					{/each}
+			<Popover.Content sideOffset={10} collisionPadding={12} class="filters z-40 flex max-h-[min(42rem,var(--bits-popover-content-available-height))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl">
+				<div class="min-h-0 overflow-y-auto p-5">
+					<FilterEditor {filter} {sort} {labels} onchange={(changedFilter, changedSort) => (draft = { filter: changedFilter, sort: changedSort })} />
 				</div>
 
-				{#if labels.length}
-					<div>
-						<p class="type-meta mb-2 text-ink-faint">Labels</p>
-						<ul class="-mx-2 grid max-h-64 overflow-y-auto">
-							{#each labels as item (item.id)}
-								<li>
-									<button
-										class={['motion-interactive flex w-full items-center gap-3 rounded-control px-2 py-2 text-left hover:bg-line', label === item.id ? 'text-ink' : 'text-ink-muted']}
-										aria-pressed={label === item.id}
-										onclick={() => (label = label === item.id ? null : item.id)}
-									>
-										<span class="note-mark h-2 w-6 shrink-0 rounded-full" data-note={item.color || undefined}></span>
-										<span class="min-w-0 flex-1 truncate">{item.name}</span>
-										{#if label === item.id}<Check class="size-4 text-accent" />{/if}
-									</button>
-								</li>
-							{/each}
-						</ul>
-					</div>
-				{/if}
-
-				{#if filtered}
-					<button class="type-meta justify-self-start text-ink-faint hover:text-ink" onclick={() => { view = 'notes'; label = null; }}>Reset</button>
-				{/if}
+				<footer class="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
+					{#if naming}
+						<form class="flex min-w-0 flex-1 gap-2" onsubmit={(event) => { event.preventDefault(); saveAsView(); }}>
+							<!-- svelte-ignore a11y_autofocus -->
+							<input bind:value={newName} autofocus placeholder="Name of the new view" aria-label="Name of the new view" class="min-w-0 flex-1 rounded-control border border-line bg-card px-3 py-1.5 outline-none focus:border-accent" />
+							<button class="action primary" disabled={!newName.trim()}><Check class="size-3.5" />Create</button>
+							<button type="button" class="action" aria-label="Cancel" onclick={() => (naming = false)}><X class="size-3.5" /></button>
+						</form>
+					{:else}
+						<button class="action" onclick={() => (naming = true)}>Save as new view</button>
+						{#if tweaked}
+							<button class="action" onclick={() => (draft = null)}>Reset</button>
+							<button class="action primary ml-auto" onclick={saveToView}><Check class="size-3.5" />Save to {view?.name}</button>
+						{/if}
+					{/if}
+				</footer>
 			</Popover.Content>
 		</Popover.Portal>
 	</Popover.Root>
 
 	<!-- CREATE | the editor grows out of this button -->
-	<button class="create grid size-16 shrink-0 place-items-center rounded-full text-on-accent" aria-label="New note" onclick={(event) => create(event.currentTarget)}>
+	<button class="create grid size-16 shrink-0 place-items-center rounded-full" aria-label="New note" onclick={(event) => create(event.currentTarget)}>
 		<Plus class="plus size-7" strokeWidth={2.25} />
 	</button>
 </div>
@@ -196,7 +193,10 @@
 {:else}
 	<!-- EMPTY STATE -->
 	<section class="flex flex-col items-center pb-8 text-center">
-		{#if notes.length === 0}
+		{#if !view}
+			<h2 class="type-title mb-2 text-2xl text-ink">This view is gone</h2>
+			<p class="max-w-xs text-ink-muted">It was deleted or never existed. <a href={resolve('/(app)/[[view]]', {})} class="text-accent hover:underline">Open the first view</a></p>
+		{:else if notes.length === 0}
 			<!-- Three loose sheets that drift on their own and fan out on hover -->
 			<div class="stack relative mb-12 h-44 w-40" aria-hidden="true">
 				<div class="sheet sheet-back absolute inset-0 rounded-card border border-line bg-secondary-soft"></div>
@@ -213,7 +213,7 @@
 			<p class="max-w-xs text-ink-muted">Notes, lists and reminders will gather here as soon as you write the first one.</p>
 		{:else}
 			<h2 class="type-title mb-2 text-2xl text-ink">Nothing matches</h2>
-			<p class="max-w-xs text-ink-muted">Try another view, label or search.</p>
+			<p class="max-w-xs text-ink-muted">Try another view or search, or loosen the filter.</p>
 		{/if}
 	</section>
 {/if}
@@ -233,51 +233,44 @@
 {/if}
 
 <style>
-	/* CREATE | a silver ring spins up behind the fill while hovered */
+	/* CREATE | quiet ink button, hover lifts it a pixel and fades in a hairline ring */
 	.create {
 		position: relative;
-		isolation: isolate;
-		transition: scale var(--duration-base) var(--ease-spring);
-	}
-
-	.create::before,
-	.create::after {
-		content: '';
-		position: absolute;
-		z-index: -1;
-		border-radius: inherit;
+		background: var(--theme-ink);
+		color: var(--theme-canvas);
+		box-shadow: 0 0.5rem 1.25rem -0.75rem rgb(0 0 0 / 0.6);
+		transition:
+			translate var(--duration-base) var(--ease-spring),
+			scale var(--duration-base) var(--ease-spring),
+			box-shadow var(--duration-base) var(--ease-out);
 	}
 
 	.create::before {
-		inset: -0.25rem;
-		background: conic-gradient(#fff, #8c8c8c, #ececec, #6e6e6e, #fff); /* Light and dark streaks read as metal on both themes */
+		content: '';
+		position: absolute;
+		inset: -0.3125rem;
+		border: 1px solid var(--theme-ink);
+		border-radius: inherit;
 		opacity: 0;
-		transition: opacity var(--duration-base) var(--ease-out);
-		animation: spin 2.4s linear infinite;
+		scale: 0.92;
+		transition: opacity var(--duration-base) var(--ease-out), scale var(--duration-slow) var(--ease-spring);
 	}
 
-	.create::after {
-		inset: 0;
-		background: var(--theme-accent);
-		box-shadow: 0 0.75rem 2rem -0.5rem color-mix(in oklab, var(--theme-accent) 55%, transparent);
-		transition: box-shadow var(--duration-base) var(--ease-out);
+	.create:hover,
+	.create:focus-visible {
+		translate: 0 -1px;
+		box-shadow: 0 0.75rem 1.5rem -0.75rem rgb(0 0 0 / 0.7);
 	}
 
 	.create:hover::before,
 	.create:focus-visible::before {
-		opacity: 1;
-	}
-
-	.create:hover::after {
-		box-shadow: 0 1rem 2.75rem -0.5rem color-mix(in oklab, var(--theme-accent) 75%, transparent);
-	}
-
-	.create:hover {
-		scale: 1.06;
+		opacity: 0.3;
+		scale: 1;
 	}
 
 	.create:active {
-		scale: 0.92;
+		translate: 0 0;
+		scale: 0.94;
 	}
 
 	.create :global(.plus) {
@@ -288,11 +281,25 @@
 		rotate: 90deg;
 	}
 
-	@keyframes spin {
-		to { rotate: 1turn; }
+	/* FILTERS */
+	.action {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.375rem;
+		padding: 0.375rem 0.75rem;
+		border-radius: 999px;
+		color: var(--theme-ink-muted);
+		font-size: 0.875rem;
+		white-space: nowrap;
+		transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
 	}
 
-	/* FILTERS */
+	.action:hover { background: var(--theme-line); color: var(--theme-ink); }
+	.action:disabled { opacity: 0.5; pointer-events: none; }
+
+	.action.primary { background: var(--theme-accent); color: var(--theme-on-accent); }
+	.action.primary:hover { background: color-mix(in oklab, var(--theme-accent) 88%, white); }
+
 	:global(.filters[data-state='open']) {
 		transform-origin: var(--bits-popover-content-transform-origin);
 		animation: pop-in var(--duration-base) var(--ease-spring);
@@ -324,7 +331,6 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.sheet-front,
-		.create::before { animation: none; }
+		.sheet-front { animation: none; }
 	}
 </style>

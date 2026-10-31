@@ -27,7 +27,7 @@
 
 		const user = await safeAction(loginUser({ email, password }));
 		if (user) {
-			await goto(resolve('/(app)'), { refreshAll: true });
+			await goto(resolve('/(app)/[[view]]', {}), { refreshAll: true });
 		} else {
 			shake();
 			submitting = false;

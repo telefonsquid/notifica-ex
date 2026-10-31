@@ -250,6 +250,11 @@
         color: var(--theme-ink);
         background: var(--theme-line);
     }
+
+    &:disabled {
+        opacity: 0.35;
+        pointer-events: none;
+    }
 }
 
 

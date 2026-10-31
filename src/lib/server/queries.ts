@@ -114,7 +114,7 @@ export async function updateSettings(settings: Record<string, unknown>) {
 
 
 // OWNED RECORDS =====================================================================
-type OwnedCollection = 'labels' | 'notes' | 'reminders'
+type OwnedCollection = 'labels' | 'notes' | 'reminders' | 'views'
 
 // Everything one user owns in a collection
 export async function getAllOwned<K extends OwnedCollection>(collectionName: K, owner: string, options?: Omit<FetchOptions, 'filter'>) {

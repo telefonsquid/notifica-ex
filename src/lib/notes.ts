@@ -9,6 +9,13 @@ export function randomLabelColor(): NoteColor {
     return choices[Math.floor(Math.random() * choices.length)]
 }
 
+// Turns 'cobalt-solid' into 'Cobalt solid'
+export function colorName(color: NoteColor): string {
+    if(!color) return 'Plain'
+    const words = color.replace('-', ' ')
+    return words[0].toUpperCase() + words.slice(1)
+}
+
 
 
 // CONTENT ====================================================================================================

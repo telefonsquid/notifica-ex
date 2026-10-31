@@ -10,6 +10,7 @@ export type CollectionMap = {
     'labels': Label;
     'notes': Note;
     'reminders': Reminder;
+    'views': View;
     '_superusers': RecordAuthResponse<RecordModel>;
 }
 
@@ -19,6 +20,7 @@ const _collectionKeys: Record<keyof CollectionMap, true> = { // the collection t
     'labels': true,
     'notes': true,
     'reminders': true,
+    'views': true,
     '_superusers': true,
 };
 
@@ -261,4 +263,78 @@ export const reminderSchema = recordModelSchema.extend({
     next: timestampSchema, // empty once a one off reminder went out
     sent: timestampSchema,
     done: timestampSchema // occurrence that was checked off
+});
+
+
+
+
+
+
+
+
+// TYPES => VIEWS ===================================================================
+// Each name maps to a lucide icon in #lib/view_icons.ts
+export const VIEW_ICONS = ['sticky-note', 'bell', 'archive', 'star', 'pin', 'list-checks', 'calendar', 'clock', 'book', 'briefcase', 'house', 'heart', 'lightbulb', 'tag', 'inbox', 'flame', 'leaf', 'music', 'plane', 'shopping-cart', 'code', 'graduation-cap', 'palette', 'coffee'] as const;
+
+export type ViewIcon = z.infer<typeof viewIconSchema>;
+export const viewIconSchema = z.enum(VIEW_ICONS);
+
+export const viewNameSchema = limitedText('View', LIMITS.VIEW_NAME).trim().min(1, 'View needs a name.');
+
+const daySchema = limitedText('Date', LIMITS.VIEW_DATE).regex(/^(\d{4}-\d{2}-\d{2})?$/, 'Date must look like 2026-12-31.');
+
+// Within: the last n units, or the next n for due dates | beyond: further away than that
+export type DateRange = z.infer<typeof dateRangeSchema>;
+export const dateRangeSchema = z.object({
+    mode: z.enum(['any', 'within', 'beyond', 'between']).default('any'),
+    amount: limitedCount('Amount', LIMITS.VIEW_AMOUNT).min(1, 'Amount must be at least 1.').default(7),
+    unit: z.enum(['days', 'weeks', 'months']).default('days'),
+    from: daySchema.default(''), // days in the browser's timezone, empty leaves that side open
+    to: daySchema.default('')
+});
+
+export type ReminderState = z.infer<typeof reminderStateSchema>;
+export const reminderStateSchema = z.enum(['any', 'with', 'without', 'upcoming', 'repeating', 'tasks', 'waiting', 'finished']);
+
+// Every field has a default, so filters saved before a field existed still parse
+export type ViewFilter = z.infer<typeof viewFilterSchema>;
+export const viewFilterSchema = z.object({
+    words: limitedText('Words', LIMITS.VIEW_WORDS).default(''), // all of them have to appear
+    without: limitedText('Words', LIMITS.VIEW_WORDS).default(''), // none of them may appear
+    titleOnly: z.boolean().default(false),
+    include: z.array(idSchema).max(LIMITS.VIEW_LABELS).default([]),
+    exclude: z.array(idSchema).max(LIMITS.VIEW_LABELS).default([]),
+    labelMatch: z.enum(['any', 'all']).default('any'), // how included labels combine
+    labelled: z.enum(['any', 'with', 'without']).default('any'),
+    kinds: z.array(noteKindSchema).max(noteKindSchema.options.length).default([]), // empty means every kind
+    colors: z.array(noteColorSchema).max(NOTE_COLORS.length + 1).default([]), // empty means every color
+    pinned: z.enum(['any', 'only', 'hide']).default('any'),
+    archived: z.enum(['hide', 'only', 'any']).default('hide'),
+    reminder: reminderStateSchema.default('any'),
+    list: z.enum(['any', 'open', 'complete']).default('any'), // checklist progress
+    created: dateRangeSchema.prefault({}),
+    updated: dateRangeSchema.prefault({}),
+    due: dateRangeSchema.prefault({}) // next time the reminder goes off
+});
+
+export type ViewSort = z.infer<typeof viewSortSchema>;
+export const viewSortSchema = z.object({
+    by: z.enum(['updated', 'created', 'title', 'reminder']).default('updated'),
+    direction: z.enum(['asc', 'desc']).default('desc'),
+    pinnedFirst: z.boolean().default(true)
+});
+
+export type ViewContent = z.infer<typeof viewContentSchema>;
+export const viewContentSchema = z.object({
+    name: viewNameSchema,
+    icon: viewIconSchema,
+    filter: viewFilterSchema.prefault({}),
+    sort: viewSortSchema.prefault({})
+});
+
+export type View = z.infer<typeof viewSchema>;
+export const viewSchema = recordModelSchema.extend({
+    owner: idSchema,
+    ...viewContentSchema.shape,
+    position: limitedCount('Position', LIMITS.VIEW_POSITION) // order in the rail
 });

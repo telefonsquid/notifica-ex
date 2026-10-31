@@ -14,6 +14,6 @@
 		<p class="type-meta mb-4 text-accent">Error {page.status}</p>
 		<h1 class="type-display mb-4 text-5xl text-ink">{page.status === 404 ? 'Nothing to see here.' : 'Something broke.'}</h1>
 		<p class="mb-10 text-ink-muted">{page.error?.message}</p>
-		<Button href={resolve('/(app)')} style="secondary" icon={ArrowLeft}>Back to notes</Button>
+		<Button href={resolve('/(app)/[[view]]', {})} style="secondary" icon={ArrowLeft}>Back to notes</Button>
 	</div>
 </main>

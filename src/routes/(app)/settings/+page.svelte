@@ -6,9 +6,10 @@
 	import PageHeader from '#lib/components/PageHeader.svelte';
 	import ThemePicker from '#lib/components/ThemePicker.svelte';
 	import UserAdmin from '#lib/components/UserAdmin.svelte';
+	import ViewSettings from '#lib/components/ViewSettings.svelte';
 	import { notify } from '#lib/notifications.svelte.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
-	import { onRecordChange } from '#lib/realtime.ts';
+	import { onCollectionChange } from '#lib/realtime.ts';
 	import { hasPermission } from '#lib/user.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import { Check, Dices, KeyRound, Send, Trash2 } from '@lucide/svelte';
@@ -52,7 +53,7 @@
 	let labels = $derived(await getLabels());
 	let confirmDelete = $state<string | null>(null);
 
-	$effect(() => onRecordChange('labels', () => getLabels().refresh()));
+	$effect(() => onCollectionChange('labels', () => getLabels().refresh()));
 
 	function rename(id: string, input: HTMLInputElement, current: string) {
 		const name = input.value.trim();
@@ -110,6 +111,17 @@
 				<p class="mb-6 text-ink-muted">Which edge of a note its labels hang from.</p>
 				<LabelPositionPicker current={data.labelPosition} />
 			</div>
+		</div>
+	</section>
+
+	<!-- VIEWS -->
+	<section class="section">
+		<header>
+			<h2 class="type-title text-2xl text-ink">Views</h2>
+			<p class="mt-2 text-ink-muted">Each view is a saved filter with its own place in the rail. The first one opens on start.</p>
+		</header>
+		<div class="max-w-3xl">
+			<ViewSettings {labels} />
 		</div>
 	</section>
 
