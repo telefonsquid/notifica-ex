@@ -103,6 +103,11 @@ export async function importCollections(collections: CollectionModel[]) {
     return await pbErrorHandler(pb.collections.import(collections, false))
 }
 
+export async function updateCollection(collectionName: string, data: Partial<CollectionModel>) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collections.update(collectionName, data))
+}
+
 
 
 // SETTINGS

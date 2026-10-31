@@ -223,16 +223,18 @@ export function stagger(index: number, step = 45, max = 8): number {
 
 // RELAYOUT ====================================================================================================
 // Rects of every cell marked with data-flip, keyed by its value | taken before an update, mid glide too
-// Svelte makes leaving elements inert until their outro ends, so their space counts as gone already
 export function measure(root: ParentNode): Map<string, DOMRect> {
+    const cells = root.querySelectorAll<HTMLElement>('[data-flip]')
+    return withoutLeaving(root, () => new Map([...cells].map((cell) => [cell.dataset.flip!, bodyOf(cell).getBoundingClientRect()])))
+}
+
+// Svelte makes leaving elements inert until their outro ends, so their space counts as gone already
+function withoutLeaving<T>(root: ParentNode, read: () => T): T {
     const leaving = [...root.querySelectorAll<HTMLElement>('[data-flip] [inert]')]
     leaving.forEach((node) => node.style.display = 'none')
-
-    const cells = root.querySelectorAll<HTMLElement>('[data-flip]')
-    const rects = new Map([...cells].map((cell) => [cell.dataset.flip!, bodyOf(cell).getBoundingClientRect()]))
-
+    const result = read()
     leaving.forEach((node) => node.style.display = '')
-    return rects
+    return result
 }
 
 // GLIDE | cells move from where they were to where the update put them | data-flip-body marks the part inside that resizes
@@ -245,6 +247,7 @@ export function glide(root: ParentNode, before: Map<string, DOMRect>){
     cells.forEach(settle)
     if(!time) return
     const after = measure(root)
+    const heights = withoutLeaving(root, () => new Map(cells.map((cell) => [cell, cell.getBoundingClientRect().height])))
 
     for(const cell of cells){
         const from = before.get(cell.dataset.flip!)
@@ -260,7 +263,7 @@ export function glide(root: ParentNode, before: Map<string, DOMRect>){
         // The cell keeps its final size for the grid while its content grows or shrinks inside, so text reflows instead of stretching
         if(resized){
             const body = bodyOf(cell)
-            cell.style.height = `${cell.getBoundingClientRect().height}px`
+            cell.style.height = `${heights.get(cell)}px`
             cell.style.zIndex = '1'
             body.dataset.resizing = ''
             animations.push(body.animate({ width: [`${from.width}px`, `${to.width}px`], height: [`${from.height}px`, `${to.height}px`] }, timing))

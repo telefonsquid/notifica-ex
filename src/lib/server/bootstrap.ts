@@ -1,8 +1,8 @@
 import { dev } from '$app/env';
 import * as env from '$app/env/private';
 import { unwrap } from '#lib/pocketbase.ts';
-import type { Note } from '#lib/schemas.ts';
-import { findOne, getAll, getCollection, importCollections, insertOnePartial, updateOnePartial, updateSettings } from '#lib/server/queries.ts';
+import type { CollectionMap, Note } from '#lib/schemas.ts';
+import { findOne, getAll, getCollection, importCollections, insertOnePartial, updateCollection, updateOnePartial, updateSettings } from '#lib/server/queries.ts';
 import type { CollectionModel } from 'pocketbase';
 import pbSchema from '../../../pocketbase/pb_schema.json';
 
@@ -19,6 +19,7 @@ export async function bootstrap(){ // setup for a fresh pocketbase install
     else if(dev){
         await foldListNotes()
         await createSchema() // no versioned migrations before the first release, local dev follows pb_schema.json
+        await dropRetiredFields()
     }
 
     // CREATE REQUIRED DATABASE ENTRIES
@@ -46,6 +47,17 @@ async function foldListNotes(){
     for(const note of result.data as (Note & { items: { text: string, done: boolean }[] | null })[]){
         const tasks = (note.items ?? []).filter((item) => item.text.trim()).map((item) => `- [${item.done ? 'x' : ' '}] ${item.text}`)
         unwrap(await updateOnePartial('notes', note.id, { body: [note.body, tasks.join('\n')].filter(Boolean).join('\n\n') }))
+    }
+}
+
+// The import only adds and changes fields | ones gone from pb_schema.json would linger and may still be required
+async function dropRetiredFields(){
+    for(const collection of pbSchema as unknown as CollectionModel[]){
+        const existing = unwrap(await getCollection(collection.name as keyof CollectionMap))
+        const kept = new Set(collection.fields.map((field) => field.name))
+        const fields = existing.fields.filter((field) => kept.has(field.name))
+        if(fields.length === existing.fields.length){ continue }
+        unwrap(await updateCollection(collection.name, { fields }))
     }
 }
 

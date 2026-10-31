@@ -48,7 +48,7 @@
 {#snippet link(target: { view?: string } | 'settings', label: string, Icon: typeof Settings, active: boolean)}
     <a href={target === 'settings' ? resolve('/(app)/settings') : resolve('/(app)/[[view]]', target)} {@attach tipAnchor} class={['item', active && 'active']} aria-label={label} aria-current={active ? 'page' : undefined}>
         {#if active}<span class="vt-rail-indicator indicator absolute inset-0 rounded-card bg-accent"></span>{/if}
-        <Icon class="icon relative size-6" strokeWidth={1.75} />
+        <Icon class="vt-rail-icon icon relative size-6" strokeWidth={1.75} />
         <span class="tip type-meta" aria-hidden="true">{label}</span>
     </a>
 {/snippet}

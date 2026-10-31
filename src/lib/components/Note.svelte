@@ -195,8 +195,10 @@
         onclose?.()
     }
 
+    // The editor claims every Escape for itself, so only others that handled it keep the card open
     function escape(event: KeyboardEvent){
-        if(!open || event.key !== 'Escape' || event.defaultPrevented || document.querySelector(`${FLOATING}[data-state='open']`)) return
+        const handled = event.defaultPrevented && !(event.target as Element).closest('.ProseMirror')
+        if(!open || event.key !== 'Escape' || handled || document.querySelector(`${FLOATING}[data-state='open']`)) return
         onclose?.()
     }
 
