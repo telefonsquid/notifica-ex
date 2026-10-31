@@ -3,7 +3,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import ColorPicker from '#lib/components/ColorPicker.svelte';
 	import LabelPositionPicker from '#lib/components/LabelPositionPicker.svelte';
-	import PageHeader from '#lib/components/PageHeader.svelte';
+	import SettingsSection from '#lib/components/SettingsSection.svelte';
 	import ThemePicker from '#lib/components/ThemePicker.svelte';
 	import UserAdmin from '#lib/components/UserAdmin.svelte';
 	import ViewSettings from '#lib/components/ViewSettings.svelte';
@@ -13,7 +13,7 @@
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import { hasPermission } from '#lib/user.ts';
 	import Button from '#lib/ui/Button.svelte';
-	import { Check, Dices, KeyRound, Send, Trash2 } from '@lucide/svelte';
+	import { Check, CircleUserRound, Dices, KeyRound, Palette, PanelsTopLeft, Send, SlidersHorizontal, Trash2, Users } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { deleteLabel, getLabels, updateLabel } from '../../api/labels.remote';
 	import { sendTestReminder, setNtfyTopic } from '../../api/reminders.remote';
@@ -76,21 +76,63 @@
 		confirmDelete = null;
 	}
 
-	// TABS | one section at a time, or every section like a long page
-	const TABS = [
-		{ id: 'all', label: 'All Settings' },
-		{ id: 'appearance', label: 'Appearance' },
-		{ id: 'views', label: 'Views' },
-		{ id: 'behaviour', label: 'Behaviour' },
-		{ id: 'account', label: 'Account' },
-		{ id: 'users', label: 'Users', admin: true }
+	// SECTIONS | one at a time, the stack slides so the chosen one sits in view
+	const SECTIONS = [
+		{ id: 'appearance', label: 'Appearance', icon: Palette },
+		{ id: 'views', label: 'Views', icon: PanelsTopLeft },
+		{ id: 'behaviour', label: 'Behaviour', icon: SlidersHorizontal },
+		{ id: 'account', label: 'Account', icon: CircleUserRound },
+		{ id: 'users', label: 'Users', icon: Users, admin: true }
 	] as const;
 
-	type Tab = (typeof TABS)[number]['id'];
-	let tab = $state<Tab>('all');
-	let tabs = $derived(TABS.filter((item) => !('admin' in item) || hasPermission(data.user, 'admin')));
+	type Tab = (typeof SECTIONS)[number]['id'];
+	let tab = $state<Tab>('appearance');
+	let sections = $derived(SECTIONS.filter((item) => !('admin' in item) || hasPermission(data.user, 'admin')));
 
-	const shown = (id: Tab) => tab === 'all' || tab === id;
+	let tablist = $state<HTMLElement>();
+	let track = $state<HTMLElement>();
+	let offset = $state(0);
+	let indicator = $state({ x: 0, y: 0, width: 0, height: 0 });
+	let ready = $state(false);
+
+	// Offsets instead of rects, the track and indicator measure themselves and not their running slide
+	function place() {
+		const section = track?.querySelector<HTMLElement>(`[data-section="${tab}"]`);
+		const first = track?.firstElementChild as HTMLElement | null | undefined;
+		const button = tablist?.querySelector<HTMLElement>(`[data-tab="${tab}"]`);
+		if (!section || !first || !button) return;
+
+		offset = first.offsetTop - section.offsetTop;
+		indicator = { x: button.offsetLeft, y: button.offsetTop, width: button.offsetWidth, height: button.offsetHeight };
+		button.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: ready ? 'smooth' : 'instant' });
+	}
+
+	$effect(() => {
+		void tab;
+		place();
+	});
+
+	// Sections change height with their content, the slide follows
+	$effect(() => {
+		if (!track || !tablist) return;
+		const observer = new ResizeObserver(place);
+		observer.observe(track);
+		observer.observe(tablist);
+		requestAnimationFrame(() => (ready = true)); // The first placement shows at once
+		return () => observer.disconnect();
+	});
+
+	// Arrow keys walk the tabs and move focus along
+	function step(event: KeyboardEvent) {
+		const delta = ({ ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 } as Record<string, number>)[event.key];
+		if (!delta) return;
+		event.preventDefault();
+
+		const index = sections.findIndex((item) => item.id === tab);
+		const next = sections[Math.min(Math.max(index + delta, 0), sections.length - 1)];
+		tab = next.id;
+		tablist?.querySelector<HTMLElement>(`[data-tab="${next.id}"]`)?.focus();
+	}
 
 	// ACCOUNT | the same mail an invite sends, valid for 7 days
 	let sendingLink = $state(false);
@@ -106,28 +148,33 @@
 	<title>Settings · notifica-ex</title>
 </svelte:head>
 
-<div class="mx-auto w-full max-w-content">
-
-<PageHeader eyebrow="Preferences" title="Settings" />
-
-<div class="layout">
+<div class="settings mx-auto w-full max-w-content">
 
 <!-- TABS | a column on wide screens, a scrolling row on phones -->
-<div class="tabs" role="tablist" aria-label="Settings sections">
-	{#each tabs as item (item.id)}
-		<button role="tab" class={['tab', tab === item.id && 'active']} aria-selected={tab === item.id} onclick={() => (tab = item.id)}>{item.label}</button>
+<div bind:this={tablist} class={['tabs', ready && 'ready']} role="tablist" aria-label="Settings sections" aria-orientation="vertical" tabindex="-1" onkeydown={step}>
+	<span class="indicator" style:--x="{indicator.x}px" style:--y="{indicator.y}px" style:--width="{indicator.width}px" style:--height="{indicator.height}px"></span>
+	{#each sections as item (item.id)}
+		<button
+			role="tab"
+			data-tab={item.id}
+			class={['tab', tab === item.id && 'active']}
+			aria-selected={tab === item.id}
+			aria-controls={item.id}
+			tabindex={tab === item.id ? 0 : -1}
+			onclick={() => (tab = item.id)}
+		>
+			<item.icon class="icon size-5 shrink-0" strokeWidth={1.75} />
+			{item.label}
+		</button>
 	{/each}
 </div>
 
-<div class="grid min-w-0">
+<!-- STAGE | only the current section takes the pointer and the wheel, its neighbours peek in at the edges -->
+<div class="stage">
+<div bind:this={track} class={['track', ready && 'ready']} style:--offset="{offset}px">
 
 	<!-- APPEARANCE -->
-	{#if shown('appearance')}
-	<section class="section">
-		<header>
-			<h2 class="type-title text-2xl text-ink">Appearance</h2>
-			<p class="mt-2 text-ink-muted">Stored on this device, so every device can have its own.</p>
-		</header>
+	<SettingsSection id="appearance" title="Appearance" description="Stored on this device, so every device can have its own." current={tab === 'appearance'} onselect={() => (tab = 'appearance')}>
 		<div class="grid gap-10">
 			<div>
 				<h3 class="type-meta mb-4 text-ink-faint">Theme</h3>
@@ -139,29 +186,17 @@
 				<LabelPositionPicker current={data.labelPosition} />
 			</div>
 		</div>
-	</section>
-	{/if}
+	</SettingsSection>
 
 	<!-- VIEWS -->
-	{#if shown('views')}
-	<section class="section">
-		<header>
-			<h2 class="type-title text-2xl text-ink">Views</h2>
-			<p class="mt-2 text-ink-muted">Each view is a saved filter with its own place in the rail. The first one opens on start.</p>
-		</header>
+	<SettingsSection id="views" title="Views" description="Each view is a saved filter with its own place in the rail. The first one opens on start." current={tab === 'views'} onselect={() => (tab = 'views')}>
 		<div class="max-w-3xl">
 			<ViewSettings {labels} />
 		</div>
-	</section>
-	{/if}
+	</SettingsSection>
 
 	<!-- BEHAVIOUR -->
-	{#if shown('behaviour')}
-	<section class="section">
-		<header>
-			<h2 class="type-title text-2xl text-ink">Behaviour</h2>
-			<p class="mt-2 text-ink-muted">Where reminders go and how notes get sorted.</p>
-		</header>
+	<SettingsSection id="behaviour" title="Behaviour" description="Where reminders go and how notes get sorted." current={tab === 'behaviour'} onselect={() => (tab = 'behaviour')}>
 		<div class="grid max-w-xl gap-12">
 			<!-- REMINDERS -->
 			<div>
@@ -219,16 +254,10 @@
 				{/if}
 			</div>
 		</div>
-	</section>
-	{/if}
+	</SettingsSection>
 
 	<!-- ACCOUNT -->
-	{#if shown('account')}
-	<section class="section">
-		<header>
-			<h2 class="type-title text-2xl text-ink">Account</h2>
-			<p class="mt-2 text-ink-muted">How you log in on this server.</p>
-		</header>
+	<SettingsSection id="account" title="Account" description="How you log in on this server." current={tab === 'account'} onselect={() => (tab = 'account')}>
 		<div class="max-w-xl">
 			<dl class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
 				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
@@ -249,20 +278,15 @@
 				</div>
 			</dl>
 		</div>
-	</section>
-	{/if}
+	</SettingsSection>
 
 	<!-- USERS -->
-	{#if hasPermission(data.user, 'admin') && shown('users')}
-		<section class="section">
-			<header>
-				<h2 class="type-title text-2xl text-ink">Users</h2>
-				<p class="mt-2 text-ink-muted">Everyone with access to this server.</p>
-			</header>
-			<div class="max-w-3xl">
-				<UserAdmin userId={data.user.id} />
-			</div>
-		</section>
+	{#if hasPermission(data.user, 'admin')}
+	<SettingsSection id="users" title="Users" description="Everyone with access to this server." current={tab === 'users'} onselect={() => (tab = 'users')}>
+		<div class="max-w-3xl">
+			<UserAdmin userId={data.user.id} />
+		</div>
+	</SettingsSection>
 	{/if}
 
 </div>
@@ -272,41 +296,59 @@
 </div>
 
 <style>
-	/* TABS */
-	.layout {
+	/* LAYOUT | exactly the window minus the page padding, the stage scrolls instead of the page */
+	.settings {
+		--peek: 2.5rem;
 		display: grid;
-		gap: 2rem;
+		grid-template-rows: auto minmax(0, 1fr);
+		gap: 1rem;
+		height: calc(100dvh - 9.5rem);
 	}
 
-	@media (width >= 64rem) {
-		.layout {
-			grid-template-columns: 11rem minmax(0, 1fr);
-			gap: 3rem;
-			align-items: start;
+	@media (width >= 40rem) {
+		.settings {
+			--peek: 4rem;
+			height: calc(100dvh - 6rem);
 		}
 	}
 
+	@media (width >= 64rem) {
+		.settings {
+			grid-template-columns: 12rem minmax(0, 1fr);
+			grid-template-rows: none;
+			gap: 3rem;
+		}
+	}
+
+	/* TABS */
 	.tabs {
+		position: relative;
 		display: flex;
 		gap: 0.25rem;
 		margin-inline: calc(var(--layout-gutter) * -1);
 		padding-inline: var(--layout-gutter);
 		overflow-x: auto;
 		scrollbar-width: none;
+		outline: none;
 	}
 
 	@media (width >= 64rem) {
 		.tabs {
-			position: sticky;
-			top: 3rem;
 			flex-direction: column;
+			align-self: start;
 			margin-inline: 0;
-			padding-inline: 0;
+			padding: var(--peek) 0 0;
+			overflow: visible;
 		}
 	}
 
 	.tab {
-		padding: 0.5rem 0.875rem;
+		position: relative;
+		display: flex;
+		flex-shrink: 0;
+		gap: 0.75rem;
+		align-items: center;
+		padding: 0.625rem 0.875rem;
 		border-radius: var(--layout-radius-control);
 		color: var(--theme-ink-muted);
 		text-align: left;
@@ -319,29 +361,70 @@
 		background: var(--theme-line);
 	}
 
+	/* Takes on the colour in step with the indicator gliding in */
 	.tab.active {
 		color: var(--theme-on-accent);
+		background: transparent;
+		transition: color var(--duration-base) var(--ease-in-out);
+	}
+
+	/* Until the indicator knows its place the tab paints itself */
+	.tabs:not(.ready) .tab.active {
 		background: var(--theme-accent);
 	}
 
-	/* SECTIONS | heading beside the content once there is room, a hairline between them */
-	.section {
+	.tab :global(.icon) {
+		transition: rotate var(--duration-base) var(--ease-spring), scale var(--duration-base) var(--ease-spring);
+	}
+
+	.tab:hover :global(.icon) {
+		rotate: -8deg;
+		scale: 1.08;
+	}
+
+	.tab.active :global(.icon) {
+		scale: 1.08;
+	}
+
+	.tab:active :global(.icon) {
+		scale: 0.88;
+	}
+
+	.indicator {
+		position: absolute;
+		top: 0;
+		left: 0;
+		width: var(--width);
+		height: var(--height);
+		border-radius: var(--layout-radius-control);
+		background: var(--theme-accent);
+		translate: var(--x) var(--y);
+		opacity: 0;
+	}
+
+	.tabs.ready .indicator {
+		opacity: 1;
+		transition: translate var(--duration-base) var(--ease-emphasized), width var(--duration-base) var(--ease-emphasized), height var(--duration-base) var(--ease-emphasized);
+	}
+
+	/* STAGE | the neighbours fade out towards its edges */
+	.stage {
+		min-height: 0;
+		overflow: clip;
+		container-type: size;
+		mask-image: linear-gradient(transparent, #000 var(--peek), #000 calc(100% - var(--peek)), transparent);
+	}
+
+	.track {
+		position: relative;
 		display: grid;
 		gap: 1.5rem;
-		padding-block: 3rem;
-		border-top: 1px solid var(--theme-line);
+		padding-block: var(--peek);
+		translate: 0 var(--offset);
 	}
 
-	.section:first-child {
-		padding-top: 0;
-		border-top: none;
-	}
-
-	@media (width >= 64rem) {
-		.section {
-			grid-template-columns: 14rem minmax(0, 1fr);
-			gap: 3rem;
-		}
+	.track.ready {
+		transition: translate var(--duration-page) var(--ease-emphasized);
 	}
 
 	.field {

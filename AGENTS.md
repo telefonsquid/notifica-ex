@@ -29,7 +29,7 @@ Live in `.claude/skills/<name>/SKILL.md`. Status `planned` means the file doesn'
 
 Bun, SvelteKit 3 + adapter-node, Svelte 5 (runes, experimental remote functions and async), TypeScript 6, PocketBase, Tailwind 4, lucide, zod. bits-ui for dialogs and menus, marked renders notes (`#lib/markdown.ts` escapes raw HTML and filters link schemes), Tiptap edits them. Docker compose for deployment.
 
-Ports: dev server 55560, PocketBase 8091, ntfy 8092. `.claude/launch.json` starts the dev server for the preview pane.
+Ports: dev server 55560, PocketBase 8091, ntfy 8092. Server side URLs use `127.0.0.1`, Node tries IPv6 first for `localhost` and loses about 250 ms on every new connection. `.claude/launch.json` starts the dev server for the preview pane.
 
 Reference implementation for structure and conventions: `D:\Repositories\fsd-flight-check`. Follow its architecture, not its visual style.
 
@@ -63,7 +63,7 @@ Until the `theming` and `motion` skills exist:
 - **Palette** in `src/app.css` `@theme`. Themes in `#lib/themes/*.css` set `--theme-*` colors and may override the `--layout-*` defaults (widths, gutters, gaps, paddings, radii). `@theme inline` maps both onto utilities like `bg-card`, `text-ink-muted`, `p-card`, `w-rail`. Components use those utilities only, never palette colors directly.
 - **Theme choice** is a cookie, rendered into `%theme%` by `hooks.server.ts` so the first paint is right. `#lib/themes/switch.ts` reveals the new theme as a circle from the click point.
 - **Label tabs** sit on the top or bottom card edge, a per-device `labels` cookie (`#lib/preferences.ts`) rendered into `<html data-labels>` the same way.
-- **Settings page** has four sections: Appearance (device preferences), Behaviour, Account, Users (admin only).
+- **Settings page** has five sections: Appearance (device preferences), Views, Behaviour, Account, Users (admin only). One shows at a time: the page fills the window without scrolling, the stack slides (`translate`) so the chosen `SettingsSection` sits below a peek of its predecessor, and only it scrolls. The others stay faint and grey, a click on one moves there. The tab indicator glides like the rail's.
 - **Motion tokens** (`--ease-*`, `--duration-*`) live in CSS. `#lib/motion.ts` reads them for JS transitions (`rise`, `sink`, `stagger`) and returns 0 durations under reduced motion.
 - **Page changes** use view transitions from the root layout; `.vt-rail`, `.vt-page` and `.vt-rail-indicator` name the moving parts. The indicator glides with in-out, no spring. Rail icons carry `.vt-rail-icon` (`match-element`, class `rail-icon`) so their own layers sit above the indicator. Icons and the `.vt-toolbar` show live on both pages (old image hidden, new one unanimated), only a part present on one side fades with the page (`:only-child`, since `:not()` never matches on these pseudos).
 - **Grid changes** glide: `measure()` before the update, `glide()` after (`#lib/motion.ts`). Cells carry `data-flip`, the part that resizes `data-flip-body`. It keeps its final size for the grid while the body animates width and height under `[data-resizing]`, so text reflows instead of stretching. Opening and closing call the page's `snapshot()` themselves, since a card's blocks can update before the page's `$effect.pre` runs. `measure()` and the cell height `glide()` holds skip `inert` elements, which Svelte sets on everything mid outro, so leaving parts count as gone and the grid doesn't jump when they finish.
