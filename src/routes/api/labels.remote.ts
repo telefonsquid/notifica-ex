@@ -1,7 +1,7 @@
 import { getRequestEvent } from '$app/server';
 import { unwrap } from '#lib/pocketbase.ts';
 import { idSchema } from '#lib/schema_limits.ts';
-import { labelNameSchema } from '#lib/schemas.ts';
+import { labelNameSchema, noteColorSchema } from '#lib/schemas.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
@@ -17,23 +17,23 @@ export const getLabels = query(async () => {
 
 });
 
-export const createLabel = command(labelNameSchema, async (name) => {
+export const createLabel = command(z.object({ name: labelNameSchema, color: noteColorSchema }), async ({ name, color }) => {
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    const label = unwrap(await insertOnePartial('labels', { name, owner: locals.user.id }), 'A label with that name already exists.')
+    const label = unwrap(await insertOnePartial('labels', { name, color, owner: locals.user.id }), 'A label with that name already exists.')
 
     await getLabels().refresh()
     return label
 
 });
 
-export const renameLabel = command(z.object({ id: idSchema, name: labelNameSchema }), async ({ id, name }) => {
+export const updateLabel = command(z.object({ id: idSchema, name: labelNameSchema.optional(), color: noteColorSchema.optional() }), async ({ id, ...changes }) => {
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
     unwrap(await getOwned('labels', id, locals.user.id), 'Label not found.')
-    const label = unwrap(await updateOnePartial('labels', id, { name }), 'A label with that name already exists.')
+    const label = unwrap(await updateOnePartial('labels', id, changes), 'A label with that name already exists.')
 
     await getLabels().refresh()
     return label

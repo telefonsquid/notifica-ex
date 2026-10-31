@@ -1,11 +1,13 @@
 <script lang="ts">
     import ChecklistEditor from '#lib/components/ChecklistEditor.svelte';
+    import ColorPicker from '#lib/components/ColorPicker.svelte';
+    import LabelChip from '#lib/components/LabelChip.svelte';
     import ReminderEditor from '#lib/components/ReminderEditor.svelte';
-    import { NOTE_BACKGROUNDS, convertKind, emptyNote, isEmpty } from '#lib/notes.ts';
+    import { convertKind, emptyNote, isEmpty, randomLabelColor } from '#lib/notes.ts';
     import { safeAction } from '#lib/pocketbase.ts';
-    import { NOTE_COLORS, type Label, type Note, type NoteColor, type NoteContent, type NoteKind, type Reminder } from '#lib/schemas.ts';
+    import type { Label, Note, NoteContent, NoteKind, Reminder } from '#lib/schemas.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, Eye, Pencil, Pin, PinOff, Plus, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Eye, Pencil, Pin, PinOff, Plus, Trash2, X } from '@lucide/svelte';
     import { Dialog } from 'bits-ui';
     import { untrack } from 'svelte';
     import { createLabel } from '../../routes/api/labels.remote';
@@ -17,12 +19,14 @@
         kind = 'text',
         labels,
         reminders,
+        origin,
         onclose
     }: {
         note: Note | null                       // null starts a new note of the given kind
         kind?: NoteKind
         labels: Label[]
         reminders: Map<string, Reminder>        // by note id, a new note finds its reminder once saved
+        origin?: { x: number, y: number }       // viewport point the dialog grows out of and shrinks back into
         onclose: () => void
     } = $props()
 
@@ -31,8 +35,6 @@
         { value: 'list', label: 'List' },
         { value: 'markdown', label: 'Markdown' },
     ]
-
-    const COLORS: NoteColor[] = ['', ...NOTE_COLORS]
 
     // DRAFT | edited freely, the page's copy only changes once a save went through
     const initial = untrack(() => note)
@@ -101,7 +103,7 @@
         const name = newLabel.trim()
         if(!name) return
         const existing = labels.find((label) => label.name.toLowerCase() === name.toLowerCase())
-        const label = existing ?? await safeAction(createLabel(name))
+        const label = existing ?? await safeAction(createLabel({ name, color: randomLabelColor() }))
         if(label && !draft.labels.includes(label.id)) draft.labels = [...draft.labels, label.id]
         newLabel = ''
     }
@@ -134,7 +136,9 @@
     <Dialog.Portal>
         <Dialog.Overlay class="note-overlay fixed inset-0 z-50 bg-canvas/70 backdrop-blur-sm" />
         <Dialog.Content
-            class={['note-dialog fixed top-[6dvh] left-1/2 z-50 flex max-h-[88dvh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-card border border-line-strong text-ink shadow-2xl', NOTE_BACKGROUNDS[draft.color]]}
+            class={['note-dialog note-surface fixed top-[6dvh] left-1/2 z-50 flex max-h-[88dvh] w-[min(42rem,calc(100vw-2rem))] -translate-x-1/2 flex-col overflow-hidden rounded-card border border-line-strong text-ink shadow-2xl', origin && 'from-origin']}
+            data-note={draft.color || undefined}
+            style={origin ? `--from-x: ${origin.x}px; --from-y: ${origin.y}px` : undefined}
         >
             <Dialog.Title class="sr-only">{id ? 'Edit note' : 'New note'}</Dialog.Title>
 
@@ -184,14 +188,12 @@
                 <!-- LABELS -->
                 <div class="flex flex-wrap items-center gap-1.5">
                     {#each labels as label (label.id)}
-                        {@const active = draft.labels.includes(label.id)}
-                        <button
-                            class={['type-meta motion-interactive flex items-center gap-1 rounded-full border px-2.5 py-1', active ? 'border-accent bg-accent-soft text-accent' : 'border-line text-ink-faint hover:text-ink-muted']}
-                            aria-pressed={active}
-                            onclick={() => toggleLabel(label.id)}
-                        >
-                            {#if active}<Check class="size-3" />{/if}{label.name}
-                        </button>
+                        <LabelChip
+                            {label}
+                            active={draft.labels.includes(label.id)}
+                            ontoggle={() => toggleLabel(label.id)}
+                            ondelete={() => draft.labels = draft.labels.filter((item) => item !== label.id)}
+                        />
                     {/each}
                     <form class="flex items-center gap-1 rounded-full border border-dashed border-line px-2.5 py-0.5" onsubmit={(event) => { event.preventDefault(); addLabel() }}>
                         <Plus class="size-3 text-ink-faint" />
@@ -206,17 +208,7 @@
 
             <!-- TOOLBAR -->
             <footer class="flex items-center gap-1 border-t border-line px-3 py-2">
-                <div class="flex items-center gap-1" role="radiogroup" aria-label="Color">
-                    {#each COLORS as color (color)}
-                        <button
-                            class={['swatch motion-interactive size-6 rounded-full border', NOTE_BACKGROUNDS[color], draft.color === color ? 'border-accent' : 'border-line-strong hover:scale-110']}
-                            role="radio"
-                            aria-checked={draft.color === color}
-                            aria-label={color || 'Default'}
-                            onclick={() => draft.color = color}
-                        ></button>
-                    {/each}
-                </div>
+                <ColorPicker value={draft.color} onpick={(color) => draft.color = color} label="Note color" class="ml-1" />
 
                 <div class="ml-auto flex items-center gap-1">
                     <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archive}>
@@ -238,6 +230,8 @@
     :global(.note-overlay[data-state='closed']) { animation: fade-in var(--duration-fast) var(--ease-in) reverse forwards; }
     :global(.note-dialog[data-state='open']) { animation: dialog-in var(--duration-slow) var(--ease-out); }
     :global(.note-dialog[data-state='closed']) { animation: dialog-in var(--duration-fast) var(--ease-in) reverse forwards; }
+    :global(.note-dialog.from-origin[data-state='open']) { animation: dialog-grow var(--duration-slow) var(--ease-emphasized); }
+    :global(.note-dialog.from-origin[data-state='closed']) { animation: dialog-grow var(--duration-base) var(--ease-in-out) reverse forwards; }
 
     @keyframes fade-in {
         from { opacity: 0; }
@@ -245,5 +239,14 @@
 
     @keyframes dialog-in {
         from { opacity: 0; transform: translateY(0.75rem) scale(0.98); filter: blur(4px); }
+    }
+
+    /* Puts the dialog's top center on the origin point at a fraction of its size */
+    :global(.note-dialog.from-origin) {
+        transform-origin: 50% 0;
+    }
+
+    @keyframes dialog-grow {
+        from { opacity: 0; transform: translate(calc(var(--from-x) - 50vw), calc(var(--from-y) - 6dvh)) scale(0.15); }
     }
 </style>

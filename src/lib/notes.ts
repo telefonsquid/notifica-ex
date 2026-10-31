@@ -1,17 +1,12 @@
 import { parseTimestamp } from '#lib/reminders.ts';
-import type { NoteColor, NoteContent, NoteItem, NoteKind, Reminder } from '#lib/schemas.ts';
+import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TINTS, type NoteColor, type NoteContent, type NoteItem, type NoteKind, type Reminder } from '#lib/schemas.ts';
 
 // COLORS ====================================================================================================
 
-// Written out in full, Tailwind only finds class names it can read in the source
-export const NOTE_BACKGROUNDS: Record<NoteColor, string> = {
-    '': 'bg-card',
-    tangerine: 'bg-note-tangerine',
-    powder: 'bg-note-powder',
-    platinum: 'bg-note-platinum',
-    moss: 'bg-note-moss',
-    rose: 'bg-note-rose',
-    violet: 'bg-note-violet',
+// New labels pick one so they never all look alike
+export function randomLabelColor(): NoteColor {
+    const choices = [...NOTE_TINTS, ...NOTE_SOLIDS, ...NOTE_STICKIES]
+    return choices[Math.floor(Math.random() * choices.length)]
 }
 
 

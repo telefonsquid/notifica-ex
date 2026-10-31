@@ -4,17 +4,13 @@
     import { page } from '$app/state';
     import { safeAction } from '#lib/pocketbase.ts';
     import { disconnectRealtime } from '#lib/realtime.ts';
-    import Logo from '#lib/ui/Logo.svelte';
     import { LogOut, Settings, StickyNote } from '@lucide/svelte';
     import { logoutUser } from '../../routes/api/auth.remote';
 
-    const links = [
-        { href: resolve('/(app)'), label: 'Notes', icon: StickyNote },
-        { href: resolve('/(app)/settings'), label: 'Settings', icon: Settings },
-    ]
+    const NOTES = resolve('/(app)')
 
     function isActive(href: string): boolean {
-        if(href === resolve('/(app)')) return page.url.pathname === href
+        if(href === NOTES) return page.url.pathname === href
         return page.url.pathname.startsWith(href)
     }
 
@@ -31,50 +27,94 @@
     }
 </script>
 
-<!-- Bottom bar on phones, side rail from sm up -->
-<nav class="vt-rail fixed inset-x-0 bottom-0 z-40 flex h-16 items-center justify-around border-t border-line bg-canvas/80 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:inset-y-0 sm:right-auto sm:h-auto sm:w-rail sm:flex-col sm:justify-start sm:gap-1 sm:border-t-0 sm:border-r sm:pt-5 sm:pb-5">
-
-    <!-- LOGO -->
-    <a href={resolve('/(app)')} class="mb-6 hidden sm:block" aria-label="Notes">
-        <Logo />
+{#snippet link(route: '/(app)' | '/(app)/settings', label: string, Icon: typeof Settings)}
+    {@const active = isActive(resolve(route))}
+    <a href={resolve(route)} class={['item', active && 'active']} aria-label={label} aria-current={active ? 'page' : undefined}>
+        {#if active}<span class="vt-rail-indicator indicator absolute inset-0 rounded-card bg-accent"></span>{/if}
+        <Icon class="icon relative size-6" strokeWidth={1.75} />
+        <span class="tip type-meta" aria-hidden="true">{label}</span>
     </a>
+{/snippet}
 
-    <!-- LINKS -->
-    {#each links as link (link.href)}
-        {@const active = isActive(link.href)}
-        <a
-            href={link.href}
-            class={['item motion-interactive relative flex w-16 flex-col items-center gap-1 py-1.5', active ? 'text-ink' : 'text-ink-faint hover:text-ink-muted']}
-            aria-current={active ? 'page' : undefined}
-        >
-            {#if active}
-                <span class="vt-rail-indicator indicator absolute top-0.5 left-1/2 h-8 w-14 -translate-x-1/2 rounded-full bg-accent-soft"></span>
-            {/if}
-            <link.icon class={['icon relative size-5', active && 'text-accent']} />
-            <span class="type-meta relative">{link.label}</span>
-        </a>
-    {/each}
+<!-- Bottom bar on phones, side rail from sm up -->
+<nav class="vt-rail fixed inset-x-0 bottom-0 z-40 flex h-20 items-center justify-around bg-canvas/80 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:inset-y-0 sm:right-auto sm:h-auto sm:w-rail sm:flex-col sm:justify-start sm:gap-2 sm:bg-transparent sm:px-0 sm:py-6 sm:backdrop-blur-none">
 
-    <!-- LOGOUT -->
-    <button
-        class="item motion-interactive relative flex w-16 flex-col items-center gap-1 py-1.5 text-ink-faint hover:text-ink-muted disabled:opacity-50 sm:mt-auto"
-        disabled={loggingOut}
-        onclick={logout}
-    >
-        <LogOut class="icon relative size-5" />
-        <span class="type-meta relative">Logout</span>
-    </button>
+    <!-- MAIN -->
+    {@render link('/(app)', 'Notes', StickyNote)}
+
+    <!-- ACCOUNT | settings carry the user admin too -->
+    <div class="contents sm:mt-auto sm:flex sm:flex-col sm:gap-2">
+        {@render link('/(app)/settings', 'Settings', Settings)}
+        <button class="item" aria-label="Logout" disabled={loggingOut} onclick={logout}>
+            <LogOut class="icon relative size-6" strokeWidth={1.75} />
+            <span class="tip type-meta" aria-hidden="true">Logout</span>
+        </button>
+    </div>
 
 </nav>
 
 <style>
-    /* Icons lift a little on hover and spring back */
+    .item {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: var(--layout-radius-card);
+        color: var(--theme-ink-faint);
+        transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out), scale var(--duration-base) var(--ease-spring);
+    }
+
+    .item:hover {
+        color: var(--theme-ink);
+        background: var(--theme-line);
+    }
+
+    .item:active {
+        scale: 0.92;
+    }
+
+    .item:disabled {
+        opacity: 0.5;
+    }
+
+    .item.active {
+        color: var(--theme-on-accent);
+        background: transparent;
+    }
+
+    /* Icons tilt a little on hover and spring back */
     .item :global(.icon) {
-        transition: translate var(--duration-base) var(--ease-spring);
+        transition: rotate var(--duration-base) var(--ease-spring), scale var(--duration-base) var(--ease-spring);
     }
 
     .item:hover :global(.icon) {
-        translate: 0 -2px;
+        rotate: -8deg;
+        scale: 1.08;
+    }
+
+    /* LABEL | slides out of the rail on hover, phones have no hover and never show it */
+    .tip {
+        position: absolute;
+        left: calc(100% + 0.75rem);
+        padding: 0.5rem 0.75rem;
+        border-radius: var(--layout-radius-control);
+        background: var(--theme-raised);
+        color: var(--theme-ink);
+        white-space: nowrap;
+        box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.5);
+        pointer-events: none;
+        opacity: 0;
+        translate: -0.5rem 0;
+        transition: opacity var(--duration-fast) var(--ease-out), translate var(--duration-base) var(--ease-spring);
+    }
+
+    @media (hover: hover) and (min-width: 40rem) {
+        .item:hover .tip,
+        .item:focus-visible .tip {
+            opacity: 1;
+            translate: 0 0;
+        }
     }
 
     /* Fallback for browsers without view transitions, there the indicator pops in place instead of gliding */
@@ -85,6 +125,6 @@
     }
 
     @keyframes indicator-in {
-        from { opacity: 0; scale: 0.5 1; }
+        from { opacity: 0; scale: 0.5; }
     }
 </style>

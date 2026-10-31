@@ -62,13 +62,15 @@ Until the `theming` and `motion` skills exist:
 
 - **Palette** in `src/app.css` `@theme`. Themes in `#lib/themes/*.css` set `--theme-*` colors and may override the `--layout-*` defaults (widths, gutters, gaps, paddings, radii). `@theme inline` maps both onto utilities like `bg-card`, `text-ink-muted`, `p-card`, `w-rail`. Components use those utilities only, never palette colors directly.
 - **Theme choice** is a cookie, rendered into `%theme%` by `hooks.server.ts` so the first paint is right. `#lib/themes/switch.ts` reveals the new theme as a circle from the click point.
+- **Label tabs** sit on the top or bottom card edge, a per-device `labels` cookie (`#lib/preferences.ts`) rendered into `<html data-labels>` the same way.
+- **Settings page** has four sections: Appearance (device preferences), Behaviour, Account, Users (admin only).
 - **Motion tokens** (`--ease-*`, `--duration-*`) live in CSS. `#lib/motion.ts` reads them for JS transitions (`rise`, `sink`, `stagger`) and returns 0 durations under reduced motion.
 - **Page changes** use view transitions from the root layout; `.vt-rail`, `.vt-page` and `.vt-rail-indicator` name the moving parts.
 
 ## Decisions
 
 - **No encryption** beyond TLS for now. E2E was considered and dropped (2026-10-31): too costly for search, sharing and reminder text.
-- **Groups are labels**: a note can carry several, groups act as filters.
+- **Groups are labels**: a note can carry several, groups act as filters. Each label has a colour from the note palette and shows as a folder tab on the card's edge, named only on hover.
 - **Accounts by admin invite** with a set-password link, as in fsd-flight-check. No open signup.
 - **Android via Tauri 2 mobile**, reusing the Svelte UI; Kotlin plugin for share target and notification actions.
 - **Dark-first**: Charcoal base, Platinum text, Tangerine accent, Powder Blue secondary. Light theme derived from it.
@@ -79,4 +81,4 @@ Until the `theming` and `motion` skills exist:
 - **One reminder per note**, stored with its own IANA timezone so fixed times of day survive DST and dates render the same on server and client. `next` is the coming occurrence, `sent` the last pushed one, `done` the occurrence checked off. Missed occurrences collapse into one push.
 - **Done links are signed**: the ntfy button posts `{occurrence, signature}`, an HMAC over reminder id and occurrence with `SERVER_AUTH_SECRET`. No login on the phone needed, and a stale button does nothing.
 - **No versioned migrations before the first release**: `pocketbase/pb_schema.json` is the schema, dev re-imports it on every `POST /api/migration`.
-- **Note colours** are theme tokens (`bg-note-*`), each theme mixes them into its own base. Notes store the colour name, never a hex value.
+- **Note colours** are names from `NOTE_COLORS` (tints, solids, stickies, textures), shared by notes and labels and stored as the name, never a hex value. Adding one means `schemas.ts`, both `color` selects in `pb_schema.json` and `note_colors.css`. Elements set `data-note`, `#lib/note_colors.css` paints `.note-surface` and `.note-mark` from it. Tints and stickies come from each theme's `--theme-note-*`. Its WHITE INK and DARK INK groups override the `--theme-*` tokens inside the note, so components get readable ink without knowing.

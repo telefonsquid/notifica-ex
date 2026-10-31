@@ -4,23 +4,16 @@
 	import { page } from '$app/state';
 	import NoteCard from '#lib/components/NoteCard.svelte';
 	import NoteEditor from '#lib/components/NoteEditor.svelte';
-	import PageHeader from '#lib/components/PageHeader.svelte';
 	import { rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onRecordChange } from '#lib/realtime.ts';
-	import type { Note, NoteKind } from '#lib/schemas.ts';
-	import Button from '#lib/ui/Button.svelte';
-	import { ListChecks, Plus, Search, X } from '@lucide/svelte';
+	import type { Note } from '#lib/schemas.ts';
+	import { Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
+	import { Popover } from 'bits-ui';
 	import { flip } from 'svelte/animate';
 	import { getLabels } from '../api/labels.remote';
 	import { getNotes, updateNote } from '../api/notes.remote';
 	import { getReminders, setReminderDone } from '../api/reminders.remote';
-	import type { PageProps } from './$types';
-
-	// PROPS
-	let { data }: PageProps = $props();
-
-	const firstName = $derived(data.user.name?.split(' ')[0]);
 
 	// DATA | refreshed by every command and by realtime events from other devices
 	let [notes, labels, reminders] = $derived(await Promise.all([getNotes(), getLabels(), getReminders()]));
@@ -43,6 +36,7 @@
 	let view = $state<View>('notes');
 	let label = $state<string | null>(null);
 	let search = $state('');
+	let filtered = $derived(view !== 'notes' || !!label);
 
 	let visible = $derived.by(() => {
 		const words = search.toLowerCase().split(/\s+/).filter(Boolean);
@@ -54,21 +48,37 @@
 			return words.every((word) => text.includes(word));
 		});
 
-		// Reminders run in the order they go off, the rest keep pinned first
-		if (view !== 'reminders') return shown;
-		const next = (note: Note) => remindersByNote.get(note.id)?.next || '9999';
-		return shown.toSorted((a, b) => next(a).localeCompare(next(b)));
+		// Reminders run in the order they go off, notes put pinned ones first
+		if (view === 'reminders') {
+			const next = (note: Note) => remindersByNote.get(note.id)?.next || '9999';
+			return shown.toSorted((a, b) => next(a).localeCompare(next(b)));
+		}
+		if (view === 'notes') return shown.toSorted((a, b) => Number(b.pinned) - Number(a.pinned));
+		return shown;
 	});
 
-	let pinned = $derived(view === 'notes' ? visible.filter((note) => note.pinned) : []);
-	let others = $derived(view === 'notes' ? visible.filter((note) => !note.pinned) : visible);
+	// Slash jumps to the search like on most sites
+	let searchInput = $state<HTMLInputElement>();
+
+	function focusSearch(event: KeyboardEvent) {
+		const target = event.target as HTMLElement;
+		if (event.key !== '/' || target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+		event.preventDefault();
+		searchInput?.focus();
+	}
 
 	// EDITOR | a key per opening, so every note starts with a fresh draft
-	let editing = $state<{ key: number; note: Note | null; kind: NoteKind } | null>(null);
+	type Origin = { x: number; y: number };
+	let editing = $state<{ key: number; note: Note | null; origin?: Origin } | null>(null);
 	let opened = 0;
 
-	function edit(note: Note | null, kind: NoteKind = 'text') {
-		editing = { key: ++opened, note, kind };
+	function edit(note: Note | null, origin?: Origin) {
+		editing = { key: ++opened, note, origin };
+	}
+
+	function create(button: HTMLElement) {
+		const box = button.getBoundingClientRect();
+		edit(null, { x: box.left + box.width / 2, y: box.top + box.height / 2 });
 	}
 
 	// Notification taps land on /?note=id
@@ -96,81 +106,96 @@
 	<title>Notes · notifica-ex</title>
 </svelte:head>
 
-<PageHeader eyebrow={firstName ? `Hi ${firstName}` : undefined} title="Notes">
-	{#snippet actions()}
-		<Button style="secondary" icon={ListChecks} onclick={() => edit(null, 'list')}>List</Button>
-		<Button icon={Plus} onclick={() => edit(null)}>Note</Button>
-	{/snippet}
-</PageHeader>
+<svelte:window onkeydown={focusSearch} />
 
-<!-- FILTERS -->
-<div class="mb-8 flex flex-col gap-4">
-	<div class="flex flex-wrap items-center gap-3">
-		<div class="flex items-center gap-1 rounded-control bg-line p-1" role="group" aria-label="View">
-			{#each VIEWS as option (option.value)}
-				<button
-					class={['type-meta motion-interactive rounded-[calc(var(--layout-radius-control)-0.25rem)] px-3.5 py-2', view === option.value ? 'bg-raised text-ink' : 'text-ink-faint hover:text-ink-muted']}
-					aria-pressed={view === option.value}
-					onclick={() => (view = option.value)}
-				>
-					{option.label}
-				</button>
-			{/each}
-		</div>
+<!-- Centered as a whole while few notes are around, the page scrolls once they fill the screen -->
+<div class="my-auto flex flex-col gap-[clamp(2.5rem,9dvh,6.5rem)]">
 
-		<label class="motion-interactive flex h-10 min-w-0 flex-1 items-center gap-2 rounded-control border border-line bg-card px-3 text-ink-faint focus-within:border-accent sm:max-w-xs">
-			<Search class="size-4 shrink-0" />
-			<input bind:value={search} placeholder="Search" class="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink-faint" />
-			{#if search}
-				<button aria-label="Clear search" onclick={() => (search = '')}><X class="size-4" /></button>
-			{/if}
-		</label>
-	</div>
+<!-- TOOLBAR -->
+<div class="mx-auto flex w-full max-w-xl items-center gap-3">
+	<label class="motion-interactive flex h-12 min-w-0 flex-1 items-center gap-2.5 rounded-full border border-line bg-card pr-2 pl-4 text-ink-faint focus-within:border-accent hover:border-line-strong">
+		<Search class="size-4 shrink-0" />
+		<input bind:this={searchInput} bind:value={search} placeholder="Search" aria-label="Search notes" class="min-w-0 flex-1 bg-transparent text-ink outline-none placeholder:text-ink-faint" />
+		{#if search}
+			<button class="icon-button rounded-full p-1.5" aria-label="Clear search" onclick={() => (search = '')}><X class="size-4" /></button>
+		{:else}
+			<kbd class="type-meta mr-1.5 hidden rounded-md border border-line px-1.5 py-0.5 text-ink-faint sm:block" aria-hidden="true">/</kbd>
+		{/if}
+	</label>
 
-	{#if labels.length}
-		<div class="flex flex-wrap gap-1.5" role="group" aria-label="Labels">
-			{#each labels as item (item.id)}
-				<button
-					class={['type-meta motion-interactive rounded-full border px-3 py-1.5', label === item.id ? 'border-accent bg-accent-soft text-accent' : 'border-line text-ink-faint hover:text-ink-muted']}
-					aria-pressed={label === item.id}
-					onclick={() => (label = label === item.id ? null : item.id)}
-				>
-					{item.name}
-				</button>
-			{/each}
-		</div>
-	{/if}
+	<!-- FILTER -->
+	<Popover.Root>
+		<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full border bg-card hover:border-line-strong hover:text-ink', filtered ? 'border-accent text-accent' : 'border-line text-ink-faint']} aria-label="Filter">
+			<ListFilter class="size-5" />
+			{#if filtered}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
+		</Popover.Trigger>
+		<Popover.Portal>
+			<Popover.Content sideOffset={10} collisionPadding={12} class="filters z-40 grid w-72 gap-5 rounded-card border border-line-strong bg-raised p-4 text-ink shadow-2xl">
+				<div class="grid grid-cols-3 gap-1 rounded-control bg-line p-1" role="group" aria-label="View">
+					{#each VIEWS as option (option.value)}
+						<button
+							class={['type-meta motion-interactive rounded-[calc(var(--layout-radius-control)-0.25rem)] py-2', view === option.value ? 'bg-card text-ink' : 'text-ink-faint hover:text-ink-muted']}
+							aria-pressed={view === option.value}
+							onclick={() => (view = option.value)}
+						>
+							{option.label}
+						</button>
+					{/each}
+				</div>
+
+				{#if labels.length}
+					<div>
+						<p class="type-meta mb-2 text-ink-faint">Labels</p>
+						<ul class="-mx-2 grid max-h-64 overflow-y-auto">
+							{#each labels as item (item.id)}
+								<li>
+									<button
+										class={['motion-interactive flex w-full items-center gap-3 rounded-control px-2 py-2 text-left hover:bg-line', label === item.id ? 'text-ink' : 'text-ink-muted']}
+										aria-pressed={label === item.id}
+										onclick={() => (label = label === item.id ? null : item.id)}
+									>
+										<span class="note-mark h-2 w-6 shrink-0 rounded-full" data-note={item.color || undefined}></span>
+										<span class="min-w-0 flex-1 truncate">{item.name}</span>
+										{#if label === item.id}<Check class="size-4 text-accent" />{/if}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</div>
+				{/if}
+
+				{#if filtered}
+					<button class="type-meta justify-self-start text-ink-faint hover:text-ink" onclick={() => { view = 'notes'; label = null; }}>Reset</button>
+				{/if}
+			</Popover.Content>
+		</Popover.Portal>
+	</Popover.Root>
+
+	<!-- CREATE | the editor grows out of this button -->
+	<button class="create grid size-16 shrink-0 place-items-center rounded-full text-on-accent" aria-label="New note" onclick={(event) => create(event.currentTarget)}>
+		<Plus class="plus size-7" strokeWidth={2.25} />
+	</button>
 </div>
 
 <!-- NOTES -->
-{#snippet grid(list: Note[])}
+{#if visible.length}
 	<div class="note-grid items-start">
-		{#each list as note, index (note.id)}
+		{#each visible as note, index (note.id)}
 			<div animate:flip={{ duration: 280 }} in:rise={{ delay: stagger(index) }}>
 				<NoteCard
 					{note}
 					labels={labelsById}
 					reminder={remindersByNote.get(note.id)}
-					onopen={() => edit(note)}
+					onopen={(origin) => edit(note, origin)}
 					ontoggle={(itemId) => toggleItem(note, itemId)}
 					ondone={() => markDone(note)}
 				/>
 			</div>
 		{/each}
 	</div>
-{/snippet}
-
-{#if pinned.length}
-	<h2 class="type-meta mb-3 text-ink-faint">Pinned</h2>
-	{@render grid(pinned)}
-	{#if others.length}<h2 class="type-meta mt-10 mb-3 text-ink-faint">Others</h2>{/if}
-{/if}
-
-{#if others.length}
-	{@render grid(others)}
-{:else if !pinned.length}
+{:else}
 	<!-- EMPTY STATE -->
-	<section class="flex flex-col items-center py-16 text-center sm:py-24">
+	<section class="flex flex-col items-center pb-8 text-center">
 		{#if notes.length === 0}
 			<!-- Three loose sheets that drift on their own and fan out on hover -->
 			<div class="stack relative mb-12 h-44 w-40" aria-hidden="true">
@@ -193,11 +218,13 @@
 	</section>
 {/if}
 
+</div>
+
 {#if editing}
 	{#key editing.key}
 		<NoteEditor
 			note={editing.note}
-			kind={editing.kind}
+			origin={editing.origin}
 			{labels}
 			reminders={remindersByNote}
 			onclose={() => (editing = null)}
@@ -206,6 +233,80 @@
 {/if}
 
 <style>
+	/* CREATE | a silver ring spins up behind the fill while hovered */
+	.create {
+		position: relative;
+		isolation: isolate;
+		transition: scale var(--duration-base) var(--ease-spring);
+	}
+
+	.create::before,
+	.create::after {
+		content: '';
+		position: absolute;
+		z-index: -1;
+		border-radius: inherit;
+	}
+
+	.create::before {
+		inset: -0.25rem;
+		background: conic-gradient(#fff, #8c8c8c, #ececec, #6e6e6e, #fff); /* Light and dark streaks read as metal on both themes */
+		opacity: 0;
+		transition: opacity var(--duration-base) var(--ease-out);
+		animation: spin 2.4s linear infinite;
+	}
+
+	.create::after {
+		inset: 0;
+		background: var(--theme-accent);
+		box-shadow: 0 0.75rem 2rem -0.5rem color-mix(in oklab, var(--theme-accent) 55%, transparent);
+		transition: box-shadow var(--duration-base) var(--ease-out);
+	}
+
+	.create:hover::before,
+	.create:focus-visible::before {
+		opacity: 1;
+	}
+
+	.create:hover::after {
+		box-shadow: 0 1rem 2.75rem -0.5rem color-mix(in oklab, var(--theme-accent) 75%, transparent);
+	}
+
+	.create:hover {
+		scale: 1.06;
+	}
+
+	.create:active {
+		scale: 0.92;
+	}
+
+	.create :global(.plus) {
+		transition: rotate var(--duration-slow) var(--ease-spring);
+	}
+
+	.create:hover :global(.plus) {
+		rotate: 90deg;
+	}
+
+	@keyframes spin {
+		to { rotate: 1turn; }
+	}
+
+	/* FILTERS */
+	:global(.filters[data-state='open']) {
+		transform-origin: var(--bits-popover-content-transform-origin);
+		animation: pop-in var(--duration-base) var(--ease-spring);
+	}
+
+	:global(.filters[data-state='closed']) {
+		transform-origin: var(--bits-popover-content-transform-origin);
+		animation: pop-in var(--duration-fast) var(--ease-in) reverse forwards;
+	}
+
+	@keyframes pop-in {
+		from { opacity: 0; scale: 0.94; }
+	}
+
 	.sheet {
 		transition: translate var(--duration-slow) var(--ease-spring), rotate var(--duration-slow) var(--ease-spring);
 	}
@@ -223,6 +324,7 @@
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.sheet-front { animation: none; }
+		.sheet-front,
+		.create::before { animation: none; }
 	}
 </style>

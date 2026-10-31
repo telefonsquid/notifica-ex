@@ -8,6 +8,7 @@ export const LIMITS = {
     TIMESTAMP: 64,
     MIGRATION_VERSION: 32,              // semver of the app release a migration belongs to
     TOKEN_KEY: 128,                     // pocketbase auth token
+    RESET_TOKEN: 2048,                  // jwt from the set password link
     EXPAND_KEY: 128,                    // relation name pocketbase expanded into a record
 
     // TEXT => NAMES

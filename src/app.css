@@ -2,6 +2,7 @@
 @import '@fontsource-variable/archivo/wdth.css';
 @import './lib/themes/charcoal.css';
 @import './lib/themes/platinum.css';
+@import './lib/note_colors.css';
 
 /*
     Three layers, outermost first:
@@ -68,10 +69,49 @@
     --color-powder-900: #3a484b;
     --color-powder-950: #232e30;
 
-    /* NOTE TINTS | only mixed into note backgrounds, the named scales above cover the rest */
-    --color-moss-400: #8fa876;
+    /* NOTE COLORS | 400 is the soft base themes mix into their cards, 600 the solid with white ink */
     --color-rose-400: #d98a96;
+    --color-rose-600: #c23a5a;
     --color-violet-400: #a495cf;
+    --color-violet-600: #6a4fc9;
+    --color-cobalt-400: #7f9be6;
+    --color-cobalt-600: #2f5bd3;
+    --color-teal-400: #6fb8ad;
+    --color-teal-600: #157f74;
+    --color-moss-400: #8fa876;
+    --color-moss-600: #4f7a3a;
+    --color-ochre-400: #d9b25f;
+    --color-ochre-600: #a86f0e;
+    --color-kraft-500: #94714a;
+
+    /* MORE NOTE COLORS | picked from Nord, Catppuccin, Solarized, Dracula and Gruvbox */
+    --color-lemon-400: #e3cf5c;
+    --color-coral-400: #ee977c;
+    --color-coral-600: #d0543a;
+    --color-cherry-400: #e07b7f;
+    --color-cherry-600: #b02434;
+    --color-magenta-400: #dc8cc6;
+    --color-magenta-600: #b1307f;
+    --color-plum-400: #b48aab;
+    --color-plum-600: #6f2e64;
+    --color-sky-400: #7cc4e6;
+    --color-sky-600: #1d84b5;
+    --color-mint-400: #86d4b2;
+    --color-mint-600: #2b9469;
+    --color-forest-600: #2e5a3e;
+    --color-slate-400: #94a2b4;
+    --color-slate-600: #4b5a6e;
+    --color-midnight-600: #262c5e;
+    --color-chalk-700: #2f4b3d;
+
+    /* STICKIES | bright paper as on sticky notes, canary is the classic yellow */
+    --color-canary: #fff07a;
+    --color-apricot: #ffc58a;
+    --color-bubblegum: #ff9fc9;
+    --color-lilac: #cfb8ff;
+    --color-aqua: #91e0ef;
+    --color-lime: #cdef7b;
+    --color-legal: #fbeea4;
 
     /* TYPE */
     --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
@@ -91,11 +131,12 @@
 :root {
 
     /* LAYOUT */
-    --layout-rail-width: 4.75rem;
+    --layout-rail-width: 5.5rem;
     --layout-topbar-height: 4.25rem;
     --layout-content-max: 82rem;
     --layout-content-gutter: clamp(1rem, 4vw, 3rem);
     --layout-note-min: 15rem;
+    --layout-note-max: 20rem;
     --layout-note-gap: 0.875rem;
     --layout-card-padding: 1.125rem;
 
@@ -145,14 +186,6 @@
     --color-secondary: var(--theme-secondary);
     --color-secondary-soft: var(--theme-secondary-soft);
 
-    /* NOTE COLORS | names match NOTE_COLORS in #lib/schemas.ts */
-    --color-note-tangerine: var(--theme-note-tangerine);
-    --color-note-powder: var(--theme-note-powder);
-    --color-note-platinum: var(--theme-note-platinum);
-    --color-note-moss: var(--theme-note-moss);
-    --color-note-rose: var(--theme-note-rose);
-    --color-note-violet: var(--theme-note-violet);
-
     /* LAYOUT */
     --spacing-rail: var(--layout-rail-width);
     --spacing-topbar: var(--layout-topbar-height);
@@ -189,11 +222,12 @@
     text-transform: uppercase;
 }
 
-/* NOTE GRID | columns follow the note width token instead of fixed breakpoints */
+/* NOTE GRID | a few notes huddle in the middle, many fill the whole width | rows leave room for the label tabs */
 @utility note-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--layout-note-min)), 1fr));
-    gap: var(--layout-note-gap);
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--layout-note-min)), var(--layout-note-max)));
+    justify-content: center;
+    gap: calc(var(--layout-note-gap) + 0.5rem) var(--layout-note-gap);
 }
 
 /* TRANSITION SHORTHAND | for hover and press states on interactive elements */

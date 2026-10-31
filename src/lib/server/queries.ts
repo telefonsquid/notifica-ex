@@ -146,6 +146,17 @@ export async function getReminderOfNote(note: string, owner: string) {
     return await pbErrorHandler(pb.collection('reminders').getFirstListItem(filter) as Promise<Reminder>)
 }
 
+// Sends the set password mail, the same one invites use
+export async function requestPasswordReset(email: string) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection('users').requestPasswordReset(email))
+}
+
+export async function confirmPasswordReset(token: string, password: string, passwordConfirm: string) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection('users').confirmPasswordReset(token, password, passwordConfirm))
+}
+
 export async function login(email: string, password: string) {
     const pb = getRequestEvent().locals.pb // the request's own connection, so the hook can export its auth as a cookie
     return await pbErrorHandler(pb.collection('users').authWithPassword(email, password))

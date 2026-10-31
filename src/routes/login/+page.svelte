@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { cssEasing, duration, rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
+	import Backdrop from '#lib/ui/Backdrop.svelte';
 	import Button from '#lib/ui/Button.svelte';
 	import Input from '#lib/ui/Input.svelte';
 	import Logo from '#lib/ui/Logo.svelte';
@@ -46,11 +47,7 @@
 	<title>Login · notifica-ex</title>
 </svelte:head>
 
-<!-- BACKDROP | two soft color fields drifting slowly behind the form -->
-<div class="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
-	<div class="blob blob-accent absolute -top-1/4 -left-1/4 size-[70vmax] rounded-full"></div>
-	<div class="blob blob-secondary absolute -right-1/4 -bottom-1/3 size-[60vmax] rounded-full"></div>
-</div>
+<Backdrop />
 
 <main class="relative grid min-h-dvh place-items-center px-gutter py-12">
 	{#if mounted}
@@ -90,31 +87,6 @@
 </main>
 
 <style>
-	.blob {
-		filter: blur(90px);
-		opacity: 0.55;
-		animation: wander 26s var(--ease-in-out) infinite alternate;
-	}
-
-	.blob-accent {
-		background: radial-gradient(circle, var(--theme-accent-soft), transparent 65%);
-	}
-
-	.blob-secondary {
-		background: radial-gradient(circle, var(--theme-secondary-soft), transparent 65%);
-		animation-duration: 32s;
-		animation-direction: alternate-reverse;
-	}
-
-	@keyframes wander {
-		from { translate: 0 0; scale: 1; }
-		to { translate: 12vmax 8vmax; scale: 1.15; }
-	}
-
-	@media (prefers-reduced-motion: reduce) {
-		.blob { animation: none; }
-	}
-
 	/* Arrow nudges forward when the button is hovered */
 	form :global(.arrow) {
 		transition: translate var(--duration-base) var(--ease-spring);

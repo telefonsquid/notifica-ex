@@ -1,5 +1,6 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 
+import type { LabelPosition } from '#lib/preferences.ts';
 import type { User } from '#lib/schemas.ts';
 import type { ThemeName } from '#lib/themes/index.ts';
 import type PocketBase from 'pocketbase';
@@ -15,6 +16,7 @@ declare global {
 
 			// APPEARANCE
 			theme: ThemeName
+			labelPosition: LabelPosition
 
 		}
 

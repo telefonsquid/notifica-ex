@@ -1,5 +1,6 @@
 // IMPORTS
 import { INTERNAL_POCKETBASE_URL } from '$app/env/private'
+import { DEFAULT_LABEL_POSITION, LABEL_POSITION_COOKIE, isLabelPosition } from '#lib/preferences.ts'
 import type { User } from '#lib/schemas.ts'
 import { DEFAULT_THEME, THEME_COOKIE, isThemeName } from '#lib/themes/index.ts'
 import { sequence, type Handle, type HandleServerError } from '@sveltejs/kit/hooks'
@@ -50,13 +51,16 @@ const authenticate = (async ({ event, resolve }) => {
 
 const applyTheme = (async ({ event, resolve }) => {
 
-    // READ THEME FROM COOKIE, FALL BACK FOR UNKNOWN OR MISSING ONES
+    // READ PREFERENCES FROM COOKIES, FALL BACK FOR UNKNOWN OR MISSING ONES
     const theme = event.cookies.get(THEME_COOKIE)
     event.locals.theme = isThemeName(theme) ? theme : DEFAULT_THEME
 
-    // RENDER THE THEME INTO THE HTML | set before first paint so the page never flashes the wrong colors
+    const labels = event.cookies.get(LABEL_POSITION_COOKIE)
+    event.locals.labelPosition = isLabelPosition(labels) ? labels : DEFAULT_LABEL_POSITION
+
+    // RENDER THEM INTO THE HTML | set before first paint so the page never flashes the wrong look
     return resolve(event, {
-        transformPageChunk: ({ html }) => html.replace('%theme%', event.locals.theme)
+        transformPageChunk: ({ html }) => html.replace('%theme%', event.locals.theme).replace('%labels%', event.locals.labelPosition)
     })
 
 }) satisfies Handle

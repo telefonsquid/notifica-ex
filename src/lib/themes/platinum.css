@@ -21,13 +21,33 @@
     --theme-secondary: var(--color-powder-600);
     --theme-secondary-soft: color-mix(in oklab, var(--color-powder-400) 20%, transparent);
 
-    /* NOTES */
+    /* NOTE TINTS */
+    --theme-note-lemon: color-mix(in oklab, var(--color-lemon-400) 36%, var(--color-platinum-50));
+    --theme-note-ochre: color-mix(in oklab, var(--color-ochre-400) 32%, var(--color-platinum-50));
     --theme-note-tangerine: color-mix(in oklab, var(--color-tangerine-300) 28%, var(--color-platinum-50));
-    --theme-note-powder: color-mix(in oklab, var(--color-powder-300) 40%, var(--color-platinum-50));
-    --theme-note-platinum: color-mix(in oklab, var(--color-platinum-300) 45%, var(--color-platinum-50));
-    --theme-note-moss: color-mix(in oklab, var(--color-moss-400) 30%, var(--color-platinum-50));
+    --theme-note-coral: color-mix(in oklab, var(--color-coral-400) 28%, var(--color-platinum-50));
     --theme-note-rose: color-mix(in oklab, var(--color-rose-400) 28%, var(--color-platinum-50));
+    --theme-note-magenta: color-mix(in oklab, var(--color-magenta-400) 26%, var(--color-platinum-50));
     --theme-note-violet: color-mix(in oklab, var(--color-violet-400) 30%, var(--color-platinum-50));
+    --theme-note-cobalt: color-mix(in oklab, var(--color-cobalt-400) 28%, var(--color-platinum-50));
+    --theme-note-sky: color-mix(in oklab, var(--color-sky-400) 30%, var(--color-platinum-50));
+    --theme-note-powder: color-mix(in oklab, var(--color-powder-300) 40%, var(--color-platinum-50));
+    --theme-note-teal: color-mix(in oklab, var(--color-teal-400) 30%, var(--color-platinum-50));
+    --theme-note-mint: color-mix(in oklab, var(--color-mint-400) 32%, var(--color-platinum-50));
+    --theme-note-moss: color-mix(in oklab, var(--color-moss-400) 30%, var(--color-platinum-50));
+    --theme-note-slate: color-mix(in oklab, var(--color-slate-400) 30%, var(--color-platinum-50));
+    --theme-note-platinum: color-mix(in oklab, var(--color-platinum-300) 45%, var(--color-platinum-50));
+
+    /* NOTE STICKIES | full strength on light paper */
+    --theme-note-canary: var(--color-canary);
+    --theme-note-apricot: var(--color-apricot);
+    --theme-note-bubblegum: var(--color-bubblegum);
+    --theme-note-lilac: var(--color-lilac);
+    --theme-note-aqua: var(--color-aqua);
+    --theme-note-lime: var(--color-lime);
+
+    /* NOTE SHADE */
+    --theme-note-shade: rgb(0 0 0 / 0.06);
 
     /* LAYOUT */
     --layout-note-gap: 1.125rem;

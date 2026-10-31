@@ -1,0 +1,338 @@
+/*
+    NOTE COLORS | one [data-note] rule per name in NOTE_COLORS (#lib/schemas.ts)
+    --note-bg       surface of the note
+    --note-texture  optional pattern on top of that surface
+    --note-mark     label tab color, stronger than a tint so it stands out next to any card
+*/
+
+
+
+/* SURFACES ==================================================================================================== */
+/* Plain elements fall back to the theme on their own, the variables inherit and would leak a parent's color */
+.note-surface {
+    background-color: var(--theme-card);
+}
+
+.note-surface[data-note] {
+    background-color: var(--note-bg);
+    background-image: var(--note-texture);
+    background-size: var(--note-texture-size);
+    background-position: var(--note-texture-position);
+}
+
+.note-mark {
+    background: var(--theme-line-strong);
+    color: var(--theme-ink);
+}
+
+.note-mark[data-note] {
+    background: var(--note-mark);
+    color: var(--note-mark-ink);
+}
+
+[data-note] {
+    --note-texture: none;
+    --note-texture-size: auto;
+    --note-texture-position: 0 0;
+    --note-mark-ink: var(--color-charcoal-950);
+    --note-pattern: color-mix(in oklab, var(--theme-ink) 10%, transparent);
+}
+
+
+
+/* TINTS ==================================================================================================== */
+[data-note='lemon'] { --note-bg: var(--theme-note-lemon); --note-mark: var(--color-lemon-400); }
+[data-note='ochre'] { --note-bg: var(--theme-note-ochre); --note-mark: var(--color-ochre-400); }
+[data-note='tangerine'] { --note-bg: var(--theme-note-tangerine); --note-mark: var(--color-tangerine-400); }
+[data-note='coral'] { --note-bg: var(--theme-note-coral); --note-mark: var(--color-coral-400); }
+[data-note='rose'] { --note-bg: var(--theme-note-rose); --note-mark: var(--color-rose-400); }
+[data-note='magenta'] { --note-bg: var(--theme-note-magenta); --note-mark: var(--color-magenta-400); }
+[data-note='violet'] { --note-bg: var(--theme-note-violet); --note-mark: var(--color-violet-400); }
+[data-note='cobalt'] { --note-bg: var(--theme-note-cobalt); --note-mark: var(--color-cobalt-400); }
+[data-note='sky'] { --note-bg: var(--theme-note-sky); --note-mark: var(--color-sky-400); }
+[data-note='powder'] { --note-bg: var(--theme-note-powder); --note-mark: var(--color-powder-300); }
+[data-note='teal'] { --note-bg: var(--theme-note-teal); --note-mark: var(--color-teal-400); }
+[data-note='mint'] { --note-bg: var(--theme-note-mint); --note-mark: var(--color-mint-400); }
+[data-note='moss'] { --note-bg: var(--theme-note-moss); --note-mark: var(--color-moss-400); }
+[data-note='slate'] { --note-bg: var(--theme-note-slate); --note-mark: var(--color-slate-400); }
+[data-note='platinum'] { --note-bg: var(--theme-note-platinum); --note-mark: var(--color-platinum-300); }
+
+
+
+/* SOLIDS ==================================================================================================== */
+[data-note='ochre-solid'] { --note-bg: var(--theme-note-ochre-solid); }
+[data-note='tangerine-solid'] { --note-bg: var(--theme-note-tangerine-solid); }
+[data-note='coral-solid'] { --note-bg: var(--theme-note-coral-solid); }
+[data-note='cherry-solid'] { --note-bg: var(--theme-note-cherry-solid); }
+[data-note='rose-solid'] { --note-bg: var(--theme-note-rose-solid); }
+[data-note='magenta-solid'] { --note-bg: var(--theme-note-magenta-solid); }
+[data-note='plum-solid'] { --note-bg: var(--theme-note-plum-solid); }
+[data-note='violet-solid'] { --note-bg: var(--theme-note-violet-solid); }
+[data-note='midnight-solid'] { --note-bg: var(--theme-note-midnight-solid); }
+[data-note='cobalt-solid'] { --note-bg: var(--theme-note-cobalt-solid); }
+[data-note='sky-solid'] { --note-bg: var(--theme-note-sky-solid); }
+[data-note='powder-solid'] { --note-bg: var(--theme-note-powder-solid); }
+[data-note='teal-solid'] { --note-bg: var(--theme-note-teal-solid); }
+[data-note='mint-solid'] { --note-bg: var(--theme-note-mint-solid); }
+[data-note='moss-solid'] { --note-bg: var(--theme-note-moss-solid); }
+[data-note='forest-solid'] { --note-bg: var(--theme-note-forest-solid); }
+[data-note='slate-solid'] { --note-bg: var(--theme-note-slate-solid); }
+[data-note='platinum-solid'] { --note-bg: var(--theme-note-platinum-solid); }
+
+
+
+/* STICKIES ==================================================================================================== */
+[data-note='canary'] { --note-bg: var(--theme-note-canary); }
+[data-note='apricot'] { --note-bg: var(--theme-note-apricot); }
+[data-note='bubblegum'] { --note-bg: var(--theme-note-bubblegum); }
+[data-note='lilac'] { --note-bg: var(--theme-note-lilac); }
+[data-note='aqua'] { --note-bg: var(--theme-note-aqua); }
+[data-note='lime'] { --note-bg: var(--theme-note-lime); }
+
+
+
+/* INK ==================================================================================================== */
+/* WHITE INK | every theme token used inside a note turns light, so all components read well without knowing */
+[data-note$='-solid'],
+[data-note='kraft'],
+[data-note='chalkboard'],
+[data-note='blueprint'],
+[data-note='starry'],
+[data-note='aurora'],
+[data-note='sunset'] {
+    color-scheme: dark;
+    --note-mark: var(--note-bg);
+    --note-mark-ink: #fff;
+    --note-pattern: rgb(255 255 255 / 0.14);
+
+    --theme-card: rgb(0 0 0 / 0.14);
+    --theme-raised: rgb(255 255 255 / 0.22);
+    --theme-line: rgb(255 255 255 / 0.16);
+    --theme-line-strong: rgb(255 255 255 / 0.32);
+    --theme-ink: #fff;
+    --theme-ink-muted: rgb(255 255 255 / 0.86);
+    --theme-ink-faint: rgb(255 255 255 / 0.62);
+    --theme-accent: #fff;
+    --theme-accent-soft: rgb(255 255 255 / 0.2);
+    --theme-on-accent: var(--note-bg);
+    --theme-secondary: #fff;
+    --theme-secondary-soft: rgb(255 255 255 / 0.18);
+    --theme-note-shade: rgb(0 0 0 / 0.2);
+}
+
+/* DARK INK | the same for bright paper, so the dark theme does not put light text on yellow */
+[data-note='canary'],
+[data-note='apricot'],
+[data-note='bubblegum'],
+[data-note='lilac'],
+[data-note='aqua'],
+[data-note='lime'],
+[data-note='legal'],
+[data-note='holo'] {
+    color-scheme: light;
+    --note-mark: var(--note-bg);
+    --note-pattern: rgb(0 0 0 / 0.1);
+
+    --theme-card: rgb(255 255 255 / 0.32);
+    --theme-raised: rgb(255 255 255 / 0.6);
+    --theme-line: rgb(0 0 0 / 0.12);
+    --theme-line-strong: rgb(0 0 0 / 0.24);
+    --theme-ink: var(--color-charcoal-950);
+    --theme-ink-muted: rgb(0 0 0 / 0.72);
+    --theme-ink-faint: rgb(0 0 0 / 0.5);
+    --theme-accent: var(--color-charcoal-900);
+    --theme-accent-soft: rgb(0 0 0 / 0.1);
+    --theme-on-accent: var(--note-bg);
+    --theme-secondary: var(--color-charcoal-900);
+    --theme-secondary-soft: rgb(0 0 0 / 0.08);
+    --theme-note-shade: rgb(0 0 0 / 0.07);
+}
+
+
+
+/* TEXTURES ==================================================================================================== */
+/* RULED | notebook paper with a margin line */
+[data-note='ruled'] {
+    --note-bg: var(--theme-note-platinum);
+    --note-mark: var(--color-platinum-300);
+    --note-texture:
+        linear-gradient(to right, transparent 0.625rem, color-mix(in oklab, var(--color-rose-400) 60%, transparent) 0.625rem calc(0.625rem + 1px), transparent calc(0.625rem + 1px)),
+        repeating-linear-gradient(to bottom, transparent 0 calc(1.5rem - 1px), var(--note-pattern) calc(1.5rem - 1px) 1.5rem);
+    --note-texture-position: 0 0, 0 calc(var(--layout-card-padding) + 0.25rem);
+}
+
+/* LEGAL | yellow pad with blue rules and a red double margin */
+[data-note='legal'] {
+    --note-bg: var(--color-legal);
+    --note-mark: var(--color-canary);
+    --note-texture:
+        linear-gradient(to right, transparent 0.5rem, color-mix(in oklab, var(--color-cherry-600) 55%, transparent) 0.5rem calc(0.5rem + 1px), transparent calc(0.5rem + 1px) calc(0.5rem + 3px), color-mix(in oklab, var(--color-cherry-600) 55%, transparent) calc(0.5rem + 3px) calc(0.5rem + 4px), transparent calc(0.5rem + 4px)),
+        repeating-linear-gradient(to bottom, transparent 0 calc(1.5rem - 1px), color-mix(in oklab, var(--color-cobalt-400) 50%, transparent) calc(1.5rem - 1px) 1.5rem);
+    --note-texture-position: 0 0, 0 calc(var(--layout-card-padding) + 0.25rem);
+}
+
+/* GRAPH | squared paper */
+[data-note='graph'] {
+    --note-bg: var(--theme-note-powder);
+    --note-mark: var(--color-powder-300);
+    --note-texture:
+        linear-gradient(var(--note-pattern) 1px, transparent 1px),
+        linear-gradient(to right, var(--note-pattern) 1px, transparent 1px);
+    --note-texture-size: 1rem 1rem;
+}
+
+/* DOTS | dot grid as in a bullet journal */
+[data-note='dots'] {
+    --note-bg: var(--theme-note-ochre);
+    --note-mark: var(--color-ochre-400);
+    --note-texture: radial-gradient(circle, color-mix(in oklab, var(--theme-ink) 26%, transparent) 1px, transparent 1.5px);
+    --note-texture-size: 1.125rem 1.125rem;
+}
+
+/* LINEN | fine weave in a cool grey */
+[data-note='linen'] {
+    --note-bg: var(--theme-note-slate);
+    --note-mark: var(--color-slate-400);
+    --note-texture:
+        repeating-linear-gradient(to bottom, color-mix(in oklab, var(--theme-ink) 5%, transparent) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(to right, color-mix(in oklab, var(--theme-ink) 5%, transparent) 0 1px, transparent 1px 3px);
+}
+
+/* GINGHAM | picnic blanket checks */
+[data-note='gingham'] {
+    --note-bg: var(--theme-note-rose);
+    --note-mark: var(--color-cherry-400);
+    --note-texture:
+        linear-gradient(to right, color-mix(in oklab, var(--color-cherry-400) 20%, transparent) 50%, transparent 50%),
+        linear-gradient(color-mix(in oklab, var(--color-cherry-400) 20%, transparent) 50%, transparent 50%);
+    --note-texture-size: 1.25rem 1.25rem;
+}
+
+/* ZIGZAG | chevrons made of four triangles per tile */
+[data-note='zigzag'] {
+    --note-bg: var(--theme-note-mint);
+    --note-mark: var(--color-mint-400);
+    --note-texture:
+        linear-gradient(135deg, var(--note-pattern) 25%, transparent 25%),
+        linear-gradient(225deg, var(--note-pattern) 25%, transparent 25%),
+        linear-gradient(315deg, var(--note-pattern) 25%, transparent 25%),
+        linear-gradient(45deg, var(--note-pattern) 25%, transparent 25%);
+    --note-texture-size: 1.25rem 1.25rem;
+    --note-texture-position: -0.625rem 0, -0.625rem 0, 0 0, 0 0;
+}
+
+/* TERRAZZO | stone chips of every size and color */
+[data-note='terrazzo'] {
+    --note-bg: var(--theme-note-platinum);
+    --note-mark: var(--color-coral-400);
+    --note-texture:
+        radial-gradient(0.4rem 0.25rem at 12% 20%, var(--color-coral-400) 94%, transparent),
+        radial-gradient(0.2rem 0.3rem at 58% 12%, var(--color-sky-400) 94%, transparent),
+        radial-gradient(0.3rem 0.3rem at 82% 46%, var(--color-ochre-400) 94%, transparent),
+        radial-gradient(0.15rem 0.2rem at 30% 60%, var(--color-slate-600) 94%, transparent),
+        radial-gradient(0.35rem 0.2rem at 66% 82%, var(--color-mint-400) 94%, transparent),
+        radial-gradient(0.2rem 0.15rem at 8% 88%, var(--color-rose-400) 94%, transparent),
+        radial-gradient(0.12rem 0.12rem at 44% 38%, var(--color-coral-600) 94%, transparent),
+        radial-gradient(0.18rem 0.24rem at 92% 8%, var(--color-slate-400) 94%, transparent);
+    --note-texture-size: 8rem 8rem;
+}
+
+/* TOPO | two sets of rings that cross like contour lines on a map */
+[data-note='topo'] {
+    --note-bg: var(--theme-note-moss);
+    --note-mark: var(--color-moss-400);
+    --note-texture:
+        repeating-radial-gradient(circle at 90% 115%, transparent 0 0.875rem, var(--note-pattern) 0.875rem calc(0.875rem + 1px)),
+        repeating-radial-gradient(circle at 0% -25%, transparent 0 1.25rem, var(--note-pattern) 1.25rem calc(1.25rem + 1px));
+}
+
+/* STRIPES | wide diagonal awning stripes */
+[data-note='stripes'] {
+    --note-bg: var(--theme-note-rose);
+    --note-mark: repeating-linear-gradient(-45deg, var(--color-rose-400) 0 0.375rem, var(--color-rose-600) 0.375rem 0.75rem);
+    --note-texture: repeating-linear-gradient(-45deg, transparent 0 0.875rem, var(--note-pattern) 0.875rem 1.75rem);
+}
+
+/* KRAFT | brown wrapping paper with a grain */
+[data-note='kraft'] {
+    --note-bg: var(--color-kraft-500);
+    --note-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.32 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --note-texture-size: 10rem 10rem;
+}
+
+/* CHALKBOARD | green slate with white dust and wiped smudges */
+[data-note='chalkboard'] {
+    --note-bg: var(--color-chalk-700);
+    --note-texture:
+        radial-gradient(ellipse at 25% 30%, rgb(255 255 255 / 0.08), transparent 45%),
+        radial-gradient(ellipse at 80% 75%, rgb(255 255 255 / 0.06), transparent 40%),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.14 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --note-texture-size: 100% 100%, 100% 100%, 10rem 10rem;
+}
+
+/* BLUEPRINT | cobalt with a fine and a coarse white grid */
+[data-note='blueprint'] {
+    --note-bg: var(--theme-note-cobalt-solid);
+    --note-texture:
+        linear-gradient(rgb(255 255 255 / 0.24) 1px, transparent 1px),
+        linear-gradient(to right, rgb(255 255 255 / 0.24) 1px, transparent 1px),
+        linear-gradient(var(--note-pattern) 1px, transparent 1px),
+        linear-gradient(to right, var(--note-pattern) 1px, transparent 1px);
+    --note-texture-size: 5rem 5rem, 5rem 5rem, 1rem 1rem, 1rem 1rem;
+    --note-texture-position: -1px -1px;
+}
+
+/* STARRY | night sky | each star layer tiles at its own size, so the pattern never lines up */
+[data-note='starry'] {
+    --note-bg: var(--color-midnight-600);
+    --note-mark: linear-gradient(90deg, var(--color-midnight-600), var(--color-violet-600));
+    --note-texture:
+        radial-gradient(circle at 12% 18%, #fff 0 1px, transparent 1.5px),
+        radial-gradient(circle at 64% 42%, rgb(255 255 255 / 0.8) 0 1px, transparent 1.5px),
+        radial-gradient(circle at 38% 76%, #fff 0 1.5px, transparent 2px),
+        radial-gradient(circle at 86% 88%, rgb(255 255 255 / 0.7) 0 1px, transparent 1.5px),
+        radial-gradient(ellipse at 85% 0%, color-mix(in oklab, var(--color-violet-600) 70%, transparent), transparent 60%),
+        radial-gradient(ellipse at 0% 100%, color-mix(in oklab, var(--color-cobalt-600) 45%, transparent), transparent 55%);
+    --note-texture-size: 7rem 7rem, 11rem 9rem, 13rem 13rem, 5rem 6rem, 100% 100%, 100% 100%;
+}
+
+/* AURORA | soft color fields that drift a little while hovered */
+[data-note='aurora'] {
+    --note-bg: var(--color-violet-600);
+    --note-mark: linear-gradient(90deg, var(--color-tangerine-500), var(--color-rose-600), var(--color-violet-600), var(--color-cobalt-400));
+    --note-texture:
+        radial-gradient(circle at 15% 15%, var(--color-tangerine-500), transparent 50%),
+        radial-gradient(circle at 90% 25%, var(--color-cobalt-400), transparent 45%),
+        radial-gradient(circle at 40% 100%, var(--color-rose-600), transparent 60%);
+    --note-texture-size: 160% 160%;
+}
+
+/* SUNSET | synthwave sky with the sun sinking at the bottom edge */
+[data-note='sunset'] {
+    --note-bg: var(--color-plum-600);
+    --note-mark: linear-gradient(90deg, var(--color-plum-600), var(--color-magenta-600), var(--color-coral-600), var(--color-ochre-400));
+    --note-texture:
+        radial-gradient(circle at 50% 115%, rgb(255 214 128 / 0.95) 0 16%, rgb(255 140 90 / 0.45) 30%, transparent 52%),
+        linear-gradient(to bottom, var(--color-midnight-600), var(--color-plum-600) 40%, var(--color-magenta-600) 72%, var(--color-coral-600));
+}
+
+/* HOLO | iridescent foil with a sheen, drifts while hovered */
+[data-note='holo'] {
+    --note-bg: var(--color-lilac);
+    --note-mark: linear-gradient(90deg, var(--color-bubblegum), var(--color-aqua), var(--color-lime), var(--color-canary), var(--color-lilac));
+    --note-texture:
+        linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 0.55) 45%, transparent 60%),
+        conic-gradient(from 200deg at 30% 40%, var(--color-bubblegum), var(--color-lilac), var(--color-aqua), var(--color-lime), var(--color-canary), var(--color-apricot), var(--color-bubblegum));
+    --note-texture-size: 250% 250%, 160% 160%;
+}
+
+.note-surface:is([data-note='aurora'], [data-note='holo']) {
+    transition:
+        background-position 2.4s var(--ease-in-out),
+        border-color var(--duration-fast) var(--ease-out),
+        scale var(--duration-fast) var(--ease-out);
+}
+
+.note-surface:is([data-note='aurora'], [data-note='holo']):hover {
+    background-position: 100% 60%;
+}

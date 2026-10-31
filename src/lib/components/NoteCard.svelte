@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { NOTE_BACKGROUNDS, formatMoment, isOpenTask } from '#lib/notes.ts';
+    import { formatMoment, isOpenTask } from '#lib/notes.ts';
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, Reminder } from '#lib/schemas.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
@@ -17,9 +17,9 @@
         note: Note
         labels: Map<string, Label>
         reminder?: Reminder
-        onopen: () => void
-        ontoggle: (itemId: string) => void      // checks a list item off right on the card
-        ondone: () => void                      // ticks off an open task reminder
+        onopen: (origin: { x: number, y: number }) => void      // top center of the card, the editor grows from there
+        ontoggle: (itemId: string) => void                      // checks a list item off right on the card
+        ondone: () => void                                      // ticks off an open task reminder
     } = $props()
 
     // Long lists end in a count instead of growing the card forever
@@ -29,11 +29,29 @@
     let open = $derived(items.filter((item) => !item.done))
     let done = $derived(items.filter((item) => item.done))
     let shown = $derived([...open, ...done].slice(0, SHOWN_ITEMS))
+
+    let tabs = $derived(note.labels.map((id) => labels.get(id)).filter((label) => !!label))
+
+    function openFrom(target: HTMLElement){
+        const box = target.getBoundingClientRect()
+        onopen({ x: box.left + box.width / 2, y: box.top })
+    }
 </script>
 
-<!-- The whole card opens the editor, only the checkboxes sit above that button -->
-<article class={['card motion-interactive relative flex flex-col gap-3 rounded-card border border-line p-card text-ink hover:border-line-strong', NOTE_BACKGROUNDS[note.color]]}>
-    <button class="absolute inset-0 rounded-card" aria-label={`Open ${note.title || 'note'}`} onclick={onopen}></button>
+<!-- The whole card opens the editor, only the checkboxes and the done button sit above that button -->
+<article class="card note-surface motion-interactive relative flex flex-col gap-3 rounded-card border border-line p-card text-ink hover:border-line-strong" data-note={note.color || undefined}>
+    <button class="absolute inset-0 rounded-card" aria-label={`Open ${note.title || 'note'}`} onclick={(event) => openFrom(event.currentTarget)}></button>
+
+    <!-- LABELS | folder tabs on the top or bottom edge, they only show their name while the card is hovered -->
+    {#if tabs.length}
+        <ul class="tabs pointer-events-none absolute flex gap-1 overflow-hidden" aria-label="Labels">
+            {#each tabs as label (label.id)}
+                <li class="tab note-mark type-meta min-w-6 truncate px-2.5" data-note={label.color || undefined}>
+                    <span class="name">{label.name}</span>
+                </li>
+            {/each}
+        </ul>
+    {/if}
 
     <!-- TITLE -->
     {#if note.title || note.pinned}
@@ -69,27 +87,19 @@
         <p class="pointer-events-none line-clamp-[12] break-words whitespace-pre-line text-ink-muted">{note.body}</p>
     {/if}
 
-    <!-- FOOTER -->
-    {#if reminder || note.labels.length}
-        <footer class="pointer-events-none flex flex-wrap items-center gap-1.5">
-            {#if reminder}
-                {@const due = isOpenTask(reminder)}
-                <span class={['type-meta flex items-center gap-1.5 rounded-full px-2.5 py-1', due ? 'bg-accent-soft text-accent' : 'bg-secondary-soft text-secondary']}>
-                    <Bell class="size-3" />
-                    {describeRule(reminder)}{reminder.next ? ` · ${formatMoment(reminder.next, reminder.timezone)}` : ''}
-                </span>
-                {#if due}
-                    <button class="type-meta motion-interactive pointer-events-auto relative flex items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-on-accent hover:brightness-110" onclick={ondone}>
-                        <Check class="size-3" /> Done
-                    </button>
-                {/if}
+    <!-- REMINDER | a darker band across the bottom, hatched while a task waits to be checked off -->
+    {#if reminder}
+        {@const due = isOpenTask(reminder)}
+        <footer class={['band pointer-events-none -mx-card mt-auto -mb-card flex min-h-11 items-center gap-2 px-card py-2 text-ink-muted', due && 'due']}>
+            <Bell class="size-3.5 shrink-0" />
+            <span class="type-meta min-w-0 truncate">
+                {describeRule(reminder)}{reminder.next ? ` · ${formatMoment(reminder.next, reminder.timezone)}` : ''}
+            </span>
+            {#if due}
+                <button class="type-meta motion-interactive pointer-events-auto relative ml-auto flex shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-on-accent hover:brightness-110" onclick={ondone}>
+                    <Check class="size-3" /> Done
+                </button>
             {/if}
-            {#each note.labels as id (id)}
-                {@const label = labels.get(id)}
-                {#if label}
-                    <span class="type-meta rounded-full bg-line px-2.5 py-1 text-ink-muted">{label.name}</span>
-                {/if}
-            {/each}
         </footer>
     {/if}
 </article>
@@ -97,5 +107,59 @@
 <style>
     .card:has(> button:first-child:active) {
         scale: 0.985;
+    }
+
+    /* TABS | inset by the corner radius so they sit on the straight part of the edge */
+    .tabs {
+        bottom: 100%;
+        left: var(--layout-radius-card);
+        max-width: calc(100% - 2 * var(--layout-radius-card));
+        align-items: end;
+    }
+
+    .tab {
+        height: 0.3125rem;
+        border-radius: 0.375rem 0.375rem 0 0;
+        line-height: 1.25rem;
+        transition: height var(--duration-base) var(--ease-spring);
+    }
+
+    /* Bottom edge as picked in the settings, the tabs then grow downwards */
+    :global([data-labels='bottom']) .tabs {
+        top: 100%;
+        bottom: auto;
+        align-items: start;
+    }
+
+    :global([data-labels='bottom']) .tab {
+        border-radius: 0 0 0.375rem 0.375rem;
+    }
+
+    .name {
+        opacity: 0;
+        transition: opacity var(--duration-fast) var(--ease-out);
+    }
+
+    .card:hover .tab,
+    .card:focus-within .tab {
+        height: 1.25rem;
+    }
+
+    .card:hover .name,
+    .card:focus-within .name {
+        opacity: 1;
+        transition-delay: calc(var(--duration-fast) * 0.5);
+    }
+
+    /* BAND | the shade comes from the theme or the note color, so it darkens every surface alike */
+    .band {
+        border-bottom-left-radius: calc(var(--layout-radius-card) - 1px);
+        border-bottom-right-radius: calc(var(--layout-radius-card) - 1px);
+        background-color: var(--theme-note-shade);
+    }
+
+    .band.due {
+        color: var(--theme-ink);
+        background-image: repeating-linear-gradient(-45deg, transparent 0 0.375rem, color-mix(in oklab, var(--theme-accent) 20%, transparent) 0.375rem 0.75rem);
     }
 </style>

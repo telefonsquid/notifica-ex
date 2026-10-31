@@ -142,6 +142,39 @@ export const loginInputSchema = z.object({
     password: limitedText('Password', LIMITS.PASSWORD).min(1, 'Password is required')
 });
 
+// What the user admin gets to see of every account
+export type UserSummary = Pick<User, 'id' | 'name' | 'email' | 'authorizationLevel' | 'state'>;
+
+export type UserInput = z.infer<typeof userInputSchema>;
+export const userInputSchema = userBaseSchema.pick({ name: true, email: true, authorizationLevel: true });
+
+export const userEditSchema = userInputSchema.extend({ id: idSchema });
+
+export type SetPasswordInput = z.infer<typeof setPasswordSchema>;
+export const setPasswordSchema = z.object({
+    token: limitedText('Link', LIMITS.RESET_TOKEN).min(1, 'This link is incomplete.'),
+    password: userBaseSchema.shape.password.unwrap(),
+    passwordConfirm: limitedText('Password', LIMITS.PASSWORD)
+}).refine((data) => data.password === data.passwordConfirm, { message: 'Passwords do not match', path: ['passwordConfirm'] });
+
+
+
+
+
+
+
+// TYPES => COLORS ===================================================================
+// Notes and labels share them, each name has a [data-note] rule in #lib/note_colors.css
+export const NOTE_TINTS = ['lemon', 'ochre', 'tangerine', 'coral', 'rose', 'magenta', 'violet', 'cobalt', 'sky', 'powder', 'teal', 'mint', 'moss', 'slate', 'platinum'] as const;
+export const NOTE_SOLIDS = ['ochre-solid', 'tangerine-solid', 'coral-solid', 'cherry-solid', 'rose-solid', 'magenta-solid', 'plum-solid', 'violet-solid', 'midnight-solid', 'cobalt-solid', 'sky-solid', 'powder-solid', 'teal-solid', 'mint-solid', 'moss-solid', 'forest-solid', 'slate-solid', 'platinum-solid'] as const;
+export const NOTE_STICKIES = ['canary', 'apricot', 'bubblegum', 'lilac', 'aqua', 'lime'] as const;
+export const NOTE_TEXTURES = ['ruled', 'legal', 'graph', 'dots', 'linen', 'gingham', 'zigzag', 'terrazzo', 'topo', 'stripes', 'kraft', 'chalkboard', 'blueprint', 'starry', 'aurora', 'sunset', 'holo'] as const;
+export const NOTE_COLORS = [...NOTE_TINTS, ...NOTE_SOLIDS, ...NOTE_STICKIES, ...NOTE_TEXTURES] as const;
+
+// Empty means the plain card
+export type NoteColor = z.infer<typeof noteColorSchema>;
+export const noteColorSchema = z.enum(NOTE_COLORS).or(z.literal(''));
+
 
 
 
@@ -154,7 +187,8 @@ export const labelNameSchema = limitedText('Label', LIMITS.LABEL_NAME).trim().mi
 export type Label = z.infer<typeof labelSchema>;
 export const labelSchema = recordModelSchema.extend({
     owner: idSchema,
-    name: labelNameSchema
+    name: labelNameSchema,
+    color: noteColorSchema
 });
 
 
@@ -166,11 +200,6 @@ export const labelSchema = recordModelSchema.extend({
 // TYPES => NOTES ===================================================================
 export type NoteKind = z.infer<typeof noteKindSchema>;
 export const noteKindSchema = z.enum(['text', 'list', 'markdown']);
-
-// Empty means the plain card color | the names map onto --color-note-* in the themes
-export const NOTE_COLORS = ['tangerine', 'powder', 'platinum', 'moss', 'rose', 'violet'] as const;
-export type NoteColor = z.infer<typeof noteColorSchema>;
-export const noteColorSchema = z.enum(NOTE_COLORS).or(z.literal(''));
 
 export type NoteItem = z.infer<typeof noteItemSchema>;
 export const noteItemSchema = z.object({
