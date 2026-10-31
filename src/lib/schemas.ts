@@ -167,10 +167,10 @@ export const setPasswordSchema = z.object({
 
 // TYPES => COLORS ===================================================================
 // Notes and labels share them, each name has a [data-note] rule in #lib/note_colors.css
-export const NOTE_TINTS = ['lemon', 'ochre', 'tangerine', 'coral', 'rose', 'magenta', 'violet', 'cobalt', 'sky', 'powder', 'teal', 'mint', 'moss', 'slate', 'platinum'] as const;
+export const NOTE_TINTS = ['lemon', 'ochre', 'tangerine', 'coral', 'cherry', 'rose', 'magenta', 'plum', 'violet', 'cobalt', 'sky', 'powder', 'teal', 'mint', 'moss', 'slate', 'platinum'] as const;
 export const NOTE_SOLIDS = ['ochre-solid', 'tangerine-solid', 'coral-solid', 'cherry-solid', 'rose-solid', 'magenta-solid', 'plum-solid', 'violet-solid', 'midnight-solid', 'cobalt-solid', 'sky-solid', 'powder-solid', 'teal-solid', 'mint-solid', 'moss-solid', 'forest-solid', 'slate-solid', 'platinum-solid'] as const;
-export const NOTE_STICKIES = ['canary', 'apricot', 'bubblegum', 'lilac', 'aqua', 'lime'] as const;
-export const NOTE_TEXTURES = ['ruled', 'legal', 'graph', 'dots', 'linen', 'gingham', 'zigzag', 'terrazzo', 'topo', 'stripes', 'kraft', 'chalkboard', 'blueprint', 'starry', 'aurora', 'sunset', 'holo'] as const;
+export const NOTE_STICKIES = ['canary', 'marigold', 'apricot', 'peach', 'flamingo', 'bubblegum', 'candy', 'orchid', 'lilac', 'periwinkle', 'cornflower', 'aqua', 'ice', 'seafoam', 'pistachio', 'lime', 'chartreuse', 'cloud'] as const;
+export const NOTE_TEXTURES = ['ruled', 'legal', 'graph', 'dots', 'linen', 'gingham', 'zigzag', 'terrazzo', 'topo', 'waves', 'stripes', 'kraft', 'chalkboard', 'blueprint', 'starry', 'aurora', 'sunset', 'holo'] as const;
 export const NOTE_COLORS = [...NOTE_TINTS, ...NOTE_SOLIDS, ...NOTE_STICKIES, ...NOTE_TEXTURES] as const;
 
 // Empty means the plain card
@@ -224,7 +224,10 @@ export const noteSchema = recordModelSchema.extend({
 
 // TYPES => REMINDERS ===================================================================
 export type ReminderRepeat = z.infer<typeof reminderRepeatSchema>;
-export const reminderRepeatSchema = z.enum(['never', 'hours', 'days', 'weeks']);
+export const reminderRepeatSchema = z.enum(['never', 'hours', 'days', 'weeks', 'weekdays', 'months', 'years']);
+
+export type Weekday = z.infer<typeof weekdaySchema>;
+export const weekdaySchema = z.enum(['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']);
 
 export const timezoneSchema = limitedText('Timezone', LIMITS.TIMEZONE).refine((zone) => {
     try { new Intl.DateTimeFormat('en', { timeZone: zone }); return true }
@@ -237,6 +240,8 @@ export const reminderRuleSchema = z.object({
     at: z.iso.datetime({ offset: true, message: 'Reminder needs a valid date.' }), // first time it goes off
     repeat: reminderRepeatSchema,
     every: limitedCount('Interval', LIMITS.REMINDER_EVERY).min(1, 'Interval must be at least 1.'),
+    weekdays: z.array(weekdaySchema).max(7).default([]), // days a weekdays reminder goes off on
+    until: z.union([z.iso.datetime({ offset: true, message: 'End needs a valid date.' }), z.literal('')]).default(''), // last moment a repeating reminder may go off
     timezone: timezoneSchema, // keeps daily reminders on the same clock time across daylight saving
     task: z.boolean() // adds a done button to the notification
 });
@@ -247,6 +252,7 @@ export const reminderSchema = recordModelSchema.extend({
     owner: idSchema,
     ...reminderRuleSchema.shape,
     at: timestampSchema,
+    until: timestampSchema,
     next: timestampSchema, // empty once a one off reminder went out
     sent: timestampSchema,
     done: timestampSchema // occurrence that was checked off

@@ -3,6 +3,7 @@
     import { safeAction } from '#lib/pocketbase.ts';
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
+    import { tip } from '#lib/tooltip.svelte.ts';
     import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
     import { createNote, deleteNote, updateNote } from '../../routes/api/notes.remote';
@@ -94,18 +95,19 @@
     <Menu.SubTrigger class="menu-item"><Palette class="size-4" />Color<ChevronRight class="ml-auto size-3.5" /></Menu.SubTrigger>
     <Menu.SubContent class="menu grid gap-3 p-3" sideOffset={6}>
         {#each COLOR_GROUPS as group (group.name)}
-            <div class="grid grid-cols-[repeat(6,1.75rem)] gap-1.5">
+            <div class="grid grid-cols-[repeat(6,1.75rem)] gap-1.5 min-[24rem]:grid-cols-[repeat(9,1.75rem)]">
                 {#each group.colors as color (color)}
                     {@const picked = notes.every((note) => note.color === color)}
                     <Menu.Item
-                        class={['swatch note-surface motion-interactive grid size-7 place-items-center rounded-full border border-line-strong text-ink data-highlighted:scale-110', picked && 'outline-2 outline-offset-2 outline-accent']}
-                        data-note={color || undefined}
+                        class={['motion-interactive size-7 rounded-full data-highlighted:scale-110', picked && 'outline-2 outline-offset-2 outline-accent']}
                         aria-label={colorName(color)}
-                        title={colorName(color)}
+                        {@attach tip(colorName(color))}
                         closeOnSelect={false}
                         onSelect={() => paint(color)}
                     >
-                        {#if picked}<Check class="size-3.5" strokeWidth={3} />{/if}
+                        <span class="swatch note-surface grid size-full place-items-center rounded-full border border-line-strong text-ink" data-note={color || undefined}>
+                            {#if picked}<Check class="size-3.5" strokeWidth={3} />{/if}
+                        </span>
                     </Menu.Item>
                 {/each}
             </div>

@@ -3,6 +3,7 @@
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
 	import type { AuthorizationLevel, UserSummary } from '#lib/schemas.ts';
+	import { tip } from '#lib/tooltip.svelte.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import Input from '#lib/ui/Input.svelte';
 	import { KeyRound, RotateCcw, Send, UserX } from '@lucide/svelte';
@@ -140,7 +141,7 @@
 					{@render roles(user.authorizationLevel, (value) => changeRole(user, value), self)}
 
 					<div class="flex items-center gap-1">
-						<button class="icon-button" aria-label={`Send ${user.name} a password link`} title="Send password link" onclick={() => sendLink(user)}>
+						<button class="icon-button" aria-label={`Send ${user.name} a password link`} onclick={() => sendLink(user)} {@attach tip('Send a link to set a new password')}>
 							<KeyRound class="size-4" />
 						</button>
 						{#if self}
@@ -149,7 +150,7 @@
 							<button
 								class={['icon-button', confirmDeactivate === user.id && 'bg-accent text-on-accent hover:text-on-accent']}
 								aria-label={confirmDeactivate === user.id ? `Confirm deactivating ${user.name}` : `Deactivate ${user.name}`}
-								title="Deactivate"
+								{@attach tip(confirmDeactivate === user.id ? 'Click again to deactivate' : 'Deactivate, signs them out everywhere')}
 								onclick={() => deactivate(user)}
 								onblur={() => (confirmDeactivate = null)}
 							>

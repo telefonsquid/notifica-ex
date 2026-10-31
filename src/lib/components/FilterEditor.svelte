@@ -1,5 +1,6 @@
 <script lang="ts">
     import { colorName } from '#lib/notes.ts';
+    import { tip } from '#lib/tooltip.svelte.ts';
     import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type DateRange, type Label, type NoteColor, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
     import { ArrowDownWideNarrow, ArrowUpNarrowWide, Check, ChevronDown, Minus } from '@lucide/svelte';
     import { slide } from 'svelte/transition';
@@ -103,6 +104,7 @@
                         class={['chip', state === 'include' && 'on', state === 'exclude' && 'off']}
                         aria-label={`${label.name}: ${state === 'include' ? 'included' : state === 'exclude' ? 'excluded' : 'ignored'}`}
                         onclick={() => cycleLabel(label.id)}
+                        {@attach tip(state === 'include' ? 'Only notes with it, click to leave them out' : state === 'exclude' ? 'Notes without it, click to ignore' : 'Click to show only notes with it')}
                     >
                         {#if state === 'include'}<Check class="size-3" />{:else if state === 'exclude'}<Minus class="size-3" />{:else}<span class="note-mark h-1.5 w-3 rounded-full" data-note={label.color || undefined}></span>{/if}
                         <span class="name">{label.name}</span>
@@ -170,7 +172,7 @@
                         data-note={color || undefined}
                         aria-pressed={on}
                         aria-label={colorName(color)}
-                        title={colorName(color)}
+                        {@attach tip(colorName(color))}
                         onclick={() => update({ colors: toggle(filter.colors, color) })}
                     >
                         {#if on}<Check class="size-3" strokeWidth={3} />{/if}

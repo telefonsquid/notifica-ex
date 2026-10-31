@@ -10,6 +10,7 @@
 	import { notify } from '#lib/notifications.svelte.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
+	import { tip } from '#lib/tooltip.svelte.ts';
 	import { hasPermission } from '#lib/user.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import { Check, Dices, KeyRound, Send, Trash2 } from '@lucide/svelte';
@@ -206,6 +207,7 @@
 									aria-label={confirmDelete === label.id ? `Confirm deleting ${label.name}` : `Delete ${label.name}`}
 									onclick={() => remove(label.id)}
 									onblur={() => (confirmDelete = null)}
+									{@attach tip(confirmDelete === label.id ? 'Click again to delete, its notes stay' : 'Delete label')}
 								>
 									<Trash2 class="size-4" />
 								</button>

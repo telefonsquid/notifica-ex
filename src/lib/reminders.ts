@@ -1,8 +1,16 @@
-import type { ReminderRepeat } from '#lib/schemas.ts';
+import type { ReminderRepeat, Weekday } from '#lib/schemas.ts';
 
-type Rule = { at: string, repeat: ReminderRepeat, every: number, timezone: string }
+type Rule = { at: string, repeat: ReminderRepeat, every: number, weekdays?: Weekday[], until?: string, timezone: string }
 
 const HOUR = 60 * 60 * 1000
+const DAY = 24 * HOUR
+
+// Monday first, as on the picker | getUTCDay counts from sunday
+export const WEEKDAYS: { value: Weekday, short: string }[] = [
+    { value: 'mo', short: 'Mon' }, { value: 'tu', short: 'Tue' }, { value: 'we', short: 'Wed' }, { value: 'th', short: 'Thu' },
+    { value: 'fr', short: 'Fri' }, { value: 'sa', short: 'Sat' }, { value: 'su', short: 'Sun' },
+]
+const BY_DAY_INDEX: Weekday[] = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa']
 
 
 
@@ -19,10 +27,20 @@ export function parseTimestamp(value: string | undefined | null): Date | null {
 
 // RECURRENCE ====================================================================================================
 
-// First time the rule goes off after the given moment, null once a one off reminder is past
+// First time the rule goes off after the given moment, null once it is over
 export function occurrenceAfter(rule: Rule, after: Date): Date | null {
     const start = parseTimestamp(rule.at)
     if(!start) return null
+
+    const next = nextOccurrence(rule, start, after)
+    const until = rule.repeat === 'never' ? null : parseTimestamp(rule.until)
+    return next && until && next > until ? null : next
+}
+
+function nextOccurrence(rule: Rule, start: Date, after: Date): Date | null {
+
+    // WEEKDAYS | the start itself only counts when it falls on one of the days
+    if(rule.repeat === 'weekdays') return nextWeekday(rule, start, after)
     if(start > after) return start
 
     // ONE OFF
@@ -35,10 +53,24 @@ export function occurrenceAfter(rule: Rule, after: Date): Date | null {
         return new Date(start.getTime() + passed * step)
     }
 
+    // MONTHS AND YEARS | same day of the month, the 31st falls back to the last day of shorter months
+    const wall = wallClock(start, rule.timezone)
+    if(rule.repeat === 'months' || rule.repeat === 'years'){
+        const months = rule.every * (rule.repeat === 'years' ? 12 : 1)
+        const now = wallClock(after, rule.timezone)
+        let passed = Math.max(0, Math.floor(((now.year - wall.year) * 12 + now.month - wall.month) / months))
+
+        let next = monthsLater(wall, passed * months, rule.timezone)
+        while(next <= after){
+            passed++
+            next = monthsLater(wall, passed * months, rule.timezone)
+        }
+        return next
+    }
+
     // DAYS AND WEEKS | same clock time in the reminder's own timezone
     const days = rule.every * (rule.repeat === 'weeks' ? 7 : 1)
-    const wall = wallClock(start, rule.timezone)
-    let passed = Math.max(0, Math.floor((after.getTime() - start.getTime()) / (days * 24 * HOUR)))
+    let passed = Math.max(0, Math.floor((after.getTime() - start.getTime()) / (days * DAY)))
 
     // The estimate is off by one at most when a daylight saving change lies in between
     let next = fromWallClock({ ...wall, day: wall.day + passed * days }, rule.timezone)
@@ -49,14 +81,53 @@ export function occurrenceAfter(rule: Rule, after: Date): Date | null {
     return next
 }
 
-// Short label for the rule, like "Every 16 hours"
-export function describeRule(rule: Pick<Rule, 'repeat' | 'every'>): string {
+// The clock time of the start on the first picked day after the moment, a week holds one for sure
+function nextWeekday(rule: Rule, start: Date, after: Date): Date | null {
+    if(!rule.weekdays?.length) return null
+
+    const from = start > after ? start : after
+    const wall = { ...wallClock(start, rule.timezone), ...dateOf(wallClock(from, rule.timezone)) }
+
+    for(let offset = 0; offset <= 7; offset++){
+        const day = { ...wall, day: wall.day + offset }
+        const weekday = BY_DAY_INDEX[new Date(Date.UTC(day.year, day.month - 1, day.day)).getUTCDay()]
+        if(!rule.weekdays.includes(weekday)) continue
+
+        const next = fromWallClock(day, rule.timezone)
+        if(next >= start && next > after) return next
+    }
+    return null
+}
+
+function monthsLater(wall: WallClock, months: number, timezone: string): Date {
+    const total = wall.month - 1 + months
+    const year = wall.year + Math.floor(total / 12)
+    const month = total % 12 + 1
+    const last = new Date(Date.UTC(year, month, 0)).getUTCDate()
+    return fromWallClock({ ...wall, year, month, day: Math.min(wall.day, last) }, timezone)
+}
+
+function dateOf(wall: WallClock){
+    return { year: wall.year, month: wall.month, day: wall.day }
+}
+
+// Short label for the rule, like "Every 16 hours" or "Mon, Wed, Fri"
+export function describeRule(rule: Pick<Rule, 'repeat' | 'every' | 'weekdays'>): string {
     if(rule.repeat === 'never') return 'Once'
 
-    const unit = { hours: 'hour', days: 'day', weeks: 'week' }[rule.repeat]
-    if(rule.every === 1) return { hours: 'Hourly', days: 'Daily', weeks: 'Weekly' }[rule.repeat]
-    return `Every ${rule.every} ${unit}s`
+    if(rule.repeat === 'weekdays'){
+        const days = WEEKDAYS.filter((day) => rule.weekdays?.includes(day.value))
+        if(days.length === 7) return 'Daily'
+        if(days.length === 5 && !rule.weekdays?.some((day) => day === 'sa' || day === 'su')) return 'Weekdays'
+        return days.map((day) => day.short).join(', ') || 'No days'
+    }
+
+    if(rule.every === 1) return { hours: 'Hourly', days: 'Daily', weeks: 'Weekly', months: 'Monthly', years: 'Yearly' }[rule.repeat]
+    return `Every ${rule.every} ${UNITS[rule.repeat]}s`
 }
+
+// Singular unit of each interval, for labels like "every 3 days"
+export const UNITS = { hours: 'hour', days: 'day', weeks: 'week', months: 'month', years: 'year' } as const
 
 
 

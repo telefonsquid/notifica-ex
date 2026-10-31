@@ -1,7 +1,7 @@
 import { browser } from '$app/env';
-import { tick } from 'svelte';
 import { cubicOut } from 'svelte/easing';
 import { prefersReducedMotion } from 'svelte/motion';
+import type { Attachment } from 'svelte/attachments';
 import type { TransitionConfig } from 'svelte/transition';
 
 /*
@@ -135,27 +135,153 @@ export function sink(_node: Element, options: RiseOptions = {}): TransitionConfi
     }
 }
 
-// MORPH | elements named for it in app.css glide to their new place and size while the update lands
-export async function morph(update: () => void){
-    const root = document.documentElement
+type UnfoldOptions = {
+    axis?: 'x' | 'y'                    // y grows downwards, x sideways in a row
+    delay?: number
+    duration?: DurationToken
+}
 
-    if(!document.startViewTransition || prefersReducedMotion.current){
-        update()
-        return
-    }
+// UNFOLD | grows from nothing to its own size while it fades in, so its neighbours move along instead of jumping
+// The easing is symmetric, so one unfolding while another folds keeps their sum steady
+export function unfold(node: Element, options: UnfoldOptions = {}): TransitionConfig {
+    const { axis = 'y', delay = 0 } = options
+    const [size, start, end] = axis === 'y' ? ['height', 'top', 'bottom'] : ['width', 'left', 'right']
+    const style = getComputedStyle(node)
+    const read = (property: string) => parseFloat(style.getPropertyValue(property)) || 0
 
-    root.dataset.transition = 'morph'
-    try {
-        await document.startViewTransition(async () => {
-            update()
-            await tick()
-        }).finished
-    } finally {
-        delete root.dataset.transition
+    const full = read(size)
+    const opacity = parseFloat(style.opacity)     // a leaving element may have faded already
+    const padding = [read(`padding-${start}`), read(`padding-${end}`)]
+    const margin = [read(`margin-${start}`), read(`margin-${end}`)]
+
+    // The gap of a flex parent stays even at zero size | a negative margin takes it back meanwhile
+    const parent = node.parentElement && getComputedStyle(node.parentElement)
+    const gap = parent?.display.includes('flex') ? parseFloat(axis === 'y' ? parent.rowGap : parent.columnGap) || 0 : 0
+
+    return {
+        delay: prefersReducedMotion.current ? 0 : delay,
+        duration: duration(options.duration ?? 'base'),
+        easing: easing('in-out'),
+        css: (t, u) => `
+            overflow: hidden;
+            opacity: ${t * t * opacity};
+            ${size}: ${t * full}px;
+            padding-${start}: ${t * padding[0]}px;
+            padding-${end}: ${t * padding[1]}px;
+            margin-${start}: ${t * margin[0]}px;
+            margin-${end}: ${t * margin[1] - u * gap}px;
+        `
     }
 }
+
+// MORPH | the node follows its first child's height smoothly, so a swap inside never pops
+// The child keeps its natural size, the node animates between the old and new one around it
+// Timing comes per change, so it can match whatever moves around the node | null jumps
+export function morph(timing: () => { duration: number, easing: string } | null): Attachment<HTMLElement> {
+    return (node) => {
+        const content = node.firstElementChild as HTMLElement | null
+        if(!content) return
+
+        let last = 0
+        let running: Animation | undefined
+
+        const observer = new ResizeObserver(() => {
+            const style = getComputedStyle(node)
+            const frame = node.offsetHeight - node.clientHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
+            const to = content.offsetHeight + frame
+
+            // A running morph starts over from wherever it is now and still ends when it would have
+            const from = running ? node.getBoundingClientRect().height : last
+            const left = running ? Number(running.effect?.getComputedTiming().endTime) - Number(running.currentTime) : Infinity
+            last = to
+            running?.cancel()
+            running = undefined
+            const options = timing()
+            if(!from || Math.abs(from - to) < 1 || !options?.duration) return
+
+            const time = Math.max(Math.min(options.duration, Number.isNaN(left) ? Infinity : left), duration('fast'))
+            running = node.animate({ height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] }, { ...options, duration: time })
+            const own = running
+            own.finished.then(() => { if(running === own) running = undefined }, () => {})
+        })
+        observer.observe(content)
+
+        return () => {
+            observer.disconnect()
+            running?.cancel()
+        }
+    }
+}
+
 
 // STAGGER | delay for the nth item of a group entering together, capped so long lists don't drag
 export function stagger(index: number, step = 45, max = 8): number {
     return Math.min(index, max) * step
+}
+
+
+
+// RELAYOUT ====================================================================================================
+// Rects of every cell marked with data-flip, keyed by its value | taken before an update, mid glide too
+// Svelte makes leaving elements inert until their outro ends, so their space counts as gone already
+export function measure(root: ParentNode): Map<string, DOMRect> {
+    const leaving = [...root.querySelectorAll<HTMLElement>('[data-flip] [inert]')]
+    leaving.forEach((node) => node.style.display = 'none')
+
+    const cells = root.querySelectorAll<HTMLElement>('[data-flip]')
+    const rects = new Map([...cells].map((cell) => [cell.dataset.flip!, bodyOf(cell).getBoundingClientRect()]))
+
+    leaving.forEach((node) => node.style.display = '')
+    return rects
+}
+
+// GLIDE | cells move from where they were to where the update put them | data-flip-body marks the part inside that resizes
+export function glide(root: ParentNode, before: Map<string, DOMRect>){
+    const time = duration('slow')
+    const timing = { duration: time, easing: cssEasing('emphasized') }
+
+    // Glides still running would skew the new rects
+    const cells = [...root.querySelectorAll<HTMLElement>('[data-flip]')]
+    cells.forEach(settle)
+    if(!time) return
+    const after = measure(root)
+
+    for(const cell of cells){
+        const from = before.get(cell.dataset.flip!)
+        const to = after.get(cell.dataset.flip!)
+        if(!from || !to) continue
+
+        const dx = from.left - to.left, dy = from.top - to.top
+        const resized = Math.abs(from.width - to.width) > 1 || Math.abs(from.height - to.height) > 1
+        if(Math.abs(dx) < 1 && Math.abs(dy) < 1 && !resized) continue
+
+        const animations = [cell.animate({ translate: [`${dx}px ${dy}px`, '0 0'] }, timing)]
+
+        // The cell keeps its final size for the grid while its content grows or shrinks inside, so text reflows instead of stretching
+        if(resized){
+            const body = bodyOf(cell)
+            cell.style.height = `${cell.getBoundingClientRect().height}px`
+            cell.style.zIndex = '1'
+            body.dataset.resizing = ''
+            animations.push(body.animate({ width: [`${from.width}px`, `${to.width}px`], height: [`${from.height}px`, `${to.height}px`] }, timing))
+        }
+
+        running.set(cell, animations)
+        Promise.all(animations.map((animation) => animation.finished)).then(() => settle(cell), () => {})
+    }
+}
+
+const running = new WeakMap<HTMLElement, Animation[]>()
+
+function settle(cell: HTMLElement){
+    running.get(cell)?.forEach((animation) => animation.cancel())
+    running.delete(cell)
+    cell.style.height = ''
+    cell.style.zIndex = ''
+    delete bodyOf(cell).dataset.resizing
+}
+
+// The part that changes size, the cell itself when nothing inside is marked
+function bodyOf(cell: HTMLElement): HTMLElement {
+    return cell.querySelector<HTMLElement>('[data-flip-body]') ?? cell
 }

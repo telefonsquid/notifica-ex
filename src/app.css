@@ -108,11 +108,23 @@
 
     /* STICKIES | bright paper as on sticky notes, canary is the classic yellow */
     --color-canary: #fff07a;
+    --color-marigold: #ffd36e;
     --color-apricot: #ffc58a;
+    --color-peach: #ffb49c;
+    --color-flamingo: #ffa0a8;
     --color-bubblegum: #ff9fc9;
+    --color-candy: #ffb8ea;
+    --color-orchid: #e7b2ff;
     --color-lilac: #cfb8ff;
+    --color-periwinkle: #b6c3ff;
+    --color-cornflower: #a4ccff;
     --color-aqua: #91e0ef;
+    --color-ice: #bdf1ec;
+    --color-seafoam: #a4efca;
+    --color-pistachio: #c9f0a6;
     --color-lime: #cdef7b;
+    --color-chartreuse: #e8f27c;
+    --color-cloud: #e4e8ee;
     --color-legal: #fbeea4;
 
     /* TYPE */
@@ -417,27 +429,4 @@
 
 :root[data-transition='theme']::view-transition-new(root) {
     z-index: 1;
-}
-
-/* MORPH | only the note cells move, see morph() in #lib/motion.ts */
-:root[data-transition='morph'] .vt-rail,
-:root[data-transition='morph'] .vt-page,
-:root[data-transition='morph'] .vt-rail-indicator {
-    view-transition-name: none;
-}
-
-:root[data-transition='morph'] .vt-note {
-    view-transition-name: var(--vt-name);
-    view-transition-class: note;
-}
-
-::view-transition-group(*.note) {
-    animation-duration: var(--duration-slow);
-    animation-timing-function: var(--ease-emphasized);
-}
-
-::view-transition-old(*.note),
-::view-transition-new(*.note) {
-    height: 100%;
-    animation-duration: var(--duration-base);
 }

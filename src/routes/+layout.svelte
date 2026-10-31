@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onNavigate } from '$app/navigation';
 	import Toaster from '#lib/ui/Toaster.svelte';
+	import Tooltip from '#lib/ui/Tooltip.svelte';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 
@@ -25,3 +26,6 @@
 
 <!-- TOASTER -->
 <Toaster />
+
+<!-- TOOLTIP -->
+<Tooltip />

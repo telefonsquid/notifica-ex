@@ -6,8 +6,8 @@ import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type NoteColor, 
 // Order of the palette wherever a color gets picked
 export const COLOR_GROUPS: { name: string, colors: readonly NoteColor[] }[] = [
     { name: 'Soft', colors: ['', ...NOTE_TINTS] },
-    { name: 'Solid', colors: NOTE_SOLIDS },
     { name: 'Sticky', colors: NOTE_STICKIES },
+    { name: 'Solid', colors: NOTE_SOLIDS },
     { name: 'Texture', colors: NOTE_TEXTURES },
 ]
 

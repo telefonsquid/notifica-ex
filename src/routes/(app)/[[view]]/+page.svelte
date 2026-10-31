@@ -3,19 +3,19 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import FilterEditor from '#lib/components/FilterEditor.svelte';
-	import NoteCard from '#lib/components/NoteCard.svelte';
-	import NoteEditor from '#lib/components/NoteEditor.svelte';
+	import NoteView, { editor } from '#lib/components/Note.svelte';
 	import NoteMenu from '#lib/components/NoteMenu.svelte';
 	import { toggleTask } from '#lib/markdown.ts';
-	import { morph, rise, stagger } from '#lib/motion.ts';
+	import { duration, easing, glide, measure, rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
+	import { tip } from '#lib/tooltip.svelte.ts';
 	import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts';
 	import { defaultSort, emptyFilter, groupReminders, matchesView, noteText, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
 	import { Check, Ellipsis, ListFilter, Plus, Search, X } from '@lucide/svelte';
 	import { ContextMenu, DropdownMenu, Popover } from 'bits-ui';
 	import { tick } from 'svelte';
-	import { flip } from 'svelte/animate';
+	import type { TransitionConfig } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getLabels } from '../../api/labels.remote';
 	import { getNotes, updateNote } from '../../api/notes.remote';
@@ -25,7 +25,6 @@
 	// DATA | refreshed by every command and by realtime events from other devices
 	let [notes, labels, reminders, views] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews()]));
 
-	let labelsById = $derived(new Map(labels.map((label) => [label.id, label])));
 	let remindersByNote = $derived(groupReminders(reminders));
 
 	$effect(() => onCollectionChange('notes', () => getNotes().refresh()));
@@ -41,10 +40,14 @@
 	let naming = $state(false);
 	let newName = $state('');
 
-	afterNavigate(() => {
+	afterNavigate(({ type }) => {
 		draft = null;
 		naming = false;
 		selected.clear();
+		if (type === 'enter') return;
+		editing = null;
+		frozen = null;
+		closing = false;
 	});
 
 	let filter = $derived(draft?.filter ?? view?.filter ?? emptyFilter());
@@ -111,21 +114,123 @@
 		openSearch();
 	}
 
-	// EDITING | one card at a time opens in place, a new note starts as a blank card up front
-	async function edit(note: Note | null, focus?: string) {
-		if (note && editing?.id === note.id) return;
-		await morph(() => {
+	// EDITING | one card at a time opens in place, a new note grows out of the create button
+	let closing = $state(false);
+	let freshNote = $state<{ flush: () => Promise<string | null> }>();
+	let createButton = $state<HTMLElement>();
+	let busy: Promise<unknown> = Promise.resolve();
+	let origin: DOMRect | null = null;
+	let handover: string | null = null;
+	let returning = false;
+
+	function edit(note: Note | null, focus?: string) {
+		busy = busy.then(async () => {
+			if (note && editing?.id === note.id) return;
+			await fold();
+			if (!note) origin = createButton?.getBoundingClientRect() ?? null;
 			frozen = visible.map((item) => item.id);
+			snapshot();
 			editing = { key: ++opened, id: note?.id ?? null, fresh: !note, focus };
+			closing = false;
+			await tick();
+			document.querySelector('.note.open')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 		});
-		document.querySelector('.editor')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 	}
 
 	function closeEditor() {
-		morph(() => {
+		busy = busy.then(async () => {
+			if (!editing) return;
+			await fold();
+			snapshot();
 			editing = null;
 			frozen = null;
+			closing = false;
 		});
+	}
+
+	// The open note's controls fade first | a new note then hands over to its card, or shrinks back into the button when empty
+	async function fold() {
+		handover = null;
+		returning = false;
+		if (!editing) return;
+
+		closing = true;
+		await new Promise((done) => setTimeout(done, duration('fast')));
+		if (!editing?.fresh) return;
+
+		const id = await freshNote?.flush();
+		handover = id ?? null;
+		returning = !id;
+	}
+
+	// RELAYOUT | every change to the grid glides the cells from where they were, the editor arriving late too
+	let grid = $state<HTMLElement>();
+	let before: Map<string, DOMRect> | undefined;
+
+	// Rects before the next change, the first one wins until its glide ran
+	function snapshot() {
+		if (!grid || before) return;
+		before = measure(grid);
+		if (origin) before.set('new', origin);
+		origin = null;
+	}
+
+	// Opening and closing take the snapshot themselves, a card may change before this runs then
+	$effect.pre(() => {
+		void [visible, editing?.id, editing?.key, editor.loaded];
+		snapshot();
+	});
+
+	// Waits for the effects of the cells too, the editor fills in its text only then
+	let pending = false;
+
+	$effect(() => {
+		void [visible, editing?.id, editing?.key, editor.loaded];
+		if (!before || pending) return;
+		pending = true;
+		tick().then(() => {
+			const from = before;
+			before = undefined;
+			pending = false;
+			if (grid && from) glide(grid, from);
+		});
+	});
+
+	// New cards rise into place, the card taking over from a new note glides there instead
+	function enter(node: Element, { id, index }: { id: string; index: number }): TransitionConfig {
+		return id === handover ? {} : rise(node, { delay: stagger(index) });
+	}
+
+	// A saved new note makes room for its card at once, an empty one shrinks back into the button
+	function retreat(node: HTMLElement): TransitionConfig {
+		delete node.dataset.flip;
+		const target = createButton?.getBoundingClientRect();
+		const body = node.querySelector<HTMLElement>('[data-flip-body]');
+		const card = body?.querySelector<HTMLElement>('.card');
+		if (!returning || !target || !grid || !body || !card) {
+			node.style.display = 'none';
+			return {};
+		}
+
+		// Out of the grid flow so the other cards can glide into its place meanwhile
+		const from = node.getBoundingClientRect();
+		const frame = grid.getBoundingClientRect();
+		Object.assign(node.style, { position: 'absolute', left: `${from.left - frame.left}px`, top: `${from.top - frame.top}px`, width: `${from.width}px`, zIndex: '1' });
+		body.dataset.resizing = '';
+
+		const dx = target.left - from.left;
+		const dy = target.top - from.top;
+		const radius = parseFloat(getComputedStyle(card).borderTopLeftRadius);
+		return {
+			duration: duration('slow'),
+			easing: easing('emphasized'),
+			css: (t, u) => `translate: ${u * dx}px ${u * dy}px; opacity: ${Math.min(1, t * 3)};`,
+			tick: (t, u) => {
+				body.style.width = `${target.width + t * (from.width - target.width)}px`;
+				body.style.height = `${target.height + t * (from.height - target.height)}px`;
+				card.style.borderRadius = `${radius + u * (target.height / 2 - radius)}px`;
+			}
+		};
 	}
 
 	// Notification taps land on /?note=id
@@ -179,14 +284,18 @@
 <!-- NOTES | the open card counts twice, it spans two columns where they fit -->
 {#if visible.length || editing?.fresh}
 	<div class="@container">
-		<div class="note-grid grid-flow-row-dense items-start" style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
+		<div bind:this={grid} class="note-grid relative grid-flow-row-dense items-start" style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
 			{#if editing?.fresh}
 				{#key editing.key}
-					<div class="note-cell vt-note wide" style:--vt-name="note-{editing.id ?? 'new'}" in:rise>
-						<NoteEditor
+					<div class="note-cell fresh wide @container/note" data-flip={editing.id ?? 'new'} out:retreat|global>
+						<NoteView
+							bind:this={freshNote}
 							note={null}
+							open
+							{closing}
 							{labels}
 							reminders={(editing.id && remindersByNote.get(editing.id)) || []}
+							ondone={markDone}
 							oncreate={(id) => editing && (editing.id = id)}
 							onclose={closeEditor}
 						/>
@@ -194,47 +303,40 @@
 				{/key}
 			{/if}
 			{#each visible as note, index (note.id)}
-				<div class={['note-cell vt-note', editing?.id === note.id && 'wide']} style:--vt-name="note-{note.id}" animate:flip={{ duration: 280 }} in:rise={{ delay: stagger(index) }}>
-					{#if editing?.id === note.id}
-						{#key editing.key}
-							<NoteEditor
+				{@const open = editing?.id === note.id}
+				<!-- A finger opens the menu with a long press, selecting goes through it | the open note keeps the trigger but turns it off -->
+				<div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }}>
+					<ContextMenu.Root>
+						<ContextMenu.Trigger class="block" disabled={open}>
+							<NoteView
 								{note}
+								{open}
+								closing={open && closing}
 								{labels}
 								reminders={remindersByNote.get(note.id) ?? []}
-								focus={editing.focus}
+								selected={selected.has(note.id)}
+								focus={open ? editing?.focus : undefined}
+								onopen={() => (selection.length ? toggleSelected(note.id) : edit(note))}
+								onlongpress={() => toggleSelected(note.id)}
+								ontoggle={(index) => tickTask(note, index)}
+								ondone={markDone}
 								onclose={closeEditor}
 							/>
-						{/key}
-					{:else}
-						<!-- A finger opens the menu with a long press, selecting goes through it -->
-						<ContextMenu.Root>
-							<ContextMenu.Trigger class="block">
-								<NoteCard
-									{note}
-									labels={labelsById}
-									reminders={remindersByNote.get(note.id) ?? []}
+						</ContextMenu.Trigger>
+						<ContextMenu.Portal>
+							<ContextMenu.Content class="menu" collisionPadding={12}>
+								<NoteMenu
+									notes={targetsOf(note)}
+									{labels}
+									reminders={remindersByNote}
 									selected={selected.has(note.id)}
-									onopen={() => (selection.length ? toggleSelected(note.id) : edit(note))}
-									onlongpress={() => toggleSelected(note.id)}
-									ontoggle={(index) => tickTask(note, index)}
-									ondone={markDone}
+									onselect={() => toggleSelected(note.id)}
+									onedit={(target, focus) => edit(target, focus)}
+									onfinish={() => selected.clear()}
 								/>
-							</ContextMenu.Trigger>
-							<ContextMenu.Portal>
-								<ContextMenu.Content class="menu" collisionPadding={12}>
-									<NoteMenu
-										notes={targetsOf(note)}
-										{labels}
-										reminders={remindersByNote}
-										selected={selected.has(note.id)}
-										onselect={() => toggleSelected(note.id)}
-										onedit={(target, focus) => edit(target, focus)}
-										onfinish={() => selected.clear()}
-									/>
-								</ContextMenu.Content>
-							</ContextMenu.Portal>
-						</ContextMenu.Root>
-					{/if}
+							</ContextMenu.Content>
+						</ContextMenu.Portal>
+					</ContextMenu.Root>
 				</div>
 			{/each}
 		</div>
@@ -276,7 +378,7 @@
 		<div class="pointer-events-auto flex items-center gap-1 rounded-full border border-line bg-raised/85 p-1 pl-5 shadow-xl backdrop-blur-xl" in:rise={{ y: 8, duration: 'base' }}>
 			<span class="type-meta mr-2 text-ink">{selection.length} selected</span>
 			<DropdownMenu.Root>
-				<DropdownMenu.Trigger class="motion-interactive grid size-10 place-items-center rounded-full bg-accent text-on-accent hover:brightness-110" aria-label="Actions for the selection">
+				<DropdownMenu.Trigger class="motion-interactive grid size-10 place-items-center rounded-full bg-accent text-on-accent hover:brightness-110" aria-label="Actions for the selection" {@attach tip('Change the selected notes')}>
 					<Ellipsis class="size-5" />
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Portal>
@@ -291,7 +393,7 @@
 	<div class="pointer-events-auto flex min-w-0 items-center gap-3" in:rise={{ y: 8, duration: 'base' }}>
 		<div class="flex min-w-0 items-center gap-1 rounded-full border border-line bg-raised/85 p-0 shadow-xl backdrop-blur-xl">
 			<div class={['search motion-interactive flex h-12 items-center rounded-full text-ink-muted', searchOpen && 'open']}>
-				<button class="grid size-12 shrink-0 place-items-center rounded-full hover:text-ink" aria-label="Search notes" aria-expanded={searchOpen} onclick={() => (searchOpen ? searchInput?.focus() : openSearch())}>
+				<button class="grid size-12 shrink-0 place-items-center rounded-full hover:text-ink" aria-label="Search notes" aria-expanded={searchOpen} onclick={() => (searchOpen ? searchInput?.focus() : openSearch())} {@attach tip('Search')}>
 					<Search class="size-5" />
 				</button>
 				{#if searchOpen}
@@ -310,7 +412,7 @@
 
 			<!-- FILTER | tweaks the open view, saving writes them into it -->
 			<Popover.Root>
-				<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full hover:text-ink', tweaked ? 'text-accent' : 'text-ink-muted']} aria-label="Filter">
+				<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full hover:text-ink', tweaked ? 'text-accent' : 'text-ink-muted']} aria-label="Filter" {@attach tip(tweaked ? 'Filter, changed from the view' : 'Filter and sort')}>
 					<ListFilter class="size-5" />
 					{#if tweaked}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
 				</Popover.Trigger>
@@ -341,8 +443,8 @@
 			</Popover.Root>
 		</div>
 
-		<!-- CREATE | opens a blank card at the front of the grid -->
-		<button class="create grid size-16 shrink-0 place-items-center rounded-full text-on-accent" aria-label="New note" onclick={() => edit(null)}>
+		<!-- CREATE | grows into a blank note at the front of the grid, gone while that one is open -->
+		<button bind:this={createButton} class={['create grid size-16 shrink-0 place-items-center rounded-full text-on-accent', editing?.fresh && 'away']} aria-label="New note" tabindex={editing?.fresh ? -1 : 0} onclick={() => edit(null)} {@attach tip('New note')}>
 			<Plus class="plus size-7" strokeWidth={2.25} />
 		</button>
 	</div>
@@ -380,7 +482,14 @@
 			0 0.75rem 1.75rem -0.75rem color-mix(in oklab, var(--theme-accent) 70%, transparent);
 		transition:
 			scale var(--duration-base) var(--ease-spring),
-			box-shadow var(--duration-base) var(--ease-out);
+			box-shadow var(--duration-base) var(--ease-out),
+			opacity var(--duration-base) var(--ease-out);
+	}
+
+	.create.away {
+		opacity: 0;
+		scale: 0.6;
+		pointer-events: none;
 	}
 
 	.create::before {
@@ -410,14 +519,13 @@
 		scale: 1.06;
 		box-shadow:
 			inset 0 1px 0 rgb(255 255 255 / 0.45),
-			0 1rem 2.5rem -0.75rem var(--theme-accent);
+			0 0.875rem 2rem -0.75rem color-mix(in oklab, var(--theme-accent) 80%, transparent);
 	}
 
 	.create:hover::before,
 	.create:focus-visible::before {
-		opacity: 0.75;
-		scale: 1.45;
-		animation: breathe 2.4s var(--ease-in-out) infinite alternate;
+		opacity: 0.4;
+		scale: 0.95;
 	}
 
 	.create:hover::after {
@@ -436,18 +544,35 @@
 		rotate: 90deg;
 	}
 
-	@keyframes breathe {
-		to { opacity: 0.45; scale: 1.25; }
-	}
-
 	@keyframes sheen {
 		from { background-position: 150% 0; }
 		to { background-position: -50% 0; }
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.create:hover::before,
 		.create:hover::after { animation: none; }
+	}
+
+	/* NEW NOTE | starts in the button's colour and shape, the content follows once there is room */
+	.fresh :global(.card) {
+		animation: bloom var(--duration-slow) var(--ease-emphasized);
+	}
+
+	.fresh :global(.card > *) {
+		animation: fade-in var(--duration-base) var(--ease-out) calc(var(--duration-slow) * 0.4) both;
+	}
+
+	@keyframes bloom {
+		from { border-radius: 2rem; background-color: var(--theme-accent); }
+	}
+
+	@keyframes fade-in {
+		from { opacity: 0; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.fresh :global(.card),
+		.fresh :global(.card > *) { animation: none; }
 	}
 
 	/* FILTERS */

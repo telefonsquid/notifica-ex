@@ -3,6 +3,7 @@
     import { safeAction } from '#lib/pocketbase.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
     import { VIEW_ICONS, type Label, type ViewFilter, type ViewIcon, type ViewSort } from '#lib/schemas.ts';
+    import { tip } from '#lib/tooltip.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
     import { VIEW_ICON_COMPONENTS } from '#lib/view_icons.ts';
     import { countActive, defaultSort, emptyFilter } from '#lib/views.ts';
@@ -98,7 +99,7 @@
 
                 <!-- ICON -->
                 <Popover.Root bind:open={() => picking === view.id, (open) => (picking = open ? view.id : null)}>
-                    <Popover.Trigger class="icon-button grid size-10 shrink-0 place-items-center rounded-control" aria-label={`Icon of ${view.name}`}>
+                    <Popover.Trigger class="icon-button grid size-10 shrink-0 place-items-center rounded-control" aria-label={`Icon of ${view.name}`} {@attach tip('Icon in the rail')}>
                         <Icon class="size-5" strokeWidth={1.75} />
                     </Popover.Trigger>
                     <Popover.Portal>
@@ -129,14 +130,15 @@
                 {#if index === 0}<span class="type-meta hidden text-ink-faint sm:inline">Home</span>{/if}
 
                 <!-- ORDER -->
-                <button class="icon-button" aria-label={`Move ${view.name} up`} disabled={index === 0} onclick={() => move(index, -1)}><ChevronUp class="size-4" /></button>
-                <button class="icon-button" aria-label={`Move ${view.name} down`} disabled={index === views.length - 1} onclick={() => move(index, 1)}><ChevronDown class="size-4" /></button>
+                <button class="icon-button" aria-label={`Move ${view.name} up`} disabled={index === 0} onclick={() => move(index, -1)} {@attach tip('Move up')}><ChevronUp class="size-4" /></button>
+                <button class="icon-button" aria-label={`Move ${view.name} down`} disabled={index === views.length - 1} onclick={() => move(index, 1)} {@attach tip('Move down')}><ChevronDown class="size-4" /></button>
 
                 <!-- FILTERS -->
                 <button
                     class={['icon-button relative', expanded === view.id && 'bg-line text-ink']}
                     aria-label={`Filters of ${view.name}`}
                     aria-expanded={expanded === view.id}
+                    {@attach tip('Filter and sort')}
                     onclick={() => (expanded = expanded === view.id ? null : view.id)}
                 >
                     <SlidersHorizontal class="size-4" />
@@ -147,7 +149,7 @@
                 <button
                     class={['icon-button', confirmDelete === view.id && 'bg-accent text-on-accent hover:text-on-accent']}
                     aria-label={confirmDelete === view.id ? `Confirm deleting ${view.name}` : `Delete ${view.name}`}
-                    title={views.length === 1 ? 'Keep at least one view' : undefined}
+                    {@attach tip(views.length === 1 ? 'Keep at least one view' : confirmDelete === view.id ? 'Click again to delete' : 'Delete view')}
                     disabled={views.length === 1}
                     onclick={() => remove(view.id)}
                     onblur={() => (confirmDelete = null)}

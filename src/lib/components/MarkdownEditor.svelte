@@ -1,5 +1,7 @@
 <script lang="ts">
     import { isSafeUrl } from '#lib/markdown.ts';
+    import { rise } from '#lib/motion.ts';
+    import { tip } from '#lib/tooltip.svelte.ts';
     import { Bold, Check, FileCode, Heading, Italic, Link, List, ListOrdered, ListTodo, Unlink, X } from '@lucide/svelte';
     import { Editor } from '@tiptap/core';
     import { TaskItem, TaskList } from '@tiptap/extension-list';
@@ -42,7 +44,7 @@
             content: value,
             contentType: 'markdown',
             autofocus: autofocus ? 'end' : false,
-            editorProps: { attributes: { class: 'markdown min-h-32 leading-relaxed text-ink-muted outline-none', 'aria-label': 'Text' } },
+            editorProps: { attributes: { class: 'markdown min-h-32 text-ink-muted outline-none', 'aria-label': 'Text' } },
             onUpdate: ({ editor }) => value = editor.getMarkdown(),
             onTransaction: () => version++,
         }))
@@ -96,8 +98,8 @@
         <div class="rich" {@attach mount}></div>
     {/if}
 
-    <!-- TOOLBAR | formatting only exists in rich mode, the source toggle sits quietly at the end -->
-    <div class="-mx-2 flex min-h-8 items-center gap-0.5">
+    <!-- TOOLBAR | formatting only exists in rich mode, the source toggle sits quietly at the end | drifts in with the other controls of an opening note -->
+    <div class="editor-toolbar -mx-2 flex min-h-8 items-center gap-0.5" in:rise|global={{ y: 4, scale: 1, blur: 2, duration: 'base', delay: 120 }}>
         {#if linking}
             <form class="flex flex-1 items-center gap-1" onsubmit={(event) => { event.preventDefault(); applyLink() }}>
                 <Link class="mx-1.5 size-3.5 shrink-0 text-ink-faint" />
@@ -115,19 +117,19 @@
         {:else}
             {#if !raw && editor}
                 {@const chain = () => editor!.chain().focus()}
-                <button class={['tool', active('bold') && 'on']} aria-label="Bold" aria-pressed={active('bold')} onclick={() => chain().toggleBold().run()}><Bold class="size-3.5" /></button>
-                <button class={['tool', active('italic') && 'on']} aria-label="Italic" aria-pressed={active('italic')} onclick={() => chain().toggleItalic().run()}><Italic class="size-3.5" /></button>
-                <button class={['tool', active('heading', { level: 2 }) && 'on']} aria-label="Heading" aria-pressed={active('heading', { level: 2 })} onclick={() => chain().toggleHeading({ level: 2 }).run()}><Heading class="size-3.5" /></button>
+                <button class={['tool', active('bold') && 'on']} aria-label="Bold" {@attach tip('Bold')} aria-pressed={active('bold')} onclick={() => chain().toggleBold().run()}><Bold class="size-3.5" /></button>
+                <button class={['tool', active('italic') && 'on']} aria-label="Italic" {@attach tip('Italic')} aria-pressed={active('italic')} onclick={() => chain().toggleItalic().run()}><Italic class="size-3.5" /></button>
+                <button class={['tool', active('heading', { level: 2 }) && 'on']} aria-label="Heading" {@attach tip('Heading')} aria-pressed={active('heading', { level: 2 })} onclick={() => chain().toggleHeading({ level: 2 }).run()}><Heading class="size-3.5" /></button>
                 <span class="mx-1 h-4 w-px bg-line"></span>
-                <button class={['tool', active('bulletList') && 'on']} aria-label="Bullet list" aria-pressed={active('bulletList')} onclick={() => chain().toggleBulletList().run()}><List class="size-3.5" /></button>
-                <button class={['tool', active('orderedList') && 'on']} aria-label="Numbered list" aria-pressed={active('orderedList')} onclick={() => chain().toggleOrderedList().run()}><ListOrdered class="size-3.5" /></button>
-                <button class={['tool', active('taskList') && 'on']} aria-label="Checklist" aria-pressed={active('taskList')} onclick={() => chain().toggleTaskList().run()}><ListTodo class="size-3.5" /></button>
+                <button class={['tool', active('bulletList') && 'on']} aria-label="Bullet list" {@attach tip('Bullet list')} aria-pressed={active('bulletList')} onclick={() => chain().toggleBulletList().run()}><List class="size-3.5" /></button>
+                <button class={['tool', active('orderedList') && 'on']} aria-label="Numbered list" {@attach tip('Numbered list')} aria-pressed={active('orderedList')} onclick={() => chain().toggleOrderedList().run()}><ListOrdered class="size-3.5" /></button>
+                <button class={['tool', active('taskList') && 'on']} aria-label="Checklist" {@attach tip('Checklist')} aria-pressed={active('taskList')} onclick={() => chain().toggleTaskList().run()}><ListTodo class="size-3.5" /></button>
                 <span class="mx-1 h-4 w-px bg-line"></span>
-                <button class={['tool', active('link') && 'on']} aria-label={active('link') ? 'Remove link' : 'Link'} onclick={toggleLink}>
+                <button class={['tool', active('link') && 'on']} aria-label={active('link') ? 'Remove link' : 'Link'} onclick={toggleLink} {@attach tip(active('link') ? 'Remove link' : 'Link')}>
                     {#if active('link')}<Unlink class="size-3.5" />{:else}<Link class="size-3.5" />{/if}
                 </button>
             {/if}
-            <button class={['tool ml-auto', raw && 'on']} aria-label="Markdown source" title="Markdown source" aria-pressed={raw} onclick={() => raw = !raw}>
+            <button class={['tool ml-auto', raw && 'on']} aria-label="Markdown source" {@attach tip(raw ? 'Back to the rich editor' : 'Edit the markdown source')} aria-pressed={raw} onclick={() => raw = !raw}>
                 <FileCode class="size-3.5" />
             </button>
         {/if}

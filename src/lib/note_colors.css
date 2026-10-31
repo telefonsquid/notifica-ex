@@ -20,6 +20,11 @@
     background-position: var(--note-texture-position);
 }
 
+/* A solid swatch is strong enough on its own, a ring in its own ink only blurs the edge */
+.swatch[data-note$='-solid'] {
+    border-color: transparent;
+}
+
 .note-mark {
     background: var(--theme-line-strong);
     color: var(--theme-ink);
@@ -45,8 +50,10 @@
 [data-note='ochre'] { --note-bg: var(--theme-note-ochre); --note-mark: var(--color-ochre-400); }
 [data-note='tangerine'] { --note-bg: var(--theme-note-tangerine); --note-mark: var(--color-tangerine-400); }
 [data-note='coral'] { --note-bg: var(--theme-note-coral); --note-mark: var(--color-coral-400); }
+[data-note='cherry'] { --note-bg: var(--theme-note-cherry); --note-mark: var(--color-cherry-400); }
 [data-note='rose'] { --note-bg: var(--theme-note-rose); --note-mark: var(--color-rose-400); }
 [data-note='magenta'] { --note-bg: var(--theme-note-magenta); --note-mark: var(--color-magenta-400); }
+[data-note='plum'] { --note-bg: var(--theme-note-plum); --note-mark: var(--color-plum-400); }
 [data-note='violet'] { --note-bg: var(--theme-note-violet); --note-mark: var(--color-violet-400); }
 [data-note='cobalt'] { --note-bg: var(--theme-note-cobalt); --note-mark: var(--color-cobalt-400); }
 [data-note='sky'] { --note-bg: var(--theme-note-sky); --note-mark: var(--color-sky-400); }
@@ -83,11 +90,23 @@
 
 /* STICKIES ==================================================================================================== */
 [data-note='canary'] { --note-bg: var(--theme-note-canary); }
+[data-note='marigold'] { --note-bg: var(--theme-note-marigold); }
 [data-note='apricot'] { --note-bg: var(--theme-note-apricot); }
+[data-note='peach'] { --note-bg: var(--theme-note-peach); }
+[data-note='flamingo'] { --note-bg: var(--theme-note-flamingo); }
 [data-note='bubblegum'] { --note-bg: var(--theme-note-bubblegum); }
+[data-note='candy'] { --note-bg: var(--theme-note-candy); }
+[data-note='orchid'] { --note-bg: var(--theme-note-orchid); }
 [data-note='lilac'] { --note-bg: var(--theme-note-lilac); }
+[data-note='periwinkle'] { --note-bg: var(--theme-note-periwinkle); }
+[data-note='cornflower'] { --note-bg: var(--theme-note-cornflower); }
 [data-note='aqua'] { --note-bg: var(--theme-note-aqua); }
+[data-note='ice'] { --note-bg: var(--theme-note-ice); }
+[data-note='seafoam'] { --note-bg: var(--theme-note-seafoam); }
+[data-note='pistachio'] { --note-bg: var(--theme-note-pistachio); }
 [data-note='lime'] { --note-bg: var(--theme-note-lime); }
+[data-note='chartreuse'] { --note-bg: var(--theme-note-chartreuse); }
+[data-note='cloud'] { --note-bg: var(--theme-note-cloud); }
 
 
 
@@ -122,11 +141,23 @@
 
 /* DARK INK | the same for bright paper, so the dark theme does not put light text on yellow */
 [data-note='canary'],
+[data-note='marigold'],
 [data-note='apricot'],
+[data-note='peach'],
+[data-note='flamingo'],
 [data-note='bubblegum'],
+[data-note='candy'],
+[data-note='orchid'],
 [data-note='lilac'],
+[data-note='periwinkle'],
+[data-note='cornflower'],
 [data-note='aqua'],
+[data-note='ice'],
+[data-note='seafoam'],
+[data-note='pistachio'],
 [data-note='lime'],
+[data-note='chartreuse'],
+[data-note='cloud'],
 [data-note='legal'],
 [data-note='holo'] {
     color-scheme: light;
@@ -244,6 +275,14 @@
     --note-texture:
         repeating-radial-gradient(circle at 90% 115%, transparent 0 0.875rem, var(--note-pattern) 0.875rem calc(0.875rem + 1px)),
         repeating-radial-gradient(circle at 0% -25%, transparent 0 1.25rem, var(--note-pattern) 1.25rem calc(1.25rem + 1px));
+}
+
+/* WAVES | rows of gentle swells on a sky tint */
+[data-note='waves'] {
+    --note-bg: var(--theme-note-sky);
+    --note-mark: var(--color-sky-400);
+    --note-texture: radial-gradient(circle at 50% 0, transparent 0.625rem, var(--note-pattern) calc(0.625rem + 0.5px) calc(0.625rem + 1.5px), transparent calc(0.625rem + 2px));
+    --note-texture-size: 1.5rem 0.875rem;
 }
 
 /* STRIPES | wide diagonal awning stripes */

@@ -26,8 +26,10 @@
     --theme-note-ochre: color-mix(in oklab, var(--color-ochre-400) 15%, var(--color-charcoal-850));
     --theme-note-tangerine: color-mix(in oklab, var(--color-tangerine-500) 16%, var(--color-charcoal-850));
     --theme-note-coral: color-mix(in oklab, var(--color-coral-400) 16%, var(--color-charcoal-850));
+    --theme-note-cherry: color-mix(in oklab, var(--color-cherry-400) 16%, var(--color-charcoal-850));
     --theme-note-rose: color-mix(in oklab, var(--color-rose-400) 16%, var(--color-charcoal-850));
     --theme-note-magenta: color-mix(in oklab, var(--color-magenta-400) 16%, var(--color-charcoal-850));
+    --theme-note-plum: color-mix(in oklab, var(--color-plum-400) 16%, var(--color-charcoal-850));
     --theme-note-violet: color-mix(in oklab, var(--color-violet-400) 18%, var(--color-charcoal-850));
     --theme-note-cobalt: color-mix(in oklab, var(--color-cobalt-400) 17%, var(--color-charcoal-850));
     --theme-note-sky: color-mix(in oklab, var(--color-sky-400) 16%, var(--color-charcoal-850));
@@ -40,11 +42,23 @@
 
     /* NOTE STICKIES | toned down a little so they do not glare on the dark canvas */
     --theme-note-canary: color-mix(in oklab, var(--color-canary) 88%, var(--color-charcoal-850));
+    --theme-note-marigold: color-mix(in oklab, var(--color-marigold) 88%, var(--color-charcoal-850));
     --theme-note-apricot: color-mix(in oklab, var(--color-apricot) 88%, var(--color-charcoal-850));
+    --theme-note-peach: color-mix(in oklab, var(--color-peach) 88%, var(--color-charcoal-850));
+    --theme-note-flamingo: color-mix(in oklab, var(--color-flamingo) 88%, var(--color-charcoal-850));
     --theme-note-bubblegum: color-mix(in oklab, var(--color-bubblegum) 88%, var(--color-charcoal-850));
+    --theme-note-candy: color-mix(in oklab, var(--color-candy) 88%, var(--color-charcoal-850));
+    --theme-note-orchid: color-mix(in oklab, var(--color-orchid) 88%, var(--color-charcoal-850));
     --theme-note-lilac: color-mix(in oklab, var(--color-lilac) 88%, var(--color-charcoal-850));
+    --theme-note-periwinkle: color-mix(in oklab, var(--color-periwinkle) 88%, var(--color-charcoal-850));
+    --theme-note-cornflower: color-mix(in oklab, var(--color-cornflower) 88%, var(--color-charcoal-850));
     --theme-note-aqua: color-mix(in oklab, var(--color-aqua) 88%, var(--color-charcoal-850));
+    --theme-note-ice: color-mix(in oklab, var(--color-ice) 88%, var(--color-charcoal-850));
+    --theme-note-seafoam: color-mix(in oklab, var(--color-seafoam) 88%, var(--color-charcoal-850));
+    --theme-note-pistachio: color-mix(in oklab, var(--color-pistachio) 88%, var(--color-charcoal-850));
     --theme-note-lime: color-mix(in oklab, var(--color-lime) 88%, var(--color-charcoal-850));
+    --theme-note-chartreuse: color-mix(in oklab, var(--color-chartreuse) 88%, var(--color-charcoal-850));
+    --theme-note-cloud: color-mix(in oklab, var(--color-cloud) 88%, var(--color-charcoal-850));
 
     /* NOTE SHADE | darkens the reminder band at the bottom of a card */
     --theme-note-shade: rgb(0 0 0 / 0.24);
