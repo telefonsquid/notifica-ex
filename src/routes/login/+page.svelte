@@ -1,0 +1,126 @@
+<script lang="ts">
+	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
+	import { cssEasing, duration, rise, stagger } from '#lib/motion.ts';
+	import { safeAction } from '#lib/pocketbase.ts';
+	import Button from '#lib/ui/Button.svelte';
+	import Input from '#lib/ui/Input.svelte';
+	import Logo from '#lib/ui/Logo.svelte';
+	import { ArrowRight } from '@lucide/svelte';
+	import { onMount } from 'svelte';
+	import { loginUser } from '../api/auth.remote';
+
+	// FORM STATE
+	let email = $state('');
+	let password = $state('');
+	let submitting = $state(false);
+	let form = $state<HTMLFormElement>();
+
+	// ENTRANCE | intros only play for elements added after hydration
+	let mounted = $state(false);
+	onMount(() => { mounted = true; });
+
+	async function submit(event: SubmitEvent) {
+		event.preventDefault();
+		submitting = true;
+
+		const user = await safeAction(loginUser({ email, password }));
+		if (user) {
+			await goto(resolve('/(app)'), { refreshAll: true });
+		} else {
+			shake();
+			submitting = false;
+		}
+	}
+
+	// WRONG LOGIN | a short headshake instead of only a red toast
+	function shake() {
+		form?.animate(
+			{ translate: ['0', '-10px', '8px', '-5px', '3px', '0'] },
+			{ duration: duration('slow'), easing: cssEasing('out') }
+		);
+	}
+</script>
+
+<svelte:head>
+	<title>Login · notifica-ex</title>
+</svelte:head>
+
+<!-- BACKDROP | two soft color fields drifting slowly behind the form -->
+<div class="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden="true">
+	<div class="blob blob-accent absolute -top-1/4 -left-1/4 size-[70vmax] rounded-full"></div>
+	<div class="blob blob-secondary absolute -right-1/4 -bottom-1/3 size-[60vmax] rounded-full"></div>
+</div>
+
+<main class="relative grid min-h-dvh place-items-center px-gutter py-12">
+	{#if mounted}
+		<div class="w-full max-w-sm">
+
+			<!-- BRAND -->
+			<div in:rise={{ delay: stagger(0, 70) }}>
+				<Logo wordmark class="mb-14" />
+			</div>
+
+			<!-- HEADLINE -->
+			<h1 class="type-display mb-3 text-5xl text-ink" in:rise={{ delay: stagger(1, 70) }}>
+				Welcome<br />back.
+			</h1>
+			<p class="mb-10 text-ink-muted" in:rise={{ delay: stagger(2, 70) }}>
+				Log in to pick up where you left off.
+			</p>
+
+			<!-- FORM -->
+			<form bind:this={form} class="grid gap-3" onsubmit={submit}>
+				<div in:rise={{ delay: stagger(3, 70) }}>
+					<Input id="email" label="Email" type="email" autocomplete="email" required bind:value={email} />
+				</div>
+				<div in:rise={{ delay: stagger(4, 70) }}>
+					<Input id="password" label="Password" type="password" autocomplete="current-password" required bind:value={password} />
+				</div>
+				<div class="mt-4" in:rise={{ delay: stagger(5, 70) }}>
+					<Button type="submit" class="w-full" loading={submitting}>
+						Log in
+						<ArrowRight class="arrow size-4" />
+					</Button>
+				</div>
+			</form>
+
+		</div>
+	{/if}
+</main>
+
+<style>
+	.blob {
+		filter: blur(90px);
+		opacity: 0.55;
+		animation: wander 26s var(--ease-in-out) infinite alternate;
+	}
+
+	.blob-accent {
+		background: radial-gradient(circle, var(--theme-accent-soft), transparent 65%);
+	}
+
+	.blob-secondary {
+		background: radial-gradient(circle, var(--theme-secondary-soft), transparent 65%);
+		animation-duration: 32s;
+		animation-direction: alternate-reverse;
+	}
+
+	@keyframes wander {
+		from { translate: 0 0; scale: 1; }
+		to { translate: 12vmax 8vmax; scale: 1.15; }
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.blob { animation: none; }
+	}
+
+	/* Arrow nudges forward when the button is hovered */
+	form :global(.arrow) {
+		transition: translate var(--duration-base) var(--ease-spring);
+	}
+
+	form :global(button:hover .arrow) {
+		translate: 3px 0;
+	}
+</style>

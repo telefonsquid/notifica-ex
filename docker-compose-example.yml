@@ -1,0 +1,98 @@
+services:
+
+  web:
+    container_name: notifica-ex-web
+    build: .
+    ports:
+      - "3000:3000" # EXPOSED-WEB-PORT:CONTAINER-PORT
+    environment:
+      - "INTERNAL_POCKETBASE_URL=http://pocketbase:8080" # internal API access, do not change!
+      - "PUBLIC_POCKETBASE_URL=http://localhost:8091" # public API access for realtime, e.g. https://notifica-ex-pb.example.com
+      - "ORIGIN=http://localhost:3000" # main frontend, also the target of the Done button in reminders, e.g. https://notifica-ex.example.com
+      - "POCKETBASE_SUPERUSER_EMAIL=<EMAIL_HERE>" # must match the pocketbase service below
+      - "POCKETBASE_SUPERUSER_PASSWORD=<PASSWORD_HERE>" # must match the pocketbase service below
+      - "SERVER_AUTH_SECRET=<SECRET_HERE>" # generate a secure secret key and put it here, the pocketbase and migration services need it too
+      - "NTFY_URL=http://ntfy:80" # internal ntfy access, do not change!
+      - "NTFY_TOKEN=<NTFY_TOKEN_HERE>" # token of an ntfy user allowed to publish, see README
+      - "PUBLIC_NTFY_URL=http://localhost:8092" # same as NTFY_BASE_URL below, shown in the settings for subscribing
+      - "TZ=Europe/Berlin" # force docker timezone
+
+      # PocketBase settings, force applied on every start. Omit lines to manage them in the PocketBase admin UI instead.
+      - "POCKETBASE_APP_NAME=notifica-ex"
+      - "SMTP_HOST=smtp.example.com"
+      - "SMTP_PORT=465"
+      - "SMTP_USERNAME=<SMTP_USER_HERE>"
+      - "SMTP_PASSWORD=<SMTP_PASSWORD_HERE>"
+      - "SMTP_TLS=true"
+      - "SMTP_SENDER_NAME=notifica-ex"
+      - "SMTP_SENDER_ADDRESS=<SENDER_ADDRESS_HERE>"
+    restart: unless-stopped
+    depends_on:
+      pocketbase:
+        condition: service_healthy
+
+  pocketbase:
+    container_name: notifica-ex-pb
+    build: ./pocketbase
+    ports:
+      - "8091:8080" # EXPOSED-POCKETBASE-PORT:CONTAINER-PORT
+    environment:
+      - "POCKETBASE_SUPERUSER_EMAIL=<EMAIL_HERE>" # created on first start, password reset to this value on every start
+      - "POCKETBASE_SUPERUSER_PASSWORD=<PASSWORD_HERE>" # at least 8 characters
+      - "SERVER_AUTH_SECRET=<SECRET_HERE>" # lets the cron hook call the web container
+      - "WEB_INTERNAL_URL=http://web:3000" # internal web access, do not change!
+      - "TZ=Europe/Berlin" # force docker timezone
+    volumes:
+      - notifica-ex_pb_data:/pb/pb_data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:8080/api/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 10s
+    restart: unless-stopped
+
+  migration:
+    container_name: notifica-ex-migrate
+    image: curlimages/curl:latest
+    depends_on:
+      web:
+        condition: service_started
+      pocketbase:
+        condition: service_healthy
+    restart: "no" # EXECUTE ONCE
+    # retries until the web container answers, then exits non-zero if the setup never goes through
+    command: >
+      curl -sf -X POST
+      --retry 60 --retry-delay 2 --retry-all-errors --retry-connrefused
+      -H "Authorization: Bearer <SECRET_HERE>"
+      http://web:3000/api/migration
+
+  ntfy:
+    container_name: notifica-ex-ntfy
+    image: binwiederhier/ntfy:v2.11.0
+    command: serve
+    ports:
+      - "8092:80" # EXPOSED-NTFY-PORT:CONTAINER-PORT, the phone app subscribes here
+    environment:
+      - "NTFY_BASE_URL=http://localhost:8092" # public ntfy access, e.g. https://notifica-ex-ntfy.example.com
+      - "NTFY_AUTH_FILE=/var/lib/ntfy/auth.db"
+      - "NTFY_AUTH_DEFAULT_ACCESS=deny-all" # reminders are private, every topic needs a user
+      - "NTFY_CACHE_FILE=/var/cache/ntfy/cache.db"
+      - "NTFY_BEHIND_PROXY=true"
+      - "TZ=Europe/Berlin" # force docker timezone
+    volumes:
+      - notifica-ex_ntfy_auth:/var/lib/ntfy
+      - notifica-ex_ntfy_cache:/var/cache/ntfy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --tries=1 -O- http://127.0.0.1:80/v1/health | grep -q '\"healthy\":true'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  notifica-ex_pb_data:
+  notifica-ex_ntfy_auth:
+  notifica-ex_ntfy_cache:

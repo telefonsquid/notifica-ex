@@ -1,0 +1,181 @@
+<script lang="ts">
+	import { PUBLIC_NTFY_URL } from '$app/env/public';
+	import { invalidateAll } from '$app/navigation';
+	import PageHeader from '#lib/components/PageHeader.svelte';
+	import ThemePicker from '#lib/components/ThemePicker.svelte';
+	import { safeAction } from '#lib/pocketbase.ts';
+	import { onRecordChange } from '#lib/realtime.ts';
+	import Button from '#lib/ui/Button.svelte';
+	import { Check, Dices, Send, Trash2 } from '@lucide/svelte';
+	import { untrack } from 'svelte';
+	import { deleteLabel, getLabels, renameLabel } from '../../api/labels.remote';
+	import { sendTestReminder, setNtfyTopic } from '../../api/reminders.remote';
+	import type { PageProps } from './$types';
+
+	// PROPS
+	let { data }: PageProps = $props();
+
+	// REMINDERS
+	let topic = $state(untrack(() => data.user.ntfyTopic ?? ''));
+	let savingTopic = $state(false);
+	let testing = $state(false);
+	let tested = $state(false);
+
+	let stored = $derived(data.user.ntfyTopic ?? '');
+	let subscribeUrl = $derived(PUBLIC_NTFY_URL && stored ? `${PUBLIC_NTFY_URL.replace(/\/$/, '')}/${stored}` : null);
+
+	// Long and random, the topic name is the only thing that keeps strangers out on an open ntfy server
+	function randomTopic() {
+		const bytes = crypto.getRandomValues(new Uint8Array(12));
+		topic = 'notifica-' + Array.from(bytes, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, 20);
+	}
+
+	async function saveTopic() {
+		savingTopic = true;
+		if (await safeAction(setNtfyTopic(topic.trim()))) await invalidateAll();
+		savingTopic = false;
+	}
+
+	async function test() {
+		testing = true;
+		tested = !!(await safeAction(sendTestReminder()));
+		testing = false;
+	}
+
+	// LABELS
+	let labels = $derived(await getLabels());
+	let confirmDelete = $state<string | null>(null);
+
+	$effect(() => onRecordChange('labels', () => getLabels().refresh()));
+
+	function rename(id: string, input: HTMLInputElement, current: string) {
+		const name = input.value.trim();
+		if (!name || name === current) {
+			input.value = current;
+			return;
+		}
+		safeAction(renameLabel({ id, name })).then((result) => {
+			if (!result) input.value = current;
+		});
+	}
+
+	async function remove(id: string) {
+		if (confirmDelete !== id) {
+			confirmDelete = id;
+			return;
+		}
+		await safeAction(deleteLabel(id));
+		confirmDelete = null;
+	}
+</script>
+
+<svelte:head>
+	<title>Settings · notifica-ex</title>
+</svelte:head>
+
+<PageHeader eyebrow="Preferences" title="Settings" />
+
+<div class="grid gap-14">
+
+	<!-- APPEARANCE -->
+	<section>
+		<h2 class="type-meta mb-1 text-ink-faint">Appearance</h2>
+		<p class="mb-6 text-ink-muted">Stored on this device, so every device can have its own.</p>
+		<ThemePicker current={data.theme} />
+	</section>
+
+	<!-- REMINDERS -->
+	<section class="max-w-xl">
+		<h2 class="type-meta mb-1 text-ink-faint">Reminders</h2>
+		<p class="mb-6 text-ink-muted">Reminders get pushed to this ntfy topic. Subscribe to it in the ntfy app on every device that should ring.</p>
+
+		<form class="flex flex-wrap gap-2" onsubmit={(event) => { event.preventDefault(); saveTopic(); }}>
+			<input bind:value={topic} placeholder="Topic" aria-label="ntfy topic" class="field min-w-0 flex-1" />
+			<Button type="button" style="ghost" icon={Dices} onclick={randomTopic}>Random</Button>
+			<Button type="submit" icon={Check} loading={savingTopic} disabled={topic.trim() === stored}>Save</Button>
+		</form>
+
+		{#if stored}
+			<div class="mt-4 flex flex-wrap items-center gap-3">
+				<Button style="secondary" icon={Send} loading={testing} onclick={test}>Send a test</Button>
+				{#if tested}<span class="text-secondary">Sent, check your phone.</span>{/if}
+			</div>
+			{#if subscribeUrl}
+				<p class="mt-4 text-ink-muted">Subscribe address <code class="rounded bg-line px-1.5 py-0.5 text-ink break-all">{subscribeUrl}</code></p>
+			{/if}
+		{/if}
+	</section>
+
+	<!-- LABELS -->
+	<section class="max-w-xl">
+		<h2 class="type-meta mb-1 text-ink-faint">Labels</h2>
+		<p class="mb-6 text-ink-muted">Rename a label by editing it. Deleting one keeps its notes.</p>
+
+		{#if labels.length}
+			<ul class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
+				{#each labels as label (label.id)}
+					<li class="flex items-center gap-2 bg-card py-2 pr-2 pl-card">
+						<input
+							value={label.name}
+							aria-label={`Rename ${label.name}`}
+							class="min-w-0 flex-1 bg-transparent py-1.5 text-ink outline-none"
+							onchange={(event) => rename(label.id, event.currentTarget, label.name)}
+							onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+						/>
+						<button
+							class={['icon-button', confirmDelete === label.id && 'bg-accent text-on-accent hover:text-on-accent']}
+							aria-label={confirmDelete === label.id ? `Confirm deleting ${label.name}` : `Delete ${label.name}`}
+							onclick={() => remove(label.id)}
+							onblur={() => (confirmDelete = null)}
+						>
+							<Trash2 class="size-4" />
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="text-ink-faint">No labels yet. Add them right in a note.</p>
+		{/if}
+	</section>
+
+	<!-- ACCOUNT -->
+	<section>
+		<h2 class="type-meta mb-6 text-ink-faint">Account</h2>
+		<dl class="grid max-w-xl gap-px overflow-hidden rounded-card border border-line bg-line">
+			<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
+				<dt class="text-ink-muted">Name</dt>
+				<dd class="type-title text-ink">{data.user.name || '–'}</dd>
+			</div>
+			<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
+				<dt class="text-ink-muted">Email</dt>
+				<dd class="truncate text-ink">{data.user.email}</dd>
+			</div>
+			<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
+				<dt class="text-ink-muted">Role</dt>
+				<dd class="type-meta rounded-full bg-secondary-soft px-2.5 py-1 text-secondary">{data.user.authorizationLevel}</dd>
+			</div>
+		</dl>
+	</section>
+
+</div>
+
+<style>
+	.field {
+		height: 2.75rem;
+		padding-inline: 0.875rem;
+		border: 1px solid var(--theme-line);
+		border-radius: var(--layout-radius-control);
+		background: var(--theme-card);
+		color: var(--theme-ink);
+		transition: border-color var(--duration-fast) var(--ease-out);
+	}
+
+	.field:hover {
+		border-color: var(--theme-line-strong);
+	}
+
+	.field:focus {
+		border-color: var(--theme-accent);
+		outline: none;
+	}
+</style>

@@ -1,0 +1,152 @@
+import { getRequestEvent } from '$app/server';
+import type { CollectionMap, FetchOptions, Reminder } from '#lib/schemas.ts';
+import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
+import type { CollectionModel, ListResult, RecordListOptions } from 'pocketbase';
+
+// ERROR HANDLING
+export type Result<T> =
+    | { success: true; data: T; error: null }
+    | { success: false; data: null; error: string };
+export async function pbErrorHandler<T>(promise: Promise<T>): Promise<Result<T>> {
+    return promise
+        .then(data => ({ success: true as const, data, error: null }))
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .catch((err: any) => {
+            let errorMessage = err.message || 'An unexpected database error occurred.';
+
+            // Field level details, formatted as "[name: Missing value, email: Invalid]"
+            const validationErrors = err.response?.data || err.data;
+            if(validationErrors && typeof validationErrors === 'object'){
+                const details = Object.entries(validationErrors)
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    .map(([field, errObj]: [string, any]) => `${field}: ${errObj?.message || 'Invalid'}`)
+                    .join(', ');
+
+                if(details) errorMessage += ` [${details}]`;
+            }
+
+            return {
+                success: false as const,
+                data: null,
+                error: errorMessage
+            };
+        });
+}
+
+
+
+
+
+// GENERIC FUNCTIONS =====================================================================
+
+// GET
+export async function getOne<K extends keyof CollectionMap>(collectionName: K, id: string, options?: FetchOptions) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).getOne(id, options) as Promise<CollectionMap[K]>)
+}
+
+export async function getAll<K extends keyof CollectionMap>(collectionName: K, options?: FetchOptions) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).getFullList(options) as Promise<CollectionMap[K][]>)
+}
+
+export async function getPage<K extends keyof CollectionMap>(collectionName: K, page: number, perPage: number, options?: RecordListOptions) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).getList(page, perPage, options) as Promise<ListResult<CollectionMap[K]>>)
+}
+
+// INSERT
+export async function insertOne<K extends keyof CollectionMap>(collectionName: K, item: CollectionMap[K]) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).create(item) as Promise<CollectionMap[K]>)
+}
+
+export async function insertOnePartial<K extends keyof CollectionMap>(collectionName: K, item: Partial<CollectionMap[K]>) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).create(item) as Promise<CollectionMap[K]>)
+}
+
+// DELETE
+export async function deleteOne<K extends keyof CollectionMap>(collectionName: K, id: string) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).delete(id) as Promise<boolean>)
+}
+
+// UPDATE
+export async function updateOne<K extends keyof CollectionMap>(collectionName: K, id: string, item: CollectionMap[K]) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).update(id, item) as Promise<CollectionMap[K]>)
+}
+
+export async function updateOnePartial<K extends keyof CollectionMap>(collectionName: K, id: string, item: Partial<CollectionMap[K]>) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).update(id, item) as Promise<CollectionMap[K]>)
+}
+
+// FIND
+export async function findOne<K extends keyof CollectionMap>(collectionName: K, query: string, options?: FetchOptions) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection(collectionName).getFirstListItem(query, options) as Promise<CollectionMap[K]>)
+}
+
+
+
+// GENERIC COLLECTION FUNCTIONS
+export async function getCollection<K extends keyof CollectionMap>(collectionName: K) {
+    const pb = await getPbAdminConnection();
+    return await pbErrorHandler(pb.collections.getOne(collectionName));
+}
+
+export async function importCollections(collections: CollectionModel[]) {
+    const pb = await getPbAdminConnection();
+    return await pbErrorHandler(pb.collections.import(collections, false))
+}
+
+
+
+// SETTINGS
+export async function updateSettings(settings: Record<string, unknown>) {
+    const pb = await getPbAdminConnection();
+    return await pbErrorHandler(pb.settings.update(settings))
+}
+
+
+
+// OWNED RECORDS =====================================================================
+type OwnedCollection = 'labels' | 'notes' | 'reminders'
+
+// Everything one user owns in a collection
+export async function getAllOwned<K extends OwnedCollection>(collectionName: K, owner: string, options?: Omit<FetchOptions, 'filter'>) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('owner = {:owner}', { owner })
+    return await pbErrorHandler(pb.collection(collectionName).getFullList({ ...options, filter }) as Promise<CollectionMap[K][]>)
+}
+
+// Fails like a missing record when someone else owns it, so foreign ids reveal nothing
+export async function getOwned<K extends OwnedCollection>(collectionName: K, id: string, owner: string) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('id = {:id} && owner = {:owner}', { id, owner })
+    return await pbErrorHandler(pb.collection(collectionName).getFirstListItem(filter) as Promise<CollectionMap[K]>)
+}
+
+
+
+// SPECIFIC FUNCTIONS =====================================================================
+export async function getDueReminders(now: Date) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('next != "" && next <= {:now}', { now })
+    return await pbErrorHandler(pb.collection('reminders').getFullList({ filter, expand: 'note,owner' }) as Promise<Reminder[]>)
+}
+
+// Fails when the note has no reminder yet
+export async function getReminderOfNote(note: string, owner: string) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('note = {:note} && owner = {:owner}', { note, owner })
+    return await pbErrorHandler(pb.collection('reminders').getFirstListItem(filter) as Promise<Reminder>)
+}
+
+export async function login(email: string, password: string) {
+    const pb = getRequestEvent().locals.pb // the request's own connection, so the hook can export its auth as a cookie
+    return await pbErrorHandler(pb.collection('users').authWithPassword(email, password))
+}

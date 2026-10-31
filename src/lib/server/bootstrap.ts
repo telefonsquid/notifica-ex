@@ -1,0 +1,87 @@
+import { dev } from '$app/env';
+import * as env from '$app/env/private';
+import { unwrap } from '#lib/pocketbase.ts';
+import { findOne, getCollection, importCollections, insertOnePartial, updateSettings } from '#lib/server/queries.ts';
+import type { CollectionModel } from 'pocketbase';
+import pbSchema from '../../../pocketbase/pb_schema.json';
+
+// Versions whose migrations are already part of pb_schema.json
+const SNAPSHOT_MIGRATIONS: string[] = []
+
+export async function bootstrap(){ // setup for a fresh pocketbase install
+
+    // CREATE SCHEMA ON FRESH INSTALL
+    if(await isFreshInstall()){
+        await createSchema()
+        await markSnapshotMigrations() // a fresh install always has the latest schema
+    }
+    else if(dev){
+        await createSchema() // no versioned migrations before the first release, local dev follows pb_schema.json
+    }
+
+    // CREATE REQUIRED DATABASE ENTRIES
+    await createFirstUser() // only creates one if no user exists
+
+    // FORCE POCKETBASE SETTINGS
+    await forcePocketbaseSettings()
+
+}
+
+async function isFreshInstall(){
+    const result = await getCollection('migrations')
+    return !result.success
+}
+
+async function createSchema(){
+    unwrap(await importCollections(pbSchema as unknown as CollectionModel[]))
+}
+
+async function markSnapshotMigrations(){
+    for(const version of SNAPSHOT_MIGRATIONS){
+        unwrap(await insertOnePartial('migrations', { version: version, completed: true }))
+    }
+}
+
+async function createFirstUser(){
+
+    const existing = await findOne('users', 'id != ""')
+    if(existing.success){ return }
+
+    unwrap(await insertOnePartial('users', { // first user mirrors the pb superuser and should be changed after first login
+        email: env.POCKETBASE_SUPERUSER_EMAIL,
+        password: env.POCKETBASE_SUPERUSER_PASSWORD,
+        passwordConfirm: env.POCKETBASE_SUPERUSER_PASSWORD,
+        name: 'Admin',
+        authorizationLevel: 'admin',
+        state: 'active',
+        verified: true,
+        emailVisibility: false
+    }))
+
+}
+
+async function forcePocketbaseSettings(){
+
+    if(dev){ return } // local dev shares test pocketbase, so its urls must not leak into it
+
+    const meta: Record<string, unknown> = {}
+    if(env.ORIGIN){ meta.appURL = env.ORIGIN }
+    if(env.POCKETBASE_APP_NAME){ meta.appName = env.POCKETBASE_APP_NAME }
+    if(env.SMTP_SENDER_NAME){ meta.senderName = env.SMTP_SENDER_NAME }
+    if(env.SMTP_SENDER_ADDRESS){ meta.senderAddress = env.SMTP_SENDER_ADDRESS }
+
+    const smtp: Record<string, unknown> = {}
+    if(env.SMTP_HOST){ smtp.host = env.SMTP_HOST; smtp.enabled = true }
+    if(env.SMTP_PORT){ smtp.port = env.SMTP_PORT }
+    if(env.SMTP_USERNAME){ smtp.username = env.SMTP_USERNAME }
+    if(env.SMTP_PASSWORD){ smtp.password = env.SMTP_PASSWORD }
+    if(env.SMTP_TLS !== undefined){ smtp.tls = env.SMTP_TLS }
+
+    const settings: Record<string, unknown> = {}
+    if(Object.keys(meta).length > 0){ settings.meta = meta }
+    if(Object.keys(smtp).length > 0){ settings.smtp = smtp }
+    if(Object.keys(settings).length === 0){ return }
+
+    unwrap(await updateSettings(settings))
+
+}
