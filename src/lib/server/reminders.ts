@@ -37,6 +37,13 @@ async function dispatch(at: Date) {
         const note = reminder.expand?.note as Note | undefined
         const owner = reminder.expand?.owner as User | undefined
 
+        // GONE | its owner was taken off the shared note, nothing to push about any more
+        if(note && note.owner !== reminder.owner && !note.shared.includes(reminder.owner)){
+            const removed = await deleteOne('reminders', reminder.id)
+            if(!removed.success) failed.push(`${reminder.id}: ${removed.error}`)
+            continue
+        }
+
         // LOG | the history keeps every time it went off, whatever happens to the reminder later
         const logged = await insertOnePartial('occurrences', {
             owner: reminder.owner,

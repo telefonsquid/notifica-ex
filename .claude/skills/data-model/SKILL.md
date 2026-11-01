@@ -32,6 +32,7 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 - The owner picks people in `ShareEditor`, stored in `notes.shared`.
 - Collaborators edit title, body, colour and images and add their own reminders. Pin, archive, labels, manual order and delete stay with the owner, the server strips those fields from a collaborator's update.
 - For a collaborator, delete becomes `leaveNote` (removes them from `shared`). Duplicating someone else's note drops their labels.
+- Leaving, or being taken off a note, deletes that person's reminders on it (`deleteRemindersOn`), and dispatch drops any reminder whose owner lost the note. Their history stays.
 - UI: `owned = note.owner === me` decides which actions show.
 
 ## Images

@@ -151,6 +151,20 @@ export async function getNoteFor(id: string, user: string) {
     return await pbErrorHandler(pb.collection('notes').getFirstListItem(filter) as Promise<CollectionMap['notes']>)
 }
 
+// Reminders people set on a note they no longer see | their history stays theirs
+export async function deleteRemindersOn(note: string, owners: string[]) {
+    const pb = await getPbAdminConnection()
+    if(!owners.length) return { success: true as const, data: 0, error: null }
+    const people = owners.map((owner, index) => pb.filter(`owner = {:owner${index}}`, { [`owner${index}`]: owner })).join(' || ')
+    const found = await pbErrorHandler(pb.collection('reminders').getFullList({ filter: `${pb.filter('note = {:note}', { note })} && (${people})`, fields: 'id' }))
+    if(!found.success) return found
+    for(const reminder of found.data){
+        const deleted = await deleteOne('reminders', reminder.id)
+        if(!deleted.success) return deleted
+    }
+    return { success: true as const, data: found.data.length, error: null }
+}
+
 export async function leaveNote(id: string, user: string) {
     const pb = await getPbAdminConnection()
     return await pbErrorHandler(pb.collection('notes').update(id, { 'shared-': [user] }) as Promise<CollectionMap['notes']>)

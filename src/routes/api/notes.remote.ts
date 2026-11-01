@@ -2,10 +2,11 @@ import { getRequestEvent } from '$app/server';
 import z from 'zod';
 import { LIMITS, idSchema } from '#lib/schema_limits.ts';
 import { fileNameSchema, noteContentSchema, notePositionSchema, type Note } from '#lib/schemas.ts';
-import { addNoteImages, deleteOne, fetchNoteImage, getAll, getAllNotesFor, getAllOwned, getNoteFor, getOwned, insertOnePartial, leaveNote as leave, removeNoteImage, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { addNoteImages, deleteOne, deleteRemindersOn, fetchNoteImage, getAll, getAllNotesFor, getAllOwned, getNoteFor, getOwned, insertOnePartial, leaveNote as leave, removeNoteImage, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
+import { getReminders } from './reminders.remote.ts';
 
 // NOTES ============================================================
 export const getNotes = query(async () => {
@@ -125,12 +126,16 @@ export const shareNote = command(z.object({ id: idSchema, people: z.array(idSche
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    unwrap(await getOwned('notes', id, locals.user.id), 'Note not found.')
+    const stored = unwrap(await getOwned('notes', id, locals.user.id), 'Note not found.')
 
     const owner = locals.user.id
     const active = new Set(unwrap(await getAll('users', { filter: 'state = "active"' }), 'Could not load people.').map((user) => user.id))
     const shared = [...new Set(people)].filter((person) => person !== owner && active.has(person))
     const note = unwrap(await updateOnePartial('notes', id, { shared }), 'Could not share the note.')
+
+    // Whoever lost the note loses their reminders on it too, they would push about something they can't open
+    const removed = stored.shared.filter((person) => !shared.includes(person))
+    unwrap(await deleteRemindersOn(id, removed), 'Could not remove their reminders.')
 
     await getNotes().refresh()
     return note
@@ -145,8 +150,9 @@ export const leaveNote = command(idSchema, async (id) => {
     const note = unwrap(await getNoteFor(id, locals.user.id), 'Note not found.')
     if(note.owner === locals.user.id) error(400, 'You own this note, delete it instead.')
     unwrap(await leave(id, locals.user.id), 'Could not leave the note.')
+    unwrap(await deleteRemindersOn(id, [locals.user.id]), 'Could not remove your reminders on it.')
 
-    await getNotes().refresh()
+    await Promise.all([getNotes().refresh(), getReminders().refresh()])
     return true
 
 });
