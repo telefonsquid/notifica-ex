@@ -90,15 +90,16 @@ export function notification(reminder: Reminder, note: Note, topic: string, occu
         tags: [reminder.task ? 'ballot_box_with_check' : 'bell'],
     }
     if(!ORIGIN) return message // links need the public address
+    const origin = ORIGIN.replace(/\/+$/, '')
 
-    message.click = `${ORIGIN}/?note=${note.id}`
+    message.click = `${origin}/?note=${note.id}`
 
     // DONE BUTTON | signed for this one occurrence, so it ticks off just that one however late it gets pressed
     if(reminder.task && occurrence){
         message.actions = [{
             action: 'http',
             label: 'Done',
-            url: `${ORIGIN}/api/occurrences/${occurrence.id}/done`,
+            url: `${origin}/api/occurrences/${occurrence.id}/done`,
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ signature: sign(doneSubject(occurrence.id)) }),
