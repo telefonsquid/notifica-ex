@@ -1,9 +1,11 @@
-import type { ReminderRepeat, Weekday } from '#lib/schemas.ts';
+import type { ReminderLimit, ReminderRepeat, Weekday } from '#lib/schemas.ts';
 
-type Rule = { at: string, repeat: ReminderRepeat, every: number, weekdays?: Weekday[], until?: string, timezone: string }
+type Rule = { at: string, repeat: ReminderRepeat, every: number, weekdays?: Weekday[], until?: string, timezone: string, rules?: ReminderLimit[] }
 
-const HOUR = 60 * 60 * 1000
+const MINUTE = 60 * 1000
+const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
+const MAX_HOPS = 500 // blocked stretches a search skips before it gives up
 
 // Monday first, as on the picker | getUTCDay counts from sunday
 export const WEEKDAYS: { value: Weekday, short: string }[] = [
@@ -32,9 +34,21 @@ export function occurrenceAfter(rule: Rule, after: Date): Date | null {
     const start = parseTimestamp(rule.at)
     if(!start) return null
 
-    const next = nextOccurrence(rule, start, after)
     const until = rule.repeat === 'never' ? null : parseTimestamp(rule.until)
-    return next && until && next > until ? null : next
+    const limits = rule.repeat === 'never' ? [] : rule.rules ?? []
+
+    // A blocked time skips the whole blocked stretch, so a few hops reach the next allowed one
+    let from = after
+    for(let hop = 0; hop < MAX_HOPS; hop++){
+        const next = nextOccurrence(rule, start, from)
+        if(!next || (until && next > until)) return null
+
+        const resume = blockedUntil(limits, next, rule.timezone)
+        if(!resume) return next
+        if(resume === 'never') return null
+        from = new Date(resume.getTime() - 1)
+    }
+    return null
 }
 
 function nextOccurrence(rule: Rule, start: Date, after: Date): Date | null {
@@ -46,9 +60,9 @@ function nextOccurrence(rule: Rule, start: Date, after: Date): Date | null {
     // ONE OFF
     if(rule.repeat === 'never') return null
 
-    // HOURS | plain steps, the clock time may drift across daylight saving
-    if(rule.repeat === 'hours'){
-        const step = rule.every * HOUR
+    // MINUTES AND HOURS | plain steps, the clock time may drift across daylight saving
+    if(rule.repeat === 'minutes' || rule.repeat === 'hours'){
+        const step = rule.every * (rule.repeat === 'minutes' ? MINUTE : HOUR)
         const passed = Math.floor((after.getTime() - start.getTime()) / step) + 1
         return new Date(start.getTime() + passed * step)
     }
@@ -111,23 +125,129 @@ function dateOf(wall: WallClock){
     return { year: wall.year, month: wall.month, day: wall.day }
 }
 
-// Short label for the rule, like "Every 16 hours" or "Mon, Wed, Fri"
-export function describeRule(rule: Pick<Rule, 'repeat' | 'every' | 'weekdays'>): string {
-    if(rule.repeat === 'never') return 'Once'
 
-    if(rule.repeat === 'weekdays'){
-        const days = WEEKDAYS.filter((day) => rule.weekdays?.includes(day.value))
-        if(days.length === 7) return 'Daily'
-        if(days.length === 5 && !rule.weekdays?.some((day) => day === 'sa' || day === 'su')) return 'Weekdays'
-        return days.map((day) => day.short).join(', ') || 'No days'
+
+// LIMITS ====================================================================================================
+
+// Moment a blocked occurrence may go off again, 'never' when no later one can | null when nothing blocks it
+function blockedUntil(limits: ReminderLimit[], moment: Date, timezone: string): Date | 'never' | null {
+    if(!limits.length) return null
+
+    const wall = wallClock(moment, timezone)
+    const date = isoDate(wall)
+    const clock = wall.hour * 60 + wall.minute
+    const weekday = BY_DAY_INDEX[new Date(Date.UTC(wall.year, wall.month - 1, wall.day)).getUTCDay()]
+    const at = (days: number, minutes: number) => fromWallClock({ ...wall, day: wall.day + days, hour: Math.floor(minutes / 60), minute: minutes % 60, second: 0 }, timezone)
+    const midnight = (date: string, days = 0) => {
+        const day = parseDate(date)
+        return fromWallClock({ ...day, day: day.day + days, hour: 0, minute: 0, second: 0 }, timezone)
+    }
+    const matches = (limit: ReminderLimit) =>
+        limit.kind === 'times' ? inWindow(clock, minutesOf(limit.from), minutesOf(limit.to))
+        : limit.kind === 'days' ? limit.days.includes(weekday)
+        : limit.from <= date && date <= limit.to
+
+    // Every blocking rule frees a stretch that starts now, so the latest end frees them all
+    const ends: Date[] = []
+
+    // EXCEPT | any match blocks until the matched stretch ends
+    for(const limit of limits){
+        if(limit.mode !== 'except' || !matches(limit)) continue
+        if(limit.kind === 'days') ends.push(at(1, 0))
+        if(limit.kind === 'dates') ends.push(midnight(limit.to, 1))
+        if(limit.kind === 'times'){
+            const to = minutesOf(limit.to)
+            ends.push(at(to > clock ? 0 : 1, to))
+        }
     }
 
-    if(rule.every === 1) return { hours: 'Hourly', days: 'Daily', weeks: 'Weekly', months: 'Monthly', years: 'Yearly' }[rule.repeat]
+    // ONLY | each kind with only rules needs one of them to match
+    for(const kind of ['times', 'days', 'dates'] as const){
+        const only = limits.filter((limit) => limit.mode === 'only' && limit.kind === kind)
+        if(!only.length || only.some(matches)) continue
+
+        if(kind === 'days') ends.push(at(1, 0))
+        if(kind === 'dates'){
+            const ahead = only.flatMap((limit) => limit.kind === 'dates' && limit.from > date ? [limit.from] : []).sort()[0]
+            if(!ahead) return 'never'
+            ends.push(midnight(ahead))
+        }
+        if(kind === 'times'){
+            const starts = only.flatMap((limit) => limit.kind === 'times' && limit.from !== limit.to ? [minutesOf(limit.from)] : []).sort((a, b) => a - b)
+            if(!starts.length) return 'never'
+            const today = starts.find((start) => start > clock)
+            ends.push(today === undefined ? at(1, starts[0]) : at(0, today))
+        }
+    }
+
+    if(!ends.length) return null
+    return new Date(Math.max(...ends.map((end) => end.getTime())))
+}
+
+// Window may run past midnight | equal ends make an empty window
+function inWindow(clock: number, from: number, to: number){
+    if(from < to) return from <= clock && clock < to
+    if(from > to) return clock >= from || clock < to
+    return false
+}
+
+function minutesOf(time: string){
+    const [hour, minute] = time.split(':').map(Number)
+    return hour * 60 + minute
+}
+
+function parseDate(date: string){
+    const [year, month, day] = date.split('-').map(Number)
+    return { year, month, day }
+}
+
+function isoDate(wall: WallClock){
+    return `${wall.year}-${String(wall.month).padStart(2, '0')}-${String(wall.day).padStart(2, '0')}`
+}
+
+
+
+// LABELS ====================================================================================================
+
+// Short label for the rule, like "Every 16 hours · 14:00–16:00 · except Sat, Sun"
+export function describeRule(rule: Pick<Rule, 'repeat' | 'every' | 'weekdays' | 'rules'>): string {
+    if(rule.repeat === 'never') return 'Once'
+    return [describeRepeat(rule), ...(rule.rules ?? []).map(describeLimit)].join(' · ')
+}
+
+function describeRepeat(rule: Pick<Rule, 'repeat' | 'every' | 'weekdays'>): string {
+    if(rule.repeat === 'weekdays') return describeDays(rule.weekdays ?? [], 'Daily')
+    if(rule.repeat === 'never') return 'Once'
+
+    if(rule.every === 1) return { minutes: 'Every minute', hours: 'Hourly', days: 'Daily', weeks: 'Weekly', months: 'Monthly', years: 'Yearly' }[rule.repeat]
     return `Every ${rule.every} ${UNITS[rule.repeat]}s`
 }
 
+function describeLimit(limit: ReminderLimit): string {
+    const range =
+        limit.kind === 'times' ? `${limit.from}–${limit.to}`
+        : limit.kind === 'days' ? describeDays(limit.days, 'Every day')
+        : limit.from === limit.to ? shortDate(limit.from) : `${shortDate(limit.from)}–${shortDate(limit.to)}`
+    return limit.mode === 'except' ? `except ${range}` : range
+}
+
+function describeDays(picks: Weekday[], all: string): string {
+    const days = WEEKDAYS.filter((day) => picks.includes(day.value))
+    const weekend = picks.filter((day) => day === 'sa' || day === 'su').length
+    if(days.length === 7) return all
+    if(days.length === 5 && !weekend) return 'Weekdays'
+    if(days.length === 2 && weekend === 2) return 'Weekends'
+    return days.map((day) => day.short).join(', ') || 'No days'
+}
+
+// Like "1 Jul", the same on server and client
+function shortDate(date: string){
+    const { year, month, day } = parseDate(date)
+    return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'UTC' })
+}
+
 // Singular unit of each interval, for labels like "every 3 days"
-export const UNITS = { hours: 'hour', days: 'day', weeks: 'week', months: 'month', years: 'year' } as const
+export const UNITS = { minutes: 'minute', hours: 'hour', days: 'day', weeks: 'week', months: 'month', years: 'year' } as const
 
 
 

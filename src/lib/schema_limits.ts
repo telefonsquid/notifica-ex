@@ -48,6 +48,7 @@ export const LIMITS = {
     TOTAL_ITEMS: 100000000,             // records a list response reports
     TOTAL_PAGES: 100000000,             // cannot beat the item count since a page holds at least one
     REMINDER_EVERY: 999,                // largest step between two reminders, in the chosen unit
+    REMINDER_RULES: 20,                 // only and except limits on one reminder
     VIEW_AMOUNT: 999,                   // days, weeks or months a date filter reaches back or ahead
     VIEW_POSITION: 10000,
     NOTE_POSITION: 1e15,                // a timestamp in ms or between two of them

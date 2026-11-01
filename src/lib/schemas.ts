@@ -236,15 +236,26 @@ export type Person = { id: string, name: string }
 
 // TYPES => REMINDERS ===================================================================
 export type ReminderRepeat = z.infer<typeof reminderRepeatSchema>;
-export const reminderRepeatSchema = z.enum(['never', 'hours', 'days', 'weeks', 'weekdays', 'months', 'years']);
+export const reminderRepeatSchema = z.enum(['never', 'minutes', 'hours', 'days', 'weeks', 'weekdays', 'months', 'years']);
 
 export type Weekday = z.infer<typeof weekdaySchema>;
 export const weekdaySchema = z.enum(['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']);
+
+const clockSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Time must look like 14:00.');
+const dateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must look like 2026-12-31.');
 
 export const timezoneSchema = limitedText('Timezone', LIMITS.TIMEZONE).refine((zone) => {
     try { new Intl.DateTimeFormat('en', { timeZone: zone }); return true }
     catch { return false }
 }, 'Unknown timezone.');
+
+// Narrows when a repeating reminder may go off | only rules of one kind add up, any except rule blocks
+export type ReminderLimit = z.infer<typeof reminderLimitSchema>;
+export const reminderLimitSchema = z.discriminatedUnion('kind', [
+    z.object({ mode: z.enum(['only', 'except']), kind: z.literal('times'), from: clockSchema, to: clockSchema }),    // a stretch of the day, may run past midnight
+    z.object({ mode: z.enum(['only', 'except']), kind: z.literal('days'), days: z.array(weekdaySchema).min(1, 'Pick at least one day.').max(7) }),
+    z.object({ mode: z.enum(['only', 'except']), kind: z.literal('dates'), from: dateSchema, to: dateSchema })       // both days count whole
+]);
 
 // What the user picks | everything else on a reminder follows from it
 export type ReminderRule = z.infer<typeof reminderRuleSchema>;
@@ -255,6 +266,7 @@ export const reminderRuleSchema = z.object({
     weekdays: z.array(weekdaySchema).max(7).default([]), // days a weekdays reminder goes off on
     until: z.union([z.iso.datetime({ offset: true, message: 'End needs a valid date.' }), z.literal('')]).default(''), // last moment a repeating reminder may go off
     timezone: timezoneSchema, // keeps daily reminders on the same clock time across daylight saving
+    rules: z.array(reminderLimitSchema).max(LIMITS.REMINDER_RULES).default([]), // the advanced only and except limits
     task: z.boolean() // adds a done button to the notification
 });
 
@@ -265,6 +277,7 @@ export const reminderSchema = recordModelSchema.extend({
     ...reminderRuleSchema.shape,
     at: timestampSchema,
     until: timestampSchema,
+    rules: z.array(reminderLimitSchema).nullable().transform((rules) => rules ?? []), // empty json comes back as null
     next: timestampSchema, // empty once a one off reminder went out
     sent: timestampSchema,
     done: timestampSchema // occurrence that was checked off

@@ -80,13 +80,14 @@ function ruleFields(rule: ReminderRule) {
     if(rule.repeat === 'weekdays' && !rule.weekdays.length) error(400, 'Pick at least one day.')
     if(rule.until && rule.repeat !== 'never' && new Date(rule.until) < new Date(rule.at)) error(400, 'The end lies before the start.')
 
+    // A time already passed is kept as finished
     const next = occurrenceAfter(rule, new Date())
-    if(!next) error(400, 'That time has already passed.')
 
     // Only what the chosen repeat uses gets stored
     const weekdays = rule.repeat === 'weekdays' ? rule.weekdays : []
     const until = rule.until && rule.repeat !== 'never' ? new Date(rule.until).toISOString() : ''
-    return { ...rule, weekdays, until, at: new Date(rule.at).toISOString(), next: next.toISOString(), sent: '', done: '' }
+    const rules = rule.repeat === 'never' ? [] : rule.rules
+    return { ...rule, weekdays, until, rules, at: new Date(rule.at).toISOString(), next: next?.toISOString() ?? '', sent: '', done: '' }
 }
 
 

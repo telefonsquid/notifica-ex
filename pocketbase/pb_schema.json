@@ -783,6 +783,7 @@
                 "type": "select",
                 "values": [
                     "never",
+                    "minutes",
                     "hours",
                     "days",
                     "weeks",
@@ -855,6 +856,16 @@
                 "name": "task",
                 "required": false,
                 "type": "bool"
+            },
+            {
+                "hidden": false,
+                "id": "json1700199001",
+                "maxSize": 0,
+                "name": "rules",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "json"
             },
             {
                 "hidden": false,

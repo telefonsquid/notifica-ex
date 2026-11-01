@@ -8,10 +8,11 @@ description: Reminder recurrence model, timezones, the per minute scheduler, ntf
 ## Model
 
 - A note holds as many reminders as wanted. Each belongs to the user who made it (collaborators keep theirs private).
-- Fields: `at` (first occurrence), `repeat`, `every`, `weekdays`, `until`, `timezone`, `task`, `next`, `sent`, `done`.
-- `repeat` (`reminderRepeatSchema`): never, hours, days, weeks, weekdays, months, years. `every` is the n, `weekdays` the picks for `weekdays`, `until` an optional end date.
+- Fields: `at` (first occurrence), `repeat`, `every`, `weekdays`, `until`, `rules`, `timezone`, `task`, `next`, `sent`, `done`.
+- `repeat` (`reminderRepeatSchema`): never, minutes, hours, days, weeks, weekdays, months, years. `every` is the n, `weekdays` the picks for `weekdays`, `until` an optional end date.
+- `rules` (`reminderLimitSchema`, json) narrow a repeat: each is `only` or `except` over `times` (from–to, may wrap past midnight), `days` or `dates`. Except rules always block. Only rules of the same kind are alternatives, different kinds must all hold. `occurrenceAfter()` hops past blocked stretches through `blockedUntil()`.
 - Each reminder stores its own IANA timezone, so a fixed time of day survives DST and dates render the same on server and client.
-- `next` is the coming occurrence, `sent` the last pushed one, `done` the occurrence checked off. `task` reminders get a Done button.
+- `next` is the coming occurrence, `sent` the last pushed one, `done` the occurrence checked off. `task` reminders get a Done button. An empty `next` means finished: a time in the past is saved as such, not refused.
 
 ## Shared logic `#lib/reminders.ts`
 
@@ -36,6 +37,7 @@ Runs on server and client: `occurrenceAfter()` computes the next occurrence, `pa
 ## UI
 
 - The reminder band on a card: the first line carries the add button, a full Add reminder row only while there are none.
+- The form is one wrapping row: Start on, Every n, the repeat `Choice` (`#lib/ui/Choice.svelte`, Once and Weekdays set apart on top), Advanced, then the icon buttons. Weekdays and the Advanced panel (End on, rules) fold open below.
 - Changes unfold only once the card finished growing (`settled`), closing folds them too.
 - A closed card shows the line faint, leaves out "Once" and adds the time left on the right (`formatDistance`, ticking through `now()` in `#lib/clock.svelte.ts`).
 - The note menu lists a single note's reminders and opens the card at one, a selection only offers Remove reminders.

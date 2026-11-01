@@ -347,7 +347,7 @@
     background: var(--theme-raised);
     color: var(--theme-ink);
     box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 0.35);
-    transform-origin: var(--bits-dropdown-menu-content-transform-origin, var(--bits-context-menu-content-transform-origin, var(--bits-menu-content-transform-origin)));
+    transform-origin: var(--bits-dropdown-menu-content-transform-origin, var(--bits-context-menu-content-transform-origin, var(--bits-select-content-transform-origin, var(--bits-menu-content-transform-origin))));
 
     &[data-state='open'] {
         animation: menu-in var(--duration-base) var(--ease-spring);
