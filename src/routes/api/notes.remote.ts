@@ -1,7 +1,7 @@
 import { getRequestEvent } from '$app/server';
 import { idSchema } from '#lib/schema_limits.ts';
-import { noteContentSchema, userBaseSchema, type Note } from '#lib/schemas.ts';
-import { deleteOne, findActiveUser, getAllOwned, getNoteOf, getNotesOf, getPeople as fetchPeople, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { imageNameSchema, noteContentSchema, userBaseSchema, type Note } from '#lib/schemas.ts';
+import { deleteOne, findActiveUser, getAllOwned, getNoteOf, getNotesOf, getPeople as fetchPeople, insertOnePartial, removeImage, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
@@ -107,6 +107,22 @@ export const unshareNote = command(z.object({ id: idSchema, person: idSchema }),
     if(note.owner !== locals.user.id && person !== locals.user.id) error(403, 'Only the owner can take others off this note.')
 
     unwrap(await updateOnePartial('notes', id, { sharedWith: note.sharedWith.filter((item) => item !== person) }), 'Could not change who sees the note.')
+
+    await getNotes().refresh()
+    return true
+
+});
+
+
+
+// IMAGES ============================================================
+// Uploads go through /api/notes/[id]/images, removing one is a plain command
+export const removeNoteImage = command(z.object({ id: idSchema, file: imageNameSchema }), async ({ id, file }) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    unwrap(await getNoteOf(id, locals.user.id), 'Note not found.')
+    unwrap(await removeImage(id, file), 'Could not remove the image.')
 
     await getNotes().refresh()
     return true

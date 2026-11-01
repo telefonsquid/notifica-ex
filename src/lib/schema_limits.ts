@@ -37,6 +37,9 @@ export const LIMITS = {
     EXPAND_KEYS: 32,                    // relations pocketbase may expand into one record
     NOTE_LABELS: 50,
     NOTE_SHARES: 50,                    // people one note is shared with
+    NOTE_IMAGES: 20,                    // as in pb_schema.json
+    IMAGE_BYTES: 10 * 1024 * 1024,      // per image, as in pb_schema.json
+    IMAGE_NAME: 200,                    // stored file name, pocketbase adds a random suffix
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them
 

@@ -194,11 +194,16 @@ export const noteContentSchema = z.object({
     archived: z.boolean()
 });
 
+// IMAGES | file names as pocketbase stores them, plain enough to sit in a url
+export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/avif'] as const;
+export const imageNameSchema = limitedText('Image', LIMITS.IMAGE_NAME).regex(/^[\w.-]+$/, 'Unknown image.');
+
 // Labels hold the ids of everyone's labels on a shared note, each person only sees their own
 export type Note = z.infer<typeof noteSchema>;
 export const noteSchema = recordModelSchema.extend({
     owner: idSchema,
     sharedWith: z.array(idSchema).max(LIMITS.NOTE_SHARES), // can read and edit it, only the owner deletes it
+    images: z.array(imageNameSchema).max(LIMITS.NOTE_IMAGES), // file names, served through /api/notes/[id]/images
     ...noteContentSchema.shape
 });
 

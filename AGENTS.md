@@ -83,6 +83,7 @@ Until the `theming` and `motion` skills exist:
 - **No encryption** beyond TLS for now. E2E was considered and dropped (2026-10-31): too costly for search, sharing and reminder text.
 - **Groups are labels**: a note can carry several, groups act as filters. Each label has a colour from the note palette and shows as a folder tab on the card's edge, named only on hover.
 - **Sharing**: the owner shares a note by email (`sharedWith`), everyone on it reads and edits it, only the owner deletes it, the others leave it. `labels` holds everyone's label ids, each person sees and changes only their own. Reminders stay personal. Accounts only see their own user record, `getPeople()` hands out name and email of the people one shares with. Multi relation rules need `sharedWith.id ?=`, plain `sharedWith ?=` silently matches nothing in PocketBase 0.40.
+- **Images** live in the protected `images` file field of a note and reach the browser only through `/api/notes/[id]/images/[file]`, which checks access and lets the browser cache them for good (file names never change). Uploads go one image per request to `/api/notes/[id]/images`, so `BODY_SIZE_LIMIT` (Dockerfile) only has to fit one. Paste, drop or the image button on an open note add them.
 - **Accounts by admin invite** with a set-password link, as in fsd-flight-check. No open signup.
 - **Android via Tauri 2 mobile**, reusing the Svelte UI; Kotlin plugin for share target and notification actions.
 - **Light by default**: Platinum theme first, Charcoal (dark) second. Tangerine accent, Powder Blue secondary in both.

@@ -24,17 +24,18 @@
     import LabelEditor from '#lib/components/LabelEditor.svelte';
     import ReminderList from '#lib/components/ReminderList.svelte';
     import ShareEditor from '#lib/components/ShareEditor.svelte';
+    import { imagesIn, imageUrl, uploadImages } from '#lib/images.ts';
     import { rise, unfold } from '#lib/motion.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
     import { safeAction } from '#lib/pocketbase.ts';
-    import type { Label, Note, NoteContent, Person, Reminder } from '#lib/schemas.ts';
+    import { IMAGE_TYPES, type Label, type Note, type NoteContent, type Person, type Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import ConfirmButton from '#lib/ui/ConfirmButton.svelte';
     import Initials from '#lib/ui/Initials.svelte';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, LogOut, Pin, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pin, Trash2, X } from '@lucide/svelte';
     import { untrack } from 'svelte';
-    import { createNote, deleteNote, updateNote } from '../../routes/api/notes.remote';
+    import { createNote, deleteNote, getNotes, removeNoteImage, updateNote } from '../../routes/api/notes.remote';
 
     /*
         One note, closed as a card in the grid or open for editing. Opening keeps every element
@@ -119,11 +120,12 @@
     // SAVING | one save at a time, a new note gets created exactly once
     let queue: Promise<unknown> = Promise.resolve()
 
-    function save(): Promise<string | null> {
+    // Forced, an empty new note gets stored too, an image needs a note to go on
+    function save(force = false): Promise<string | null> {
         const run = queue.then(async () => {
             const snapshot = JSON.stringify(draft)
-            if(deleted || snapshot === saved) return id ?? null
-            if(!id && isEmpty(draft)) return null
+            if(deleted || (id && snapshot === saved)) return id ?? null
+            if(!id && isEmpty(draft) && !force) return null
 
             const content = $state.snapshot(draft)
             const result = await safeAction(id ? updateNote({ id, ...content }) : createNote(content))
@@ -161,6 +163,41 @@
     async function ensureNote(): Promise<string | null> {
         if(!id && isEmpty(draft)) draft.title = 'Reminder'
         return await save()
+    }
+
+    // IMAGES | stored with the note record, they arrive through it like any other change
+    let images = $derived(note?.images ?? [])
+    let uploading = $state(0)
+
+    async function addImages(files: File[]){
+        if(!files.length) return
+        uploading += files.length
+        const noteId = await save(true)
+        if(noteId && await uploadImages(noteId, files)) await getNotes().refresh()
+        uploading -= files.length
+    }
+
+    function removeImage(file: string){
+        if(note) safeAction(removeNoteImage({ id: note.id, file }))
+    }
+
+    // Pasted or dropped onto the open note | text keeps going to the editor
+    function pasteImages(event: ClipboardEvent){
+        const files = imagesIn(event.clipboardData?.files)
+        if(!open || !files.length) return
+        event.preventDefault()
+        addImages(files)
+    }
+
+    function dropImages(event: DragEvent){
+        const files = imagesIn(event.dataTransfer?.files)
+        if(!open || !files.length) return
+        event.preventDefault()
+        addImages(files)
+    }
+
+    function allowDrop(event: DragEvent){
+        if(open && event.dataTransfer?.types.includes('Files')) event.preventDefault()
     }
 
     $effect(() => {
@@ -288,6 +325,10 @@
     <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
         {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
     </button>
+    <label class="icon-button cursor-pointer" {@attach tip('Add images')}>
+        <ImagePlus class="size-4" />
+        <input type="file" accept={IMAGE_TYPES.join(',')} multiple class="sr-only" aria-label="Add images" onchange={(event) => { addImages(imagesIn(event.currentTarget.files)); event.currentTarget.value = '' }} />
+    </label>
     <ShareEditor {owner} {sharedWith} {me} {people} ensureNote={save} onleave={() => { deleted = true; onclose?.() }} />
     {#if mine}
         <ConfirmButton icon={Trash2} label="Delete" confirmLabel="Confirm delete" hint={sharedWith.length ? 'Delete note for everyone' : 'Delete note'} confirmHint="Click again to delete" onconfirm={remove} />
@@ -340,9 +381,39 @@
         onpointerup={release}
         onpointerleave={release}
         onclickcapture={swallow}
+        onpaste={pasteImages}
+        ondrop={dropImages}
+        ondragover={allowDrop}
     >
         {#if !open}
             <button class="cover absolute inset-0 rounded-card" aria-label={`Open ${draft.title || 'note'}`} aria-pressed={selected || undefined} onpointerenter={loadEditor} onfocus={loadEditor} onclick={onopen}></button>
+        {/if}
+
+        <!-- IMAGES | edge to edge across the top, an odd one out spans the whole width -->
+        {#if images.length || uploading}
+            {@const count = images.length + uploading}
+            <div class={['images -mx-card -mt-card grid gap-0.5 overflow-hidden', count > 1 && 'grid-cols-2']} in:appear out:unfold>
+                {#each images as file, index (file)}
+                    <figure class={['relative min-h-0', index === 0 && count % 2 === 1 && count > 1 && 'col-span-2']}>
+                        <img
+                            src={imageUrl(note!.id, file, 'card')}
+                            srcset={`${imageUrl(note!.id, file, 'card')} 640w, ${imageUrl(note!.id, file, 'open')} 1280w`}
+                            sizes={open ? '40rem' : '20rem'}
+                            alt=""
+                            loading="lazy"
+                            class={['size-full object-cover', count > 1 ? 'aspect-square' : 'max-h-96']}
+                        />
+                        {#if open}
+                            <button class="remove-image extra absolute top-2 right-2 grid place-items-center rounded-full p-1.5" aria-label="Remove image" onclick={() => removeImage(file)} {@attach tip('Remove image')}>
+                                <X class="size-3.5" />
+                            </button>
+                        {/if}
+                    </figure>
+                {/each}
+                {#each { length: uploading }, index (index)}
+                    <span class="skeleton aspect-square"></span>
+                {/each}
+            </div>
         {/if}
 
         <!-- TITLE | colour, archive and delete join the pin up here once the note is wide enough -->
@@ -475,6 +546,22 @@
     .folded :global(.reminder-form),
     .folded :global(.band.empty) {
         opacity: 0;
+    }
+
+    /* The top corners follow the card, the border sits outside */
+    .images {
+        border-top-left-radius: calc(var(--layout-radius-card) - 1px);
+        border-top-right-radius: calc(var(--layout-radius-card) - 1px);
+    }
+
+    .remove-image {
+        background: rgb(0 0 0 / 0.55);
+        color: white;
+        transition: opacity var(--duration-fast) var(--ease-in), background-color var(--duration-fast) var(--ease-out);
+    }
+
+    .remove-image:hover {
+        background: rgb(0 0 0 / 0.75);
     }
 
     .skeleton {

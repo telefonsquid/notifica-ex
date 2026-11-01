@@ -162,6 +162,23 @@ export async function getPeople(ids: string[]) {
     return await pbErrorHandler(pb.collection('users').getFullList({ filter, fields: 'id,name,email' }) as Promise<Person[]>)
 }
 
+// IMAGES | pocketbase keeps them protected, only the server reads them with its own file token
+export async function addImages(id: string, files: File[]) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection('notes').update(id, { 'images+': files }) as Promise<Note>)
+}
+
+export async function removeImage(id: string, file: string) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection('notes').update(id, { 'images-': [file] }) as Promise<Note>)
+}
+
+export async function fetchImage(note: Note, file: string, thumb?: string): Promise<Response> {
+    const pb = await getPbAdminConnection()
+    const token = await pb.files.getToken()
+    return fetch(pb.files.getURL(note, file, { token, thumb }))
+}
+
 export async function findActiveUser(email: string) {
     const pb = await getPbAdminConnection()
     const filter = pb.filter("email = {:email} && state = 'active'", { email })
