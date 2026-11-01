@@ -2,7 +2,8 @@
     import { imageUrl } from '#lib/images.ts';
     import { rise, unfold } from '#lib/motion.ts';
     import { showImages } from '#lib/singletons/image_viewer.svelte.ts';
-    import { Expand, X } from '@lucide/svelte';
+    import { tip } from '#lib/tooltip.svelte.ts';
+    import { Download, Expand, X } from '@lucide/svelte';
 
     /*
         The images on top of a note, edge to edge. One shows whole, more share a grid of squares.
@@ -87,6 +88,12 @@
                         <button class="control" aria-label="View whole image" onclick={() => view(index)}>
                             <Expand class="size-3.5" />
                         </button>
+                        {#if note}
+                            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the image url is resolved already -->
+                            <a class="control" href={imageUrl(note, name, 'full')} download aria-label="Download image" {@attach tip('Download')}>
+                                <Download class="size-3.5" />
+                            </a>
+                        {/if}
                         <button class="control" aria-label="Remove image" onclick={() => onremove(name)}>
                             <X class="size-4" />
                         </button>

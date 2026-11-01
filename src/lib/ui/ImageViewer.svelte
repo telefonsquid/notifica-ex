@@ -2,7 +2,7 @@
     import { duration, easing } from '#lib/motion.ts';
     import { viewer } from '#lib/singletons/image_viewer.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
-    import { ChevronLeft, ChevronRight, ExternalLink, X } from '@lucide/svelte';
+    import { ChevronLeft, ChevronRight, Download, ExternalLink, X } from '@lucide/svelte';
     import { Dialog } from 'bits-ui';
     import { fade } from 'svelte/transition';
 
@@ -144,6 +144,10 @@
                             <a class="control ml-auto" href={image.src} target="_blank" rel="noopener" aria-label="Open original" {@attach tip('Open original')}>
                                 <ExternalLink class="size-4.5" />
                             </a>
+                            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the image url is resolved already -->
+                            <a class="control" href={image.src} download aria-label="Download" {@attach tip('Download')}>
+                                <Download class="size-4.5" />
+                            </a>
                             <Dialog.Close class="control" aria-label="Close">
                                 <X class="size-5" />
                             </Dialog.Close>
@@ -179,7 +183,9 @@
         will-change: transform;
     }
 
+    /* The full image takes the right click, so the browser offers to save it */
     .full {
+        pointer-events: auto;
         opacity: 0;
         transition: opacity var(--duration-fast) var(--ease-out);
     }
