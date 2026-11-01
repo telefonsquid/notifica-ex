@@ -1,7 +1,7 @@
 import { getRequestEvent } from '$app/server';
 import { unwrap } from '#lib/pocketbase.ts';
 import { LIMITS, idSchema } from '#lib/schema_limits.ts';
-import { viewContentSchema, type View } from '#lib/schemas.ts';
+import { viewChangesSchema, viewContentSchema, type View } from '#lib/schemas.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
@@ -48,7 +48,7 @@ export const createView = command(viewContentSchema, async (content) => {
 
 });
 
-export const updateView = command(viewContentSchema.partial().extend({ id: idSchema }), async ({ id, ...changes }) => {
+export const updateView = command(viewChangesSchema.extend({ id: idSchema }), async ({ id, ...changes }) => {
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')

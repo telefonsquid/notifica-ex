@@ -364,6 +364,14 @@ export const viewContentSchema = z.object({
     sort: viewSortSchema.prefault({})
 });
 
+// Only what was sent changes | partial() alone would fill a missing filter or sort with the defaults
+export const viewChangesSchema = z.object({
+    name: viewNameSchema,
+    icon: viewIconSchema,
+    filter: viewFilterSchema,
+    sort: viewSortSchema
+}).partial();
+
 export type View = z.infer<typeof viewSchema>;
 export const viewSchema = recordModelSchema.extend({
     owner: idSchema,

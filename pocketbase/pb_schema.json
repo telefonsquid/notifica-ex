@@ -1,8 +1,8 @@
 [
     {
         "id": "_pb_users_auth_",
-        "listRule": "@request.auth.id != \"\"",
-        "viewRule": "@request.auth.id != \"\"",
+        "listRule": "id = @request.auth.id || @request.auth.authorizationLevel = \"admin\"",
+        "viewRule": "id = @request.auth.id || @request.auth.authorizationLevel = \"admin\"",
         "createRule": null,
         "updateRule": null,
         "deleteRule": null,
@@ -461,8 +461,8 @@
     },
     {
         "id": "pbc_1871542719",
-        "listRule": "owner = @request.auth.id || shared ?= @request.auth.id",
-        "viewRule": "owner = @request.auth.id || shared ?= @request.auth.id",
+        "listRule": "owner = @request.auth.id || shared.id ?= @request.auth.id",
+        "viewRule": "owner = @request.auth.id || shared.id ?= @request.auth.id",
         "createRule": null,
         "updateRule": null,
         "deleteRule": null,
