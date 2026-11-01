@@ -1,6 +1,7 @@
 <script lang="ts">
     import FilterEditor from '#lib/components/FilterEditor.svelte';
     import { safeAction } from '#lib/pocketbase.ts';
+    import { duration, easing } from '#lib/motion.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
     import { VIEW_ICONS, type Label, type ViewFilter, type ViewIcon, type ViewSort } from '#lib/schemas.ts';
@@ -75,7 +76,7 @@
     {#each views as view, index (view.id)}
         {@const Icon = VIEW_ICON_COMPONENTS[view.icon]}
         {@const active = countActive(pending[view.id]?.filter ?? view.filter)}
-        <li class="bg-card" animate:flip={{ duration: 280 }}>
+        <li class="bg-card" animate:flip={{ duration: duration('base'), easing: easing('out') }}>
             <div class="flex items-center gap-2 py-2 pr-2 pl-3">
 
                 <!-- ICON -->
