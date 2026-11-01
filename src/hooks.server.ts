@@ -4,7 +4,10 @@ import { DEFAULT_IMAGE_FIT, DEFAULT_LABEL_POSITION, IMAGE_FIT_COOKIE, LABEL_POSI
 import type { User } from '#lib/schemas.ts'
 import { DEFAULT_THEME, THEME_COOKIE, isThemeName } from '#lib/themes/index.ts'
 import { sequence, type Handle, type HandleServerError } from '@sveltejs/kit/hooks'
-import PocketBase, { getTokenPayload } from 'pocketbase'
+import PocketBase, { getTokenPayload, isTokenExpired } from 'pocketbase'
+
+// Seconds before its end a session token gets renewed, so anyone back within a week stays logged in
+const REFRESH_BEFORE = 2 * 24 * 60 * 60
 
 const authenticate = (async ({ event, resolve }) => {
 
@@ -18,13 +21,17 @@ const authenticate = (async ({ event, resolve }) => {
     const wasAuthenticated = event.locals.pb.authStore.isValid
 
     // VERIFY THE COOKIE WITH POCKETBASE, ITS CONTENT IS CLIENT CONTROLLED AND UNSIGNED
+    // A token close to its end gets swapped for a fresh one, so active users stay logged in
     if(wasAuthenticated){
+        const { authStore } = event.locals.pb
         try {
-            const record = await event.locals.pb.collection('users').getOne(getTokenPayload(event.locals.pb.authStore.token).id)
+            const record = isTokenExpired(authStore.token, REFRESH_BEFORE)
+                ? (await event.locals.pb.collection('users').authRefresh()).record
+                : await event.locals.pb.collection('users').getOne(getTokenPayload(authStore.token).id)
             if(record.state === 'inactive') throw new Error('Deactivated') // deactivation must end running sessions too
-            event.locals.pb.authStore.save(event.locals.pb.authStore.token, record)
+            authStore.save(authStore.token, record)
         } catch {
-            event.locals.pb.authStore.clear()
+            authStore.clear()
         }
     }
 
