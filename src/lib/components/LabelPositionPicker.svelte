@@ -1,7 +1,7 @@
 <script lang="ts">
     import { browser } from '$app/env';
     import { isLabelPosition, LABEL_POSITIONS, type LabelPosition } from '#lib/preferences.ts';
-    import { Check } from '@lucide/svelte';
+    import CheckBadge from '#lib/ui/CheckBadge.svelte';
     import { setLabelPosition } from '../../routes/api/settings.remote';
 
     // PROPS
@@ -39,9 +39,7 @@
             </div>
 
             <span class="type-title flex-1 text-lg capitalize">{position}</span>
-            <span class={['check grid size-7 place-items-center rounded-full bg-accent text-on-accent', !active && 'hidden-check']}>
-                <Check class="size-4" strokeWidth={3} />
-            </span>
+            <CheckBadge shown={active} />
         </button>
     {/each}
 </div>
@@ -71,14 +69,5 @@
     /* Tabs open up on hover as they do on real cards */
     .option:hover .mini-tab {
         height: 0.5rem;
-    }
-
-    .check {
-        transition: scale var(--duration-base) var(--ease-spring), opacity var(--duration-fast) var(--ease-out);
-    }
-
-    .hidden-check {
-        scale: 0.4;
-        opacity: 0;
     }
 </style>

@@ -19,7 +19,7 @@
 </script>
 
 <!-- Label sits inside the field and shrinks to the top once there is something to show -->
-<div class={['field relative', className]}>
+<div class={['floating relative', className]}>
     <input
         {id}
         bind:value
@@ -41,14 +41,14 @@
     }
 
     /* Keeps the vertical centering of the base translate and lifts on top of it */
-    .field:focus-within .label,
+    .floating:focus-within .label,
     input:not(:placeholder-shown) + .label {
         translate: 0 calc(-50% - 0.8rem);
         scale: 0.78;
         color: var(--theme-ink-muted);
     }
 
-    .field:focus-within .label {
+    .floating:focus-within .label {
         color: var(--theme-accent);
     }
 

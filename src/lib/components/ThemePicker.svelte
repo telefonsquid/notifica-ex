@@ -2,7 +2,7 @@
     import { browser } from '$app/env';
     import { isThemeName, THEMES, type ThemeName } from '#lib/themes/index.ts';
     import { switchTheme } from '#lib/themes/switch.ts';
-    import { Check } from '@lucide/svelte';
+    import CheckBadge from '#lib/ui/CheckBadge.svelte';
 
     // PROPS
     let { current }: { current: ThemeName } = $props()
@@ -54,9 +54,7 @@
                     <p class="type-title text-lg">{theme.label}</p>
                     <p class="type-meta text-ink-faint">{theme.scheme}</p>
                 </div>
-                <span class={['check grid size-7 place-items-center rounded-full bg-accent text-on-accent', !active && 'hidden-check']}>
-                    <Check class="size-4" strokeWidth={3} />
-                </span>
+                <CheckBadge shown={active} />
             </div>
         </button>
     {/each}
@@ -71,14 +69,5 @@
 
     .preview:hover .mini-note {
         translate: 0 -4px;
-    }
-
-    .check {
-        transition: scale var(--duration-base) var(--ease-spring), opacity var(--duration-fast) var(--ease-out);
-    }
-
-    .hidden-check {
-        scale: 0.4;
-        opacity: 0;
     }
 </style>
