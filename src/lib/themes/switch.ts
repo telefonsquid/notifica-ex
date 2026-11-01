@@ -33,6 +33,8 @@ export async function switchTheme(theme: ThemeName, origin?: { x: number, y: num
             { duration: duration('page') * 1.4, easing: cssEasing('emphasized'), pseudoElement: '::view-transition-new(root)' }
         )
         await transition.finished
+    } catch {
+        // Skipped by another transition, the theme is applied either way
     } finally {
         delete root.dataset.transition
     }

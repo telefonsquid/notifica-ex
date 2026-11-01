@@ -1,8 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import AuthPage from '#lib/components/AuthPage.svelte';
 	import { safeAction } from '#lib/pocketbase.ts';
+	import { returnPath } from '#lib/return_path.ts';
 	import Input from '#lib/ui/Input.svelte';
 	import { loginUser } from '../api/auth.remote';
 
@@ -11,7 +12,8 @@
 
 	async function login() {
 		if (!(await safeAction(loginUser({ email, password })))) return false;
-		await goto(resolve('/(app)/[[view]]', {}), { refreshAll: true });
+		// eslint-disable-next-line svelte/no-navigation-without-resolve -- a path on this site, checked by returnPath
+		await goto(returnPath(page.url), { refreshAll: true });
 		return true;
 	}
 </script>

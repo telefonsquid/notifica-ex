@@ -21,6 +21,7 @@
 				resolve();
 				await navigation.complete;
 			});
+			transition.ready.catch(() => {}); // A navigation right after this one skips it, nothing to report
 			transition.finished.finally(() => {
 				if (root.dataset.transition === 'same-page') delete root.dataset.transition;
 			});
