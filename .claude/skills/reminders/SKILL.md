@@ -22,7 +22,7 @@ Runs on server and client: `occurrenceAfter()` computes the next occurrence, `pa
 ## Scheduler
 
 - `pocketbase/cronjobs/cron.pb.js` POSTs to `WEB_INTERNAL_URL` with `SERVER_AUTH_SECRET`: reminders every minute (`/api/reminders/dispatch`), maintenance daily at 3am.
-- `dispatchDueReminders()` in `#lib/server/reminders.ts` takes every reminder with `next` due, logs an occurrence, publishes it, then sets `next: occurrenceAfter(now)` and recounts `open`. Missed occurrences collapse into one push. "Due" reaches 30 s ahead, since PocketBase's cron sometimes fires a few ms before the full minute.
+- `dispatchDueReminders()` in `#lib/server/reminders.ts` takes every reminder with `next` due, logs an occurrence, publishes it, then sets `next: occurrenceAfter(now)` and recounts `open`. Missed occurrences collapse into one push. "Due" reaches 30 s ahead, since PocketBase's cron sometimes fires a few ms before the full minute. A failed push stays due and is retried every minute for an hour (its log entry removed again), then the reminder moves on. One run at a time.
 - Local dev: PocketBase in Docker calls the host dev server through `host.docker.internal`, so the dev script binds Vite to `127.0.0.1` (not `::1`) and `vite.config.ts` allows that host. Rebuild the PocketBase image whenever `pocketbase/cronjobs` changes.
 
 ## Delivery

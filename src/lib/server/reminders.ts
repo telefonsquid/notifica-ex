@@ -1,15 +1,28 @@
 import { ORIGIN } from '$app/env/private';
 import { markdownToText } from '#lib/markdown.ts';
-import { describeRule, occurrenceAfter } from '#lib/reminders.ts';
+import { describeRule, occurrenceAfter, parseTimestamp } from '#lib/reminders.ts';
 import type { Note, Occurrence, Reminder, User } from '#lib/schemas.ts';
 import { publish, type NtfyMessage } from '#lib/server/ntfy.ts';
-import { countOpenOccurrences, getDueReminders, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { countOpenOccurrences, deleteOne, getDueReminders, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { sign } from '#lib/server/server_auth.ts';
 
 // DISPATCH ====================================================================================================
 
+// How long a failed push gets retried, ntfy may just be restarting | after that the reminder moves on
+const RETRY_WINDOW = 60 * 60 * 1000
+
+// One run at a time, a slow one overlapping the next minute would push the same reminders twice
+let running = false
+
 // Sends every reminder that is due and moves it on to its next time | runs every minute from the pocketbase cron
 export async function dispatchDueReminders(at = new Date()) {
+    if(running) return { sent: 0, failed: ['The previous run is still going.'] }
+    running = true
+    try { return await dispatch(at) }
+    finally { running = false }
+}
+
+async function dispatch(at: Date) {
 
     // The cron sometimes fires a few ms before the full minute, so whatever falls due before the next run counts as due now
     const now = new Date(at.getTime() + 30_000)
@@ -41,6 +54,12 @@ export async function dispatchDueReminders(at = new Date()) {
             const result = await publish(notification(reminder, note, owner.ntfyTopic, logged.data))
             if(result.success) sent++
             else failed.push(`${reminder.id}: ${result.error}`)
+
+            // RETRY | stays due for the next run, its log entry goes so the history holds it once
+            if(!result.success && at.getTime() - (parseTimestamp(reminder.next)?.getTime() ?? 0) < RETRY_WINDOW){
+                if(logged.success) await deleteOne('occurrences', logged.data.id)
+                continue
+            }
         }
 
         // MOVE ON | missed times while the server was down collapse into this one notification
