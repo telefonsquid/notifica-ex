@@ -600,7 +600,7 @@
 <style>
 	/* TOOLBAR | leaves room for the phone menu button on its left */
 	.toolbar {
-		--menu-room: 3.75rem;
+		--menu-room: 4.75rem;
 		bottom: calc(1rem + env(safe-area-inset-bottom));
 		padding-left: calc(var(--layout-content-gutter) + var(--menu-room));
 	}
@@ -713,12 +713,12 @@
 		.create:hover::after { animation: none; }
 	}
 
-	/* DRAG | the held card lifts above the rest */
 	/* Scrolling to an open note keeps it clear of the toolbar */
 	.note-cell {
 		scroll-margin: 1rem 0 calc(6.5rem + env(safe-area-inset-bottom));
 	}
 
+	/* DRAG | the held card lifts above the rest */
 	.note-cell:global([data-dragging]) {
 		z-index: 10;
 		cursor: grabbing;

@@ -43,13 +43,24 @@ export function pack(grid: HTMLElement){
 }
 
 // MASONRY | packs again whenever a card changes size or the cards change
-// Cells are watched instead of the grid, whose height every pack changes
+// The grid counts only by its width, every pack changes its height
 export const masonry: Attachment<HTMLElement> = (grid) => {
-    const resizes = new ResizeObserver(() => pack(grid))
+    let width = grid.clientWidth
+    const resizes = new ResizeObserver((entries) => {
+        const cellsChanged = entries.some((entry) => entry.target !== grid)
+        const widened = grid.clientWidth !== width
+        width = grid.clientWidth
+        if(cellsChanged || widened) pack(grid)
+    })
     const watch = () => {
         resizes.disconnect()
+        resizes.observe(grid)
         for(const cell of grid.children) resizes.observe(cell)
     }
+
+    // A late image grows its card, catch it even when the resize got lost to a running glide
+    const loaded = () => requestAnimationFrame(() => pack(grid))
+    grid.addEventListener('load', loaded, true)
 
     const changes = new MutationObserver(() => {
         watch()
@@ -63,5 +74,6 @@ export const masonry: Attachment<HTMLElement> = (grid) => {
     return () => {
         resizes.disconnect()
         changes.disconnect()
+        grid.removeEventListener('load', loaded, true)
     }
 }

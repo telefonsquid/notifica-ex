@@ -1,12 +1,13 @@
 <script lang="ts">
-    import { goto } from '$app/navigation';
+    import { afterNavigate, goto } from '$app/navigation';
     import { resolve } from '$app/paths';
     import { page } from '$app/state';
+    import { duration, easing, rise, stagger } from '#lib/motion.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { disconnectRealtime, onCollectionChange } from '#lib/realtime.ts';
     import { VIEW_ICON_COMPONENTS } from '#lib/view_icons.ts';
-    import { LogOut, Menu, Settings } from '@lucide/svelte';
-    import { DropdownMenu } from 'bits-ui';
+    import { LogOut, Menu, Settings, X } from '@lucide/svelte';
+    import { Dialog } from 'bits-ui';
     import { logoutUser } from '../../routes/api/auth.remote';
     import { getViews } from '../../routes/api/views.remote';
 
@@ -43,6 +44,27 @@
         }
         loggingOut = false
     }
+
+    // PHONE MENU | the rail spread over the whole screen, names shown
+    let menuOpen = $state(false)
+    let menuButton = $state<HTMLElement | null>(null)
+
+    afterNavigate(() => menuOpen = false)
+
+    // Grows as a circle out of the menu button and shrinks back into it
+    function spread(){
+        const box = menuButton?.getBoundingClientRect()
+        const x = box ? box.left + box.width / 2 : 0
+        const y = box ? box.top + box.height / 2 : innerHeight
+        const from = (box?.width ?? 0) / 2
+        const to = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y))
+
+        return {
+            duration: duration('slow'),
+            easing: easing('emphasized'),
+            css: (t: number) => `clip-path: circle(${from + (to - from) * t}px at ${x}px ${y}px)`
+        }
+    }
 </script>
 
 <!-- A view id of undefined is the root | settings take no view at all -->
@@ -55,32 +77,53 @@
     </a>
 {/snippet}
 
-<!-- A menu button in the bottom bar on phones, side rail from sm up -->
-<nav class="vt-rail fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-gutter z-40 flex items-center gap-2 sm:inset-y-0 sm:left-0 sm:w-rail sm:flex-col sm:py-6">
+<!-- A rail item with its name beside it, for the phone menu -->
+{#snippet entry(href: string, label: string, Icon: typeof Settings, active: boolean, index: number)}
+    <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved by the caller -->
+    <a {href} class={['entry', active && 'active']} aria-current={active ? 'page' : undefined} in:rise|global={{ y: 16, delay: stagger(index), duration: 'base' }}>
+        <Icon class="size-6 shrink-0" strokeWidth={1.75} />
+        <span class="type-title truncate text-lg">{label}</span>
+    </a>
+{/snippet}
 
-    <!-- MENU | everything the rail holds, tucked away on phones -->
-    <DropdownMenu.Root>
-        <DropdownMenu.Trigger class="motion-interactive grid size-12 place-items-center rounded-full border border-line bg-raised/85 text-ink-muted shadow-xl backdrop-blur-xl hover:text-ink sm:hidden" aria-label="Menu">
-            <Menu class="size-5" />
-        </DropdownMenu.Trigger>
-        <DropdownMenu.Portal>
-            <DropdownMenu.Content class="menu max-h-[var(--bits-dropdown-menu-content-available-height)] overflow-y-auto" side="top" align="start" sideOffset={10} collisionPadding={12}>
-                {#each views as view, index (view.id)}
-                    {@const Icon = VIEW_ICON_COMPONENTS[view.icon]}
-                    <DropdownMenu.Item class={['menu-item', openView === view.id && 'current']} onSelect={() => goto(resolve('/(app)/[[view]]', { view: index === 0 ? undefined : view.id }))}>
-                        <Icon class="size-4" />{view.name}
-                    </DropdownMenu.Item>
-                {/each}
-                <DropdownMenu.Separator class="menu-separator" />
-                <DropdownMenu.Item class={['menu-item', inSettings && 'current']} onSelect={() => goto(resolve('/(app)/settings'))}>
-                    <Settings class="size-4" />Settings
-                </DropdownMenu.Item>
-                <DropdownMenu.Item class="menu-item" disabled={loggingOut} onSelect={logout}>
-                    <LogOut class="size-4" />Logout
-                </DropdownMenu.Item>
-            </DropdownMenu.Content>
-        </DropdownMenu.Portal>
-    </DropdownMenu.Root>
+<!-- A menu button in the bottom bar on phones, side rail from sm up -->
+<nav class="vt-rail fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-gutter z-40 flex items-center gap-2 sm:inset-y-0 sm:left-0 sm:w-rail sm:flex-col sm:py-6">
+
+    <!-- MENU | everything the rail holds, spread over the screen on phones -->
+    <Dialog.Root bind:open={menuOpen}>
+        <Dialog.Trigger bind:ref={menuButton} class="menu-button grid size-16 shrink-0 place-items-center rounded-full border border-line-strong bg-raised text-ink sm:hidden" aria-label="Menu">
+            <Menu class="size-7" strokeWidth={2.25} />
+        </Dialog.Trigger>
+        <Dialog.Portal>
+            <Dialog.Content forceMount>
+                {#snippet child({ props, open })}
+                    {#if open}
+                        <div {...props} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto bg-canvas/95 px-gutter pt-10 pb-[calc(6.5rem+env(safe-area-inset-bottom))] outline-none backdrop-blur-xl sm:hidden" transition:spread>
+                            <Dialog.Title class="sr-only">Menu</Dialog.Title>
+
+                            <nav class="flex flex-col gap-1">
+                                {#each views as view, index (view.id)}
+                                    {@const Icon = VIEW_ICON_COMPONENTS[view.icon]}
+                                    {@render entry(resolve('/(app)/[[view]]', { view: index === 0 ? undefined : view.id }), view.name, Icon, openView === view.id, index)}
+                                {/each}
+                                <hr class="my-3 border-line" />
+                                {@render entry(resolve('/(app)/settings'), 'Settings', Settings, inSettings, views.length)}
+                                <button class="entry" disabled={loggingOut} onclick={logout} in:rise|global={{ y: 16, delay: stagger(views.length + 1), duration: 'base' }}>
+                                    <LogOut class="size-6 shrink-0" strokeWidth={1.75} />
+                                    <span class="type-title text-lg">Logout</span>
+                                </button>
+                            </nav>
+
+                            <!-- Sits right over the menu button, so the button seems to turn into a cross -->
+                            <Dialog.Close class="menu-button absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-gutter grid size-16 place-items-center rounded-full border border-line-strong bg-raised text-ink" aria-label="Close menu">
+                                <X class="size-7" strokeWidth={2.25} />
+                            </Dialog.Close>
+                        </div>
+                    {/if}
+                {/snippet}
+            </Dialog.Content>
+        </Dialog.Portal>
+    </Dialog.Root>
 
     <!-- VIEWS | scroll once there are more than fit -->
     <div class="views hidden min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto sm:flex">
@@ -107,9 +150,45 @@
         scrollbar-width: none;
     }
 
-    /* The open view stands out in the phone menu */
-    :global(.menu-item.current) {
-        color: var(--theme-accent);
+    /* MENU BUTTON | as big and heavy as the create button on the other side */
+    :global(.menu-button) {
+        box-shadow: 0 0.75rem 1.75rem -0.75rem rgb(0 0 0 / 0.35);
+        transition: scale var(--duration-base) var(--ease-spring), background-color var(--duration-fast) var(--ease-out);
+    }
+
+    :global(.menu-button:hover),
+    :global(.menu-button:focus-visible) {
+        scale: 1.06;
+    }
+
+    :global(.menu-button:active) {
+        scale: 0.92;
+    }
+
+    /* PHONE MENU | rail items laid out wide, the open one filled with the accent */
+    .entry {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-height: 3.5rem;
+        padding: 0 1.25rem;
+        border-radius: var(--layout-radius-card);
+        color: var(--theme-ink-muted);
+        transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+    }
+
+    .entry:hover {
+        color: var(--theme-ink);
+        background: var(--theme-line);
+    }
+
+    .entry.active {
+        color: var(--theme-on-accent);
+        background: var(--theme-accent);
+    }
+
+    .entry:disabled {
+        opacity: 0.5;
     }
 
     .item {
