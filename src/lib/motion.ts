@@ -174,6 +174,24 @@ export function unfold(node: Element, options: UnfoldOptions = {}): TransitionCo
     }
 }
 
+// EMERGE | a dialog panel grows out of the button that opened it and shrinks back into it
+export function emerge(node: Element, { anchor, leaving = false }: { anchor?: HTMLElement | null, leaving?: boolean } = {}): TransitionConfig {
+    const panel = node.getBoundingClientRect()
+    const button = anchor?.isConnected && !prefersReducedMotion.current ? anchor.getBoundingClientRect() : null
+    const dx = button ? button.left + button.width / 2 - (panel.left + panel.width / 2) : 0
+    const dy = button ? button.top + button.height / 2 - (panel.top + panel.height / 2) : 12
+
+    return {
+        duration: duration(leaving ? 'base' : 'slow'),
+        easing: easing(leaving ? 'in' : 'emphasized'),
+        css: (t, u) => `
+            opacity: ${Math.min(1, t * 2)};
+            transform: translate(${u * dx}px, ${u * dy}px) scale(${0.3 + 0.7 * t});
+            filter: blur(${u * 8}px);
+        `
+    }
+}
+
 // MORPH | the node follows its first child's height smoothly, so a swap inside never pops
 // The child keeps its natural size, the node animates between the old and new one around it
 // Timing comes per change, so it can match whatever moves around the node | null jumps

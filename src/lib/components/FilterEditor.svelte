@@ -182,7 +182,7 @@
 {#snippet simple()}
     <div class="grid gap-4">
         <div class="flex flex-wrap items-center gap-2">
-            <label class="search">
+            <label class="search-field flex-[1_1_12rem]">
                 <TextSearch class="size-4 shrink-0 text-ink-faint" />
                 <input value={filter.words} aria-label="Words the note contains" oninput={(event) => update({ words: event.currentTarget.value })} />
                 {#if filter.words}
@@ -393,30 +393,6 @@
 
     .field:hover { border-color: var(--theme-line-strong); }
     .field:focus { border-color: var(--theme-accent); outline: none; }
-
-    .search {
-        display: flex;
-        align-items: center;
-        gap: 0.625rem;
-        flex: 1 1 12rem;
-        height: 2.5rem;
-        padding-inline: 0.875rem 0.375rem;
-        border: 1px solid var(--theme-line);
-        border-radius: 999px;
-        transition: border-color var(--duration-fast) var(--ease-out);
-    }
-
-    .search:hover { border-color: var(--theme-line-strong); }
-    .search:focus-within { border-color: var(--theme-accent); }
-
-    .search input {
-        flex: 1;
-        min-width: 0;
-        background: transparent;
-        color: var(--theme-ink);
-        outline: none;
-    }
-
 
     /* CHIPS | on takes the accent */
     .chip {

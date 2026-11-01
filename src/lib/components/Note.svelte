@@ -33,6 +33,7 @@
     import { safeAction } from '#lib/pocketbase.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
     import type { Label, Note, NoteContent, Person, Reminder } from '#lib/schemas.ts';
+    import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
     import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pencil, Pin, Trash2, X } from '@lucide/svelte';
@@ -48,6 +49,7 @@
     // PROPS
     let {
         note,
+        defaults,
         open = false,
         closing = false,
         labels,
@@ -64,6 +66,7 @@
         onclose
     }: {
         note: Note | null                                       // null starts a new note, which comes open
+        defaults?: Partial<NoteContent>                         // what a new note begins with, like the labels its view asks for
         open?: boolean
         closing?: boolean                                       // the controls fade out before the card shrinks
         labels: Label[]
@@ -83,7 +86,7 @@
     // DRAFT | edited freely while open, follows the stored note while closed
     const initial = untrack(() => note)
     let id = $state(initial?.id)
-    let draft = $state<NoteContent>(initial ? contentOf(initial) : emptyNote())
+    let draft = $state<NoteContent>(initial ? contentOf(initial) : { ...emptyNote(), ...untrack(() => defaults) })
     let saved = $state(untrack(() => JSON.stringify(draft)))
     let savedAt = initial?.updated ?? ''
     let deleted = false
@@ -549,7 +552,7 @@
         {/if}
 
         <!-- REMINDERS -->
-        <ReminderList {reminders} {ensureNote} focus={open ? focus : undefined} editable={open} {ondone} />
+        <ReminderList {reminders} {ensureNote} focus={open ? focus : undefined} editable={open} {ondone} onhistory={(anchor) => note && showHistory({ id: note.id, title: draft.title, color: draft.color }, anchor)} />
     </article>
 </div>
 
@@ -607,6 +610,9 @@
         content: attr(data-placeholder);
         color: var(--theme-ink-faint);
         pointer-events: none;
+        /* Takes no room so the caret stays at the left */
+        float: left;
+        height: 0;
     }
 
     .note:not(.open) .title.blank::before {

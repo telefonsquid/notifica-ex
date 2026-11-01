@@ -33,5 +33,10 @@ export default defineConfig({
 					!warning.code.includes('state_referenced_locally')
 			}
 		})
-	]
+	],
+
+	// DEV SERVER | the pocketbase container calls the reminder dispatch through this host
+	server: {
+		allowedHosts: ['host.docker.internal'],
+	}
 });

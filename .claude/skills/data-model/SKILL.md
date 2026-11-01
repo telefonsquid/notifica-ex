@@ -14,8 +14,9 @@ Schema lives in `pocketbase/pb_schema.json`. Zod mirrors live in `#lib/schemas.t
 | `users` (auth) | name, authorizationLevel, state, ntfyTopic | any signed in user (names for sharing, emails stay private) |
 | `labels` | owner, name, color | owner |
 | `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images (protected file), shared (users, max 20) | `owner = @request.auth.id \|\| shared ?= @request.auth.id` |
-| `reminders` | note, owner, at, repeat, weekdays, until, every, timezone, task, next, sent, done | owner, so a collaborator's reminders stay private |
-| `views` | owner, name, icon, position, filter (json), sort (json) | owner |
+| `reminders` | note, owner, at, repeat, weekdays, until, every, timezone, task, next, open | owner, so a collaborator's reminders stay private |
+| `occurrences` | owner, note, reminder, at, rule, timezone, task, done, comment | owner, the reminder history |
+| `views` | owner, name, icon (lucide name, text), position, filter (json), sort (json) | owner |
 | `migrations` | bookkeeping | superuser only |
 
 Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
@@ -57,4 +58,5 @@ Sort `manual` is the default. `position` stays 0 until a note is dragged, `posit
 
 - No versioned migrations before the first release. Edit `pb_schema.json`, then `POST /api/migration` with `SERVER_AUTH_SECRET`: `bootstrap.ts` imports the schema and drops fields it no longer lists (the import alone keeps them).
 - A new field touches `pb_schema.json`, `schemas.ts`, the queries that write it, and any remote function schema that accepts it.
+- PocketBase refuses to change a field's type. Give the field a new id in `pb_schema.json` and add a dev one off in `bootstrap.ts` that drops the old field, adds the new one and refills it (`retypeViewIcons` is the pattern).
 - After the first release, data changes become versioned migrations run from the same endpoint.

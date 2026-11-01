@@ -3,7 +3,7 @@
     import { cssEasing, duration, morph, rise, sink, unfold } from '#lib/motion.ts';
     import type { Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
-    import { BellPlus } from '@lucide/svelte';
+    import { BellPlus, History } from '@lucide/svelte';
 
     // PROPS
     let {
@@ -11,13 +11,15 @@
         ensureNote,
         editable = false,
         focus,
-        ondone
+        ondone,
+        onhistory
     }: {
         reminders: Reminder[]
         ensureNote: () => Promise<string | null>
         editable?: boolean                          // an open card edits them and can add more
         focus?: string                              // reminder id to start open, 'new' starts the add form
         ondone: (reminder: Reminder) => void
+        onhistory: (anchor: HTMLElement) => void
     } = $props()
 
     // ADDING | a full row while there are none, then a button on the first line opens the form below
@@ -70,6 +72,9 @@
 
 {#snippet addButton()}
     {#if !adding}
+        <button class="icon-button shrink-0" aria-label="Reminder history" onclick={(event) => onhistory(event.currentTarget)} in:appear|global out:leave|global {@attach tip('History')}>
+            <History class="size-4" />
+        </button>
         <button class="add-reminder icon-button -mr-2 shrink-0" aria-label="Add reminder" onclick={() => adding = true} in:appear|global out:leave|global {@attach tip('Add reminder')}>
             <BellPlus class="size-4" />
         </button>
@@ -89,6 +94,7 @@
                     open={focus === reminder.id}
                     trailing={editable && index === 0 ? addButton : undefined}
                     ondone={() => ondone(reminder)}
+                    {onhistory}
                 />
             {/each}
             {#if editable && (adding || (!reminders.length && !arriving))}

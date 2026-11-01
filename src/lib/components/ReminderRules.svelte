@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { duration, easing, rise, unfold } from '#lib/motion.ts';
+    import { duration, easing, emerge, rise, unfold } from '#lib/motion.ts';
     import type { ReminderLimit } from '#lib/schemas.ts';
     import { WEEKDAYS } from '#lib/reminders.ts';
     import Button from '#lib/ui/Button.svelte';
@@ -7,9 +7,8 @@
     import DayPicker from '#lib/components/DayPicker.svelte';
     import { CalendarDays, CalendarRange, Clock, Plus, SlidersHorizontal, X } from '@lucide/svelte';
     import { Dialog } from 'bits-ui';
-    import { prefersReducedMotion } from 'svelte/motion';
     import type { Snippet } from 'svelte';
-    import { fade, type TransitionConfig } from 'svelte/transition';
+    import { fade } from 'svelte/transition';
 
     // PROPS
     let {
@@ -49,24 +48,6 @@
             : { mode, kind, from: day, to: day }
     }
 
-    // TRANSITIONS | the panel grows out of its button and shrinks back into it
-    function emerge(node: Element, { leaving = false } = {}): TransitionConfig {
-        const panel = node.getBoundingClientRect()
-        const button = anchor?.isConnected && !prefersReducedMotion.current ? anchor.getBoundingClientRect() : null
-        const dx = button ? button.left + button.width / 2 - (panel.left + panel.width / 2) : 0
-        const dy = button ? button.top + button.height / 2 - (panel.top + panel.height / 2) : 12
-
-        return {
-            duration: duration(leaving ? 'base' : 'slow'),
-            easing: easing(leaving ? 'in' : 'emphasized'),
-            css: (t, u) => `
-                opacity: ${Math.min(1, t * 2)};
-                transform: translate(${u * dx}px, ${u * dy}px) scale(${0.3 + 0.7 * t});
-                filter: blur(${u * 8}px);
-            `
-        }
-    }
-
     // Sections follow the panel in one after another
     function follow(node: Element, { index = 0 } = {}){
         return rise(node, { delay: 120 + index * 50, y: 8, blur: 4, duration: 'base' })
@@ -90,7 +71,7 @@
             {#snippet child({ props, open: shown })}
                 {#if shown}
                     <div {...props} class="fixed inset-0 z-[73] grid place-items-center p-gutter outline-none" onclick={(event) => { if(event.target === event.currentTarget) open = false }}>
-                        <div class="panel flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl" in:emerge out:emerge={{ leaving: true }}>
+                        <div class="panel flex max-h-full w-full max-w-md flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl" in:emerge={{ anchor }} out:emerge={{ anchor, leaving: true }}>
                             <!-- HEADER | the line updates while rules change -->
                             <div class="flex items-start gap-3 p-card pb-4">
                                 <span class="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent"><SlidersHorizontal class="size-4" /></span>

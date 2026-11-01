@@ -14,7 +14,7 @@
 	import { onCollectionChange } from '#lib/realtime.ts';
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts';
-	import { defaultSort, emptyFilter, groupReminders, matchesView, noteText, positionBetween, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
+	import { defaultSort, emptyFilter, groupReminders, matchesView, noteDefaults, noteText, positionBetween, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
 	import { ArrowUpDown, Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
 	import { ContextMenu, Popover } from 'bits-ui';
 	import { flushSync, tick, untrack } from 'svelte';
@@ -361,11 +361,14 @@
 	}
 
 	function markDone(reminder: Reminder) {
-		safeAction(setReminderDone({ id: reminder.id, done: true }));
+		safeAction(setReminderDone(reminder.id));
 	}
 
 	// DRAG | the mouse moves cards in a manual sort, each card it passes gives up its place
-	let drag: { id: string; cell: HTMLElement; start: { x: number; y: number }; grab: { x: number; y: number }; from: string[] | null; over: string | null } | null = null;
+	// Past this many cards the grid holds still until the drop, a reorder on every pass sends them all flying
+	const LIVE_DRAG_LIMIT = 10;
+
+	let drag: { id: string; cell: HTMLElement; start: { x: number; y: number }; grab: { x: number; y: number }; from: string[] | null; over: string | null; target: HTMLElement | null } | null = null;
 	let pointer = { x: 0, y: 0 };
 	let dropped = false;
 
@@ -374,7 +377,7 @@
 		if (notes.find((note) => note.id === id)?.owner !== me) return; // The order of a shared note is its owner's
 		const cell = event.currentTarget as HTMLElement;
 		const rect = cell.getBoundingClientRect();
-		drag = { id, cell, start: { x: event.clientX, y: event.clientY }, grab: { x: event.clientX - rect.left, y: event.clientY - rect.top }, from: null, over: null };
+		drag = { id, cell, start: { x: event.clientX, y: event.clientY }, grab: { x: event.clientX - rect.left, y: event.clientY - rect.top }, from: null, over: null, target: null };
 	}
 
 	function dragMove(event: PointerEvent) {
@@ -401,6 +404,14 @@
 		const passed = notes.find((note) => note.id === over);
 		if (!moving || !passed || (sort.pinnedFirst && moving.pinned !== passed.pinned)) return;
 
+		// Many cards only mark where the drop lands
+		if (frozen.length > LIVE_DRAG_LIMIT) {
+			if (drag.target) delete drag.target.dataset.dropTarget;
+			drag.target = document.querySelector<HTMLElement>(`[data-flip="${over}"]`);
+			if (drag.target) drag.target.dataset.dropTarget = '';
+			return;
+		}
+
 		const order = frozen.filter((id) => id !== drag?.id);
 		order.splice(frozen.indexOf(over), 0, drag.id);
 		frozen = order;
@@ -419,15 +430,26 @@
 	// Lands in its new place, between the neighbours it ended up with
 	async function drop() {
 		if (!drag?.from) return void (drag = null);
-		const { id, cell, from } = drag;
+		const { id, cell, from, target } = drag;
 		drag = null;
 		dropped = true;
 		setTimeout(() => (dropped = false));
 
+		// A marked target reorders only now
+		const order = target ? from.filter((other) => other !== id) : from;
+		if (target) {
+			delete target.dataset.dropTarget;
+			order.splice(from.indexOf(target.dataset.flip!), 0, id);
+		}
+		const moved = order.some((other, index) => other !== from[index]);
+
+		// Measured while still lifted, so the card glides from under the pointer along with the rest
+		if (moved) snapshot();
 		const lifted = cell.style.translate;
 		cell.style.translate = '';
 		delete cell.dataset.dragging;
-		cell.animate({ translate: [lifted, '0 0'] }, { duration: duration('base'), easing: cssEasing('emphasized') });
+		if (moved) frozen = order;
+		else cell.animate({ translate: [lifted, '0 0'] }, { duration: duration('base'), easing: cssEasing('emphasized') });
 
 		const index = visible.findIndex((note) => note.id === id);
 		const note = visible[index];
@@ -466,6 +488,7 @@
 						<NoteView
 							bind:this={freshNote}
 							note={null}
+							defaults={noteDefaults(filter)}
 							open
 							{closing}
 							{labels}
@@ -767,6 +790,11 @@
 	.note-cell:global([data-dragging] .card) {
 		scale: 1.03;
 		box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 0.35);
+	}
+
+	.note-cell:global([data-drop-target] .card) {
+		outline: 2px solid var(--theme-signature);
+		outline-offset: 3px;
 	}
 
 	:global(body:has([data-dragging])) {

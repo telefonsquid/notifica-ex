@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { browser } from '$app/env';
 	import { invalidateAll } from '$app/navigation';
+	import ReminderHistory from '#lib/components/ReminderHistory.svelte';
 	import Rail from '#lib/components/Rail.svelte';
 	import { connectRealtime, onRecordChange } from '#lib/realtime.ts';
 	import { onDestroy } from 'svelte';
@@ -27,3 +28,6 @@
 		{@render children()}
 	</main>
 </div>
+
+<!-- GLOBAL DIALOGS -->
+<ReminderHistory />

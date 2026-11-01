@@ -6,7 +6,7 @@
     import { duration, easing, rise, stagger } from '#lib/motion.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { disconnectRealtime, onCollectionChange } from '#lib/realtime.ts';
-    import { VIEW_ICON_COMPONENTS } from '#lib/view_icons.ts';
+    import { viewIcon } from '#lib/view_icons.ts';
     import { LogOut, Menu, Settings, X } from '@lucide/svelte';
     import { ContextMenu, Dialog } from 'bits-ui';
     import { logoutUser } from '../../routes/api/auth.remote';
@@ -105,7 +105,7 @@
 
                             <nav class="flex flex-col gap-1">
                                 {#each views as view, index (view.id)}
-                                    {@const Icon = VIEW_ICON_COMPONENTS[view.icon]}
+                                    {@const Icon = viewIcon(view.icon)}
                                     <ContextMenu.Root>
                                         <ContextMenu.Trigger>
                                             {#snippet child({ props })}
@@ -146,7 +146,7 @@
             <ContextMenu.Root>
                 <ContextMenu.Trigger>
                     {#snippet child({ props })}
-                        {@render link({ view: index === 0 ? undefined : view.id }, view.name, VIEW_ICON_COMPONENTS[view.icon], openView === view.id, props)}
+                        {@render link({ view: index === 0 ? undefined : view.id }, view.name, viewIcon(view.icon), openView === view.id, props)}
                     {/snippet}
                 </ContextMenu.Trigger>
                 <ContextMenu.Portal>

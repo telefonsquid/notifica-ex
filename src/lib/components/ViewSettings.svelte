@@ -4,12 +4,13 @@
     import SortEditor from '#lib/components/SortEditor.svelte';
     import { safeAction } from '#lib/pocketbase.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
+    import { duration, easing } from '#lib/motion.ts';
     import { VIEW_ICONS, type Label, type ViewFilter, type ViewIcon, type ViewSort } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
-    import { VIEW_ICON_COMPONENTS } from '#lib/view_icons.ts';
+    import { viewIcon } from '#lib/view_icons.ts';
     import { countActive, defaultSort, emptyFilter } from '#lib/views.ts';
-    import { ChevronDown, ChevronUp, Plus, SlidersHorizontal, Trash2 } from '@lucide/svelte';
+    import { ChevronDown, ChevronUp, Plus, Search, SlidersHorizontal, Trash2, X } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
     import { flip } from 'svelte/animate';
     import { createView, getViews, reorderViews, updateView } from '../../routes/api/views.remote';
@@ -23,12 +24,34 @@
         expanded?: string | null        // the view whose filters show, the rail menu can open one
     } = $props()
 
-    let views = $derived(await getViews())
+    let saved = $derived(await getViews())
+
+    // A move shows at once, the saved order takes over once the server has it
+    let order = $state.raw<string[] | null>(null)
+    let views = $derived(order ? order.map((id) => saved.find((view) => view.id === id)).filter((view) => !!view) : saved)
 
     $effect(() => onCollectionChange('views', () => getViews().refresh()))
 
     // ROW STATE | one open icon picker at a time
     let picking = $state<string | null>(null)
+
+    // ICON SEARCH | the full lucide list loads on first use
+    const RESULTS = 60
+    let query = $state('')
+    let names = $state<string[] | null>(null)
+
+    async function loadNames(){
+        if(!names) names = (await import('#lib/lucide_icons.ts')).LUCIDE_NAMES
+    }
+
+    // Every word must appear, names starting with the first word come first
+    let found = $derived.by(() => {
+        const words = query.toLowerCase().trim().split(/[\s-]+/).filter(Boolean)
+        if(!words.length || !names) return []
+        return names
+            .filter((name) => words.every((word) => name.includes(word)))
+            .toSorted((a, b) => Number(!a.startsWith(words[0])) - Number(!b.startsWith(words[0])) || a.length - b.length)
+    })
 
     // ====================================================================================================
 
@@ -49,11 +72,13 @@
         safeAction(updateView({ id, icon }))
     }
 
-    // Swaps with the neighbour and sends the whole order
-    function move(index: number, step: -1 | 1){
+    // Swaps with the neighbour and sends the whole order | a later move keeps its own order showing
+    async function move(index: number, step: -1 | 1){
         const ids = views.map((view) => view.id);
         [ids[index], ids[index + step]] = [ids[index + step], ids[index]]
-        safeAction(reorderViews(ids))
+        order = ids
+        await safeAction(reorderViews(ids))
+        if(order === ids) order = null
     }
 
     // FILTERS | saved shortly after the last change, typing in a word field would send every key otherwise
@@ -89,29 +114,46 @@
 
 <ul class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
     {#each views as view, index (view.id)}
-        {@const Icon = VIEW_ICON_COMPONENTS[view.icon]}
+        {@const Icon = viewIcon(view.icon)}
         {@const active = countActive(pending[view.id]?.filter ?? view.filter)}
-        <li class="bg-card" animate:flip={{ duration: 280 }}>
+        <li class="bg-card" animate:flip={{ duration: duration('base'), easing: easing('in-out') }}>
             <div class="flex items-center gap-2 py-2 pr-2 pl-3">
 
                 <!-- ICON -->
-                <Popover.Root bind:open={() => picking === view.id, (open) => (picking = open ? view.id : null)}>
+                <Popover.Root bind:open={() => picking === view.id, (open) => { picking = open ? view.id : null; query = '' }}>
                     <Popover.Trigger class="icon-button grid size-10 shrink-0 place-items-center rounded-control" aria-label={`Icon of ${view.name}`} {@attach tip('Icon in the rail')}>
                         <Icon class="size-5" strokeWidth={1.75} />
                     </Popover.Trigger>
                     <Popover.Portal>
-                        <Popover.Content sideOffset={8} collisionPadding={12} class="icons z-[60] grid grid-cols-6 gap-1 rounded-card border border-line-strong bg-raised p-3 text-ink shadow-2xl" aria-label="Icons">
-                            {#each VIEW_ICONS as name (name)}
-                                {@const Choice = VIEW_ICON_COMPONENTS[name]}
-                                <button
-                                    class={['icon-button grid size-10 place-items-center rounded-control', view.icon === name && 'bg-accent text-on-accent hover:text-on-accent']}
-                                    aria-label={name.replace('-', ' ')}
-                                    aria-pressed={view.icon === name}
-                                    onclick={() => pickIcon(view.id, name)}
-                                >
-                                    <Choice class="size-5" strokeWidth={1.75} />
-                                </button>
-                            {/each}
+                        <Popover.Content sideOffset={8} collisionPadding={12} class="icons z-[60] flex w-[18rem] flex-col gap-3 rounded-card border border-line-strong bg-raised p-3 text-ink shadow-2xl" aria-label="Icons">
+                            <!-- The curated icons, or what the search found -->
+                            <div class="grid max-h-[14.5rem] grid-cols-6 gap-1 overflow-y-auto">
+                                {#each query.trim() ? found.slice(0, RESULTS) : VIEW_ICONS as name (name)}
+                                    {@const Choice = viewIcon(name)}
+                                    <button
+                                        class={['icon-button grid size-10 place-items-center rounded-control', view.icon === name && 'bg-accent text-on-accent hover:text-on-accent']}
+                                        aria-label={name.replaceAll('-', ' ')}
+                                        aria-pressed={view.icon === name}
+                                        onclick={() => pickIcon(view.id, name)}
+                                    >
+                                        <Choice class="size-5" strokeWidth={1.75} />
+                                    </button>
+                                {:else}
+                                    <p class="type-meta col-span-6 py-3 text-center text-ink-faint">{names ? 'No icon by that name' : 'Loading icons'}</p>
+                                {/each}
+                            </div>
+                            {#if found.length > RESULTS}
+                                <p class="type-meta -mt-1 text-center text-ink-faint">{found.length - RESULTS} more, narrow the search</p>
+                            {/if}
+
+                            <!-- SEARCH | any lucide icon -->
+                            <label class="search-field">
+                                <Search class="size-4 shrink-0 text-ink-faint" />
+                                <input bind:value={query} placeholder="Any lucide icon" aria-label="Search all icons" onfocus={loadNames} oninput={loadNames} />
+                                {#if query}
+                                    <button type="button" class="icon-button rounded-full p-1" aria-label="Clear search" onclick={() => (query = '')}><X class="size-3.5" /></button>
+                                {/if}
+                            </label>
                         </Popover.Content>
                     </Popover.Portal>
                 </Popover.Root>

@@ -10,6 +10,7 @@ export type CollectionMap = {
     'labels': Label;
     'notes': Note;
     'reminders': Reminder;
+    'occurrences': Occurrence;
     'views': View;
     '_superusers': RecordAuthResponse<RecordModel>;
 }
@@ -20,6 +21,7 @@ const _collectionKeys: Record<keyof CollectionMap, true> = { // the collection t
     'labels': true,
     'notes': true,
     'reminders': true,
+    'occurrences': true,
     'views': true,
     '_superusers': true,
 };
@@ -279,8 +281,21 @@ export const reminderSchema = recordModelSchema.extend({
     until: timestampSchema,
     rules: z.array(reminderLimitSchema).nullable().transform((rules) => rules ?? []), // empty json comes back as null
     next: timestampSchema, // empty once a one off reminder went out
-    sent: timestampSchema,
-    done: timestampSchema // occurrence that was checked off
+    open: z.number().int().min(0).default(0) // logged task occurrences not checked off yet
+});
+
+// One time a reminder went off | keeps what the reminder looked like then, so later edits leave the history alone
+export type Occurrence = z.infer<typeof occurrenceSchema>;
+export const occurrenceSchema = recordModelSchema.extend({
+    owner: idSchema,
+    note: idSchema,
+    reminder: z.union([idSchema, z.literal('')]), // empty once the reminder was removed
+    at: timestampSchema,
+    rule: z.string(),
+    timezone: z.string(),
+    task: z.boolean(),
+    done: timestampSchema, // when it was checked off
+    comment: z.string().max(LIMITS.OCCURRENCE_COMMENT).default('')
 });
 
 
@@ -291,11 +306,11 @@ export const reminderSchema = recordModelSchema.extend({
 
 
 // TYPES => VIEWS ===================================================================
-// Each name maps to a lucide icon in #lib/view_icons.ts
+// The picker's first page | any other lucide name works too, see #lib/view_icons.ts
 export const VIEW_ICONS = ['sticky-note', 'bell', 'archive', 'star', 'pin', 'list-checks', 'calendar', 'clock', 'book', 'briefcase', 'house', 'heart', 'lightbulb', 'tag', 'inbox', 'flame', 'leaf', 'music', 'plane', 'shopping-cart', 'code', 'graduation-cap', 'palette', 'coffee'] as const;
 
 export type ViewIcon = z.infer<typeof viewIconSchema>;
-export const viewIconSchema = z.enum(VIEW_ICONS);
+export const viewIconSchema = limitedText('Icon', LIMITS.VIEW_ICON).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Icon must be a lucide name.');
 
 export const viewNameSchema = limitedText('View', LIMITS.VIEW_NAME).trim().min(1, 'View needs a name.');
 

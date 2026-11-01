@@ -5,12 +5,13 @@
     import { describeRule, parseTimestamp, UNITS, WEEKDAYS } from '#lib/reminders.ts';
     import type { Reminder, ReminderLimit, ReminderRepeat, Weekday } from '#lib/schemas.ts';
     import DayPicker from '#lib/components/DayPicker.svelte';
+    import DoneButton from '#lib/components/DoneButton.svelte';
     import ReminderRules from '#lib/components/ReminderRules.svelte';
     import { rise, unfold } from '#lib/motion.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Choice from '#lib/ui/Choice.svelte';
     import NumberField from '#lib/ui/NumberField.svelte';
-    import { Bell, BellPlus, Check, ListChecks, SlidersHorizontal, Trash2, X } from '@lucide/svelte';
+    import { Bell, BellPlus, Check, SlidersHorizontal, Square, SquareCheckBig, Trash2, X } from '@lucide/svelte';
     import { untrack, type Snippet } from 'svelte';
     import { addReminder, removeReminder, updateReminder } from '../../routes/api/reminders.remote';
 
@@ -22,6 +23,7 @@
         animate = false,
         open = $bindable(false),
         ondone,
+        onhistory,
         onclose,
         trailing
     }: {
@@ -30,7 +32,8 @@
         editable?: boolean                          // a closed card only shows the line, the click goes to the card
         animate?: boolean                           // off while the card itself resizes, its glide covers the change then
         open?: boolean
-        ondone?: () => void                         // ticks off an open task
+        ondone?: () => void                         // ticks off the one open time of a task
+        onhistory?: (anchor: HTMLElement) => void   // opens the note's history, for picking among several open times
         onclose?: (saved: boolean) => void
         trailing?: Snippet                          // extra buttons at the end of the line
     } = $props()
@@ -137,6 +140,13 @@
         return animate ? unfold(node) : {}
     }
 
+    // DONE | one open time gets ticked off right away, more open the history to pick from
+    function done(event: MouseEvent){
+        if(!reminder) return
+        if(reminder.open > 1 && onhistory) onhistory(event.currentTarget as HTMLElement)
+        else ondone?.()
+    }
+
     // Last day on the line, in the zone the reminder was set in
     function endOf(reminder: Reminder): string {
         const date = parseTimestamp(reminder.until)
@@ -206,8 +216,8 @@
                     {#if tuned}<span class="dot" aria-hidden="true"></span>{/if}
                 </button>
             {/if}
-                <button type="button" class={['icon-button', task && 'text-accent']} aria-label="Done button in the notification" aria-pressed={task} onclick={() => task = !task} {@attach tip(task ? 'The notification can be checked off with a Done button' : 'Add a Done button to the notification')}>
-                    <ListChecks class="size-4" />
+                <button type="button" class={['icon-button', task && 'bg-accent text-on-accent hover:bg-accent hover:text-on-accent']} aria-label="Done button" aria-pressed={task} onclick={() => task = !task} {@attach tip(task ? 'Remove Done button' : 'Add Done button')}>
+                    {#if task}<SquareCheckBig class="size-4" />{:else}<Square class="size-4" />{/if}
                 </button>
                 {#if reminder}
                     <button type="button" class="icon-button" aria-label="Remove reminder" disabled={saving} onclick={remove} {@attach tip('Remove reminder')}>
@@ -235,20 +245,18 @@
         <ReminderRules bind:open={advanced} bind:until bind:limits start={at} recurring={repeat !== 'never'} anchor={advancedButton} {schedule} summary={describeRule({ repeat, every: counted ? every : 1, weekdays, rules: limits })} />
     </form>
 {:else if reminder}
-    <!-- LINE | hatched while a task waits to be checked off -->
+    <!-- LINE | the Done button pulses while a task waits to be checked off -->
     {@const due = isOpenTask(reminder)}
     <div class={['line flex min-h-9 items-center gap-2', due && 'due', !editable && 'quiet']} in:enter|global>
         <button class={['type-meta flex min-w-0 flex-1 items-center gap-2 text-left', editable ? 'hover:text-ink' : 'pointer-events-none']} tabindex={editable ? 0 : -1} aria-label={`Edit reminder ${describeRule(reminder)}`} onclick={() => open = true}>
-            {#if reminder.task}<ListChecks class="size-3.5 shrink-0" />{:else}<Bell class="size-3.5 shrink-0" />{/if}
+            {#if reminder.task}<SquareCheckBig class="size-3.5 shrink-0" />{:else}<Bell class="size-3.5 shrink-0" />{/if}
             <span class="truncate">{summary(reminder)}</span>
             {#if !editable && reminder.next}
                 <span class="ml-auto shrink-0">{formatDistance(reminder.next, now())}</span>
             {/if}
         </button>
         {#if due && ondone}
-            <button class="type-meta motion-interactive pointer-events-auto relative flex shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-on-accent hover:brightness-110" onclick={ondone}>
-                <Check class="size-3" /> Done
-            </button>
+            <DoneButton class={['pointer-events-auto', !trailing && '-mr-1.5']} count={reminder.open} pulse aria-label={reminder.open > 1 ? `${reminder.open} open, show history` : 'Done'} onclick={done} />
         {/if}
         {@render trailing?.()}
     </div>
@@ -273,11 +281,7 @@
         color: var(--theme-ink-faint);
     }
 
-    /* Hatch runs across the whole band, not just the text */
     .line.due {
-        margin-inline: calc(-1 * var(--layout-card-padding));
-        padding-inline: var(--layout-card-padding);
         color: var(--theme-ink);
-        background-image: repeating-linear-gradient(-45deg, transparent 0 0.375rem, color-mix(in oklab, var(--theme-accent) 20%, transparent) 0.375rem 0.75rem);
     }
 </style>

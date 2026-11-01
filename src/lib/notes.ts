@@ -41,16 +41,50 @@ export function isEmpty(note: NoteContent): boolean {
 const formats = new Map<string, Intl.DateTimeFormat>()
 
 // Formats in the reminder's own zone, so server and browser render the same text
+function inZone(date: Date, timezone: string, style: 'moment' | 'time' | 'key' | 'day' | 'date'): string {
+    const id = `${timezone} ${style}`
+    let format = formats.get(id)
+    if(!format){
+        const options: Record<typeof style, Intl.DateTimeFormatOptions> = {
+            moment: { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' },
+            time: { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' },
+            key: { year: 'numeric', month: '2-digit', day: '2-digit' },
+            day: { weekday: 'short', day: 'numeric', month: 'short' },
+            date: { day: 'numeric', month: 'short', year: 'numeric' },
+        }
+        format = new Intl.DateTimeFormat(style === 'key' ? 'en-CA' : 'en-GB', { timeZone: timezone, ...options[style] })
+        formats.set(id, format)
+    }
+    return format.format(date)
+}
+
 export function formatMoment(value: string, timezone: string): string {
+    const date = parseTimestamp(value)
+    return date ? inZone(date, timezone, 'moment') : ''
+}
+
+// Just the clock, as "08:30"
+export function formatTime(value: string, timezone: string): string {
+    const date = parseTimestamp(value)
+    return date ? inZone(date, timezone, 'time') : ''
+}
+
+// The calendar day a moment falls on, as a sortable "2026-11-01"
+export function dayKey(value: string, timezone: string): string {
+    const date = parseTimestamp(value)
+    return date ? inZone(date, timezone, 'key') : ''
+}
+
+// Today, Yesterday, "Sun 1 Nov", the year only once it isn't this one
+export function formatDay(value: string, timezone: string, now: number): string {
     const date = parseTimestamp(value)
     if(!date) return ''
 
-    let format = formats.get(timezone)
-    if(!format){
-        format = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
-        formats.set(timezone, format)
-    }
-    return format.format(date)
+    const key = inZone(date, timezone, 'key')
+    if(key === inZone(new Date(now), timezone, 'key')) return 'Today'
+    if(key === inZone(new Date(now - 86_400_000), timezone, 'key')) return 'Yesterday'
+    if(key.slice(0, 4) !== inZone(new Date(now), timezone, 'key').slice(0, 4)) return inZone(date, timezone, 'date')
+    return inZone(date, timezone, 'day')
 }
 
 const relative = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
@@ -78,7 +112,7 @@ export function formatDistance(value: string, now: number): string {
     return relative.format(Math.round(left / size), unit)
 }
 
-// A task whose last notification went out but was not checked off yet
+// A task with times that went off but were not checked off yet
 export function isOpenTask(reminder: Reminder): boolean {
-    return reminder.task && !!reminder.sent && reminder.done !== reminder.sent
+    return reminder.task && reminder.open > 0
 }

@@ -42,10 +42,15 @@ export function tip(text: string): Attachment<HTMLElement> {
                 waiting = null
             }
             if(tooltip.anchor !== node) return
-            tooltip.anchor = null
             warm = true
             clearTimeout(cooling)
             cooling = setTimeout(() => warm = false, COOLDOWN)
+            queueMicrotask(release)
+        }
+
+        // Removing a hovered or focused button fires its events in the middle of a Svelte update, which forbids state writes
+        function release(){
+            if(tooltip.anchor === node) tooltip.anchor = null
         }
 
         node.addEventListener('pointerenter', hover)

@@ -5,7 +5,8 @@
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
-    import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
+    import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
+    import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, History, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
     import { duplicateNote, updateNote } from '../../routes/api/notes.remote';
     import { removeReminder } from '../../routes/api/reminders.remote';
@@ -196,6 +197,7 @@
             {/each}
             {#if attached.length}<Menu.Separator class="menu-separator" />{/if}
             <Menu.Item class="menu-item" onSelect={() => onedit(single, 'new')}><BellPlus class="size-4" />Add reminder</Menu.Item>
+            <Menu.Item class="menu-item" onSelect={() => showHistory(single)}><History class="size-4" />History</Menu.Item>
         </Menu.SubContent>
     </Menu.Sub>
 {:else if attached.length}

@@ -1,5 +1,5 @@
 import { getRequestEvent } from '$app/server';
-import type { CollectionMap, FetchOptions, Reminder } from '#lib/schemas.ts';
+import type { CollectionMap, FetchOptions, Occurrence, Reminder } from '#lib/schemas.ts';
 import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
 import type { CollectionModel, ListResult, RecordListOptions } from 'pocketbase';
 
@@ -119,7 +119,7 @@ export async function updateSettings(settings: Record<string, unknown>) {
 
 
 // OWNED RECORDS =====================================================================
-type OwnedCollection = 'labels' | 'notes' | 'reminders' | 'views'
+type OwnedCollection = 'labels' | 'notes' | 'occurrences' | 'reminders' | 'views'
 
 // Everything one user owns in a collection
 export async function getAllOwned<K extends OwnedCollection>(collectionName: K, owner: string, options?: Omit<FetchOptions, 'filter'>) {
@@ -162,6 +162,29 @@ export async function getDueReminders(now: Date) {
     const pb = await getPbAdminConnection()
     const filter = pb.filter('next != "" && next <= {:now}', { now })
     return await pbErrorHandler(pb.collection('reminders').getFullList({ filter, expand: 'note,owner' }) as Promise<Reminder[]>)
+}
+
+// HISTORY | newest first, one page at a time since a minute reminder logs a lot
+export async function getOccurrences(note: string, owner: string, perPage: number) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('note = {:note} && owner = {:owner}', { note, owner })
+    return await pbErrorHandler(pb.collection('occurrences').getList(1, perPage, { filter, sort: '-at,-created' }) as Promise<ListResult<Occurrence>>)
+}
+
+// Times on a note still waiting for their Done button, oldest first
+export async function getOpenOccurrences(note: string, owner: string) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('note = {:note} && owner = {:owner} && task = true && done = ""', { note, owner })
+    return await pbErrorHandler(pb.collection('occurrences').getFullList({ filter, sort: 'at', fields: 'id,reminder' }) as Promise<Pick<Occurrence, 'id' | 'reminder'>[]>)
+}
+
+// Keeps the count on the reminder in step with its log, the card badge and filters read it from there
+export async function countOpenOccurrences(reminder: string) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('reminder = {:reminder} && task = true && done = ""', { reminder })
+    const page = await pbErrorHandler(pb.collection('occurrences').getList(1, 1, { filter, fields: 'id' }))
+    if(!page.success) return page
+    return await updateOnePartial('reminders', reminder, { open: page.data.totalItems })
 }
 
 // IMAGES | the files are protected, so every fetch needs a short lived token

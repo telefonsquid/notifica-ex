@@ -17,6 +17,7 @@ export const LIMITS = {
     PASSWORD: 72,                       // bcrypt ignores anything past this
     LABEL_NAME: 64,
     VIEW_NAME: 64,
+    VIEW_ICON: 64,                      // a lucide icon name
     NTFY_TOPIC: 64,                     // ntfy rejects longer topics
     FILE_NAME: 128,                     // pocketbase stores a sanitized name plus a random suffix
     TIMEZONE: 64,                       // iana zone name like America/Argentina/Buenos_Aires
@@ -24,6 +25,7 @@ export const LIMITS = {
     // TEXT => NOTES
     NOTE_TITLE: 200,
     NOTE_BODY: 20000,
+    OCCURRENCE_COMMENT: 500,            // a note on one check in the reminder history
 
     // TEXT => VIEWS
     VIEW_WORDS: 200,                    // words a view looks for or leaves out

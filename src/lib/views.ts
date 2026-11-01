@@ -1,7 +1,7 @@
 import { tasksOf } from '#lib/markdown.ts';
 import { isOpenTask } from '#lib/notes.ts';
 import { parseTimestamp } from '#lib/reminders.ts';
-import { viewFilterSchema, viewSortSchema, type DateRange, type Note, type Reminder, type ViewContent, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
+import { viewFilterSchema, viewSortSchema, type DateRange, type Note, type NoteContent, type Reminder, type ViewContent, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
 
 /*
     A view is a saved set of filters plus a sort order.
@@ -14,11 +14,12 @@ import { viewFilterSchema, viewSortSchema, type DateRange, type Note, type Remin
 export const emptyFilter = (): ViewFilter => viewFilterSchema.parse({})
 export const defaultSort = (): ViewSort => viewSortSchema.parse({})
 
-// Every new account starts with these two, both can be changed or deleted like any other view
+// Every new account starts with these, each can be changed or deleted like any other view
 export function starterViews(): ViewContent[] {
     return [
         { name: 'Notes', icon: 'sticky-note', filter: emptyFilter(), sort: defaultSort() },
-        { name: 'Reminders', icon: 'bell', filter: { ...emptyFilter(), reminder: 'with' }, sort: { by: 'reminder', direction: 'asc', pinnedFirst: false } }
+        { name: 'Reminders', icon: 'bell', filter: { ...emptyFilter(), reminder: 'with' }, sort: { by: 'reminder', direction: 'asc', pinnedFirst: false } },
+        { name: 'Archived', icon: 'archive', filter: { ...emptyFilter(), archived: 'only' }, sort: { by: 'updated', direction: 'desc', pinnedFirst: false } }
     ]
 }
 
@@ -43,6 +44,21 @@ export function countActive(filter: ViewFilter): number {
 
 export function sameFilter(a: ViewFilter, b: ViewFilter): boolean {
     return JSON.stringify(a) === JSON.stringify(b)
+}
+
+
+
+// NEW NOTES ====================================================================================================
+
+// What a note must carry to show up in the view at all | rules with a choice, like any of two labels, set nothing
+export function noteDefaults(filter: ViewFilter): Pick<NoteContent, 'color' | 'labels' | 'pinned' | 'archived'> {
+    const labels = filter.labelMatch === 'all' || filter.include.length === 1 ? filter.include : []
+    return {
+        color: filter.colors.length === 1 ? filter.colors[0] : '',
+        labels: labels.filter((id) => !filter.exclude.includes(id)),
+        pinned: filter.pinned === 'only',
+        archived: filter.archived === 'only',
+    }
 }
 
 

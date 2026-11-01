@@ -18,6 +18,7 @@ export async function bootstrap(){ // setup for a fresh pocketbase install
     }
     else if(dev){
         await foldListNotes()
+        await retypeViewIcons()
         await createSchema() // no versioned migrations before the first release, local dev follows pb_schema.json
         await dropRetiredFields()
     }
@@ -48,6 +49,19 @@ async function foldListNotes(){
         const tasks = (note.items ?? []).filter((item) => item.text.trim()).map((item) => `- [${item.done ? 'x' : ' '}] ${item.text}`)
         unwrap(await updateOnePartial('notes', note.id, { body: [note.body, tasks.join('\n')].filter(Boolean).join('\n\n') }))
     }
+}
+
+// One off for dev databases from before any lucide icon could be picked | a field never changes type, so it gets swapped and refilled
+async function retypeViewIcons(){
+    const collection = unwrap(await getCollection('views'))
+    const old = collection.fields.find((field) => field.name === 'icon')
+    const field = (pbSchema as unknown as CollectionModel[]).find((item) => item.name === 'views')?.fields.find((item) => item.name === 'icon')
+    if(old?.type !== 'select' || !field){ return }
+
+    const icons = unwrap(await getAll('views'))
+    unwrap(await updateCollection('views', { fields: collection.fields.filter((item) => item !== old) }))
+    unwrap(await updateCollection('views', { fields: [...collection.fields.filter((item) => item !== old), field] }))
+    for(const view of icons){ unwrap(await updateOnePartial('views', view.id, { icon: view.icon })) }
 }
 
 // The import only adds and changes fields | ones gone from pb_schema.json would linger and may still be required

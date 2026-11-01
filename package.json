@@ -7,7 +7,7 @@
 		"#lib/*": "./src/lib/*"
 	},
 	"scripts": {
-		"dev": "vite dev --port 55560",
+		"dev": "vite dev --host 127.0.0.1 --port 55560",
 		"build": "svelte-kit sync && node ./node_modules/vite/bin/vite.js build",
 		"preview": "vite preview --port 55560",
 		"prepare": "svelte-kit sync || echo ''",
