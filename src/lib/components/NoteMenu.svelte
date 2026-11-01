@@ -11,8 +11,8 @@
     import { removeReminder } from '../../routes/api/reminders.remote';
 
     /*
-        Items for the right click menu of a card and for the selection bar. Bits shares the item parts
-        between its menus, so this renders inside a context menu as well as a dropdown.
+        Actions for the right click menu of a card, or as icon buttons for the selection bar. Bits shares the item parts
+        between its menus, so the menu renders inside a context menu as well as a dropdown.
     */
 
     // PROPS
@@ -22,6 +22,7 @@
         me,
         reminders,
         selected = false,
+        bar = false,
         onselect,
         onedit,
         onfinish
@@ -31,6 +32,7 @@
         me: string                                              // the signed in user, owner only actions skip notes shared with them
         reminders: Map<string, Reminder[]>
         selected?: boolean
+        bar?: boolean                                           // icon buttons for the selection bar instead of menu items
         onselect?: () => void                                   // adds the card to the selection or takes it out
         onedit?: (note: Note, focus: string) => void            // opens the card with a reminder form, 'new' for a blank one
         onfinish?: () => void                                   // the notes are gone from view, the selection can go
@@ -88,6 +90,78 @@
     }
 </script>
 
+{#snippet colorItems()}
+    {#each COLOR_GROUPS as group (group.name)}
+        <div class="grid grid-cols-[repeat(6,1.75rem)] gap-1.5 min-[24rem]:grid-cols-[repeat(9,1.75rem)]">
+            {#each group.colors as color (color)}
+                {@const picked = notes.every((note) => note.color === color)}
+                <Menu.Item
+                    class={['motion-interactive size-7 rounded-full data-highlighted:scale-110', picked && 'outline-2 outline-offset-2 outline-accent']}
+                    aria-label={colorName(color)}
+                    {@attach tip(colorName(color))}
+                    closeOnSelect={false}
+                    onSelect={() => paint(color)}
+                >
+                    <span class="swatch note-surface grid size-full place-items-center rounded-full border border-line-strong text-ink" data-note={color || undefined}>
+                        {#if picked}<Check class="size-3.5" strokeWidth={3} />{/if}
+                    </span>
+                </Menu.Item>
+            {/each}
+        </div>
+    {/each}
+{/snippet}
+
+<!-- A dash marks labels only some of the notes carry, notes shared with you keep their owner's -->
+{#snippet labelItems()}
+    {#each labels as label (label.id)}
+        {@const count = owned.filter((note) => note.labels.includes(label.id)).length}
+        <Menu.CheckboxItem class="menu-item" checked={count === owned.length} indeterminate={count > 0 && count < owned.length} closeOnSelect={false} onCheckedChange={() => toggleLabel(label)}>
+            {#snippet children({ checked, indeterminate })}
+                <span class="note-mark h-1.5 w-3 shrink-0 rounded-full" data-note={label.color || undefined}></span>
+                <span class="truncate">{label.name}</span>
+                {#if checked}<Check class="ml-auto size-3.5" />{:else if indeterminate}<Minus class="ml-auto size-3.5" />{/if}
+            {/snippet}
+        </Menu.CheckboxItem>
+    {:else}
+        <p class="type-meta px-2.5 py-2 text-ink-faint">No labels yet</p>
+    {/each}
+{/snippet}
+
+{#if bar}
+    <!-- BAR | every action one click away, colour and labels pop up above -->
+    <Menu.Root>
+        <Menu.Trigger class="icon-button size-10 rounded-full" aria-label="Color" {@attach tip('Color')}><Palette class="size-4.5" /></Menu.Trigger>
+        <Menu.Portal>
+            <Menu.Content class="menu grid gap-3 p-3" side="top" sideOffset={10} collisionPadding={12}>{@render colorItems()}</Menu.Content>
+        </Menu.Portal>
+    </Menu.Root>
+    {#if owned.length}
+        <Menu.Root>
+            <Menu.Trigger class="icon-button size-10 rounded-full" aria-label="Labels" {@attach tip('Labels')}><Tag class="size-4.5" /></Menu.Trigger>
+            <Menu.Portal>
+                <Menu.Content class="menu max-h-80 overflow-y-auto" side="top" sideOffset={10} collisionPadding={12}>{@render labelItems()}</Menu.Content>
+            </Menu.Portal>
+        </Menu.Root>
+    {/if}
+    {#if attached.length}
+        <button class="icon-button size-10 rounded-full" aria-label="Remove reminders" onclick={removeReminders} {@attach tip('Remove reminders')}><BellOff class="size-4.5" /></button>
+    {/if}
+    {#if owned.length}
+        <button class="icon-button size-10 rounded-full" aria-label={allPinned ? 'Unpin' : 'Pin'} onclick={pin} {@attach tip(allPinned ? 'Unpin' : 'Pin')}>
+            {#if allPinned}<PinOff class="size-4.5" />{:else}<Pin class="size-4.5" />{/if}
+        </button>
+    {/if}
+    <button class="icon-button size-10 rounded-full" aria-label="Duplicate" onclick={duplicate} {@attach tip('Duplicate')}><Copy class="size-4.5" /></button>
+    {#if owned.length}
+        <button class="icon-button size-10 rounded-full" aria-label={allArchived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(allArchived ? 'Unarchive' : 'Archive')}>
+            {#if allArchived}<ArchiveRestore class="size-4.5" />{:else}<Archive class="size-4.5" />{/if}
+        </button>
+    {/if}
+    <button class="icon-button size-10 rounded-full" aria-label={removeLabel} onclick={remove} {@attach tip(removeLabel)}>
+        {#if owned.length}<Trash2 class="size-4.5" />{:else}<LogOut class="size-4.5" />{/if}
+    </button>
+{:else}
+
 {#if onselect}
     <Menu.Item class="menu-item" onSelect={onselect}>
         <SquareCheck class="size-4" />{selected ? 'Deselect' : 'Select'}
@@ -98,46 +172,14 @@
 <!-- COLOR -->
 <Menu.Sub>
     <Menu.SubTrigger class="menu-item"><Palette class="size-4" />Color<ChevronRight class="ml-auto size-3.5" /></Menu.SubTrigger>
-    <Menu.SubContent class="menu grid gap-3 p-3" sideOffset={6}>
-        {#each COLOR_GROUPS as group (group.name)}
-            <div class="grid grid-cols-[repeat(6,1.75rem)] gap-1.5 min-[24rem]:grid-cols-[repeat(9,1.75rem)]">
-                {#each group.colors as color (color)}
-                    {@const picked = notes.every((note) => note.color === color)}
-                    <Menu.Item
-                        class={['motion-interactive size-7 rounded-full data-highlighted:scale-110', picked && 'outline-2 outline-offset-2 outline-accent']}
-                        aria-label={colorName(color)}
-                        {@attach tip(colorName(color))}
-                        closeOnSelect={false}
-                        onSelect={() => paint(color)}
-                    >
-                        <span class="swatch note-surface grid size-full place-items-center rounded-full border border-line-strong text-ink" data-note={color || undefined}>
-                            {#if picked}<Check class="size-3.5" strokeWidth={3} />{/if}
-                        </span>
-                    </Menu.Item>
-                {/each}
-            </div>
-        {/each}
-    </Menu.SubContent>
+    <Menu.SubContent class="menu grid gap-3 p-3" sideOffset={6}>{@render colorItems()}</Menu.SubContent>
 </Menu.Sub>
 
-<!-- LABELS | a dash marks labels only some of the notes carry, notes shared with you keep their owner's -->
+<!-- LABELS -->
 {#if owned.length}
 <Menu.Sub>
     <Menu.SubTrigger class="menu-item"><Tag class="size-4" />Labels<ChevronRight class="ml-auto size-3.5" /></Menu.SubTrigger>
-    <Menu.SubContent class="menu max-h-80 overflow-y-auto" sideOffset={6}>
-        {#each labels as label (label.id)}
-            {@const count = owned.filter((note) => note.labels.includes(label.id)).length}
-            <Menu.CheckboxItem class="menu-item" checked={count === owned.length} indeterminate={count > 0 && count < owned.length} closeOnSelect={false} onCheckedChange={() => toggleLabel(label)}>
-                {#snippet children({ checked, indeterminate })}
-                    <span class="note-mark h-1.5 w-3 shrink-0 rounded-full" data-note={label.color || undefined}></span>
-                    <span class="truncate">{label.name}</span>
-                    {#if checked}<Check class="ml-auto size-3.5" />{:else if indeterminate}<Minus class="ml-auto size-3.5" />{/if}
-                {/snippet}
-            </Menu.CheckboxItem>
-        {:else}
-            <p class="type-meta px-2.5 py-2 text-ink-faint">No labels yet</p>
-        {/each}
-    </Menu.SubContent>
+    <Menu.SubContent class="menu max-h-80 overflow-y-auto" sideOffset={6}>{@render labelItems()}</Menu.SubContent>
 </Menu.Sub>
 {/if}
 
@@ -183,3 +225,4 @@
     {#if owned.length}<Trash2 class="size-4" />{:else}<LogOut class="size-4" />{/if}
     {removeLabel}{notes.length > 1 ? ` ${notes.length} notes` : ''}
 </Menu.Item>
+{/if}

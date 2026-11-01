@@ -14,8 +14,8 @@
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts';
 	import { defaultSort, emptyFilter, groupReminders, matchesView, noteText, positionBetween, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
-	import { ArrowUpDown, Check, Ellipsis, ListFilter, Plus, Search, X } from '@lucide/svelte';
-	import { ContextMenu, DropdownMenu, Popover } from 'bits-ui';
+	import { ArrowUpDown, Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
+	import { ContextMenu, Popover } from 'bits-ui';
 	import { flushSync, tick, untrack } from 'svelte';
 	import type { TransitionConfig } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
@@ -541,19 +541,11 @@
 <div class="toolbar vt-toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-end px-gutter sm:left-rail sm:justify-center">
 	{#if selection.length}
 		<!-- SELECTION BAR | stands in for the toolbar while notes are selected -->
-		<div class="pointer-events-auto flex items-center gap-1 rounded-full border border-line bg-raised/85 p-1 pl-5 shadow-xl backdrop-blur-xl" in:rise={{ y: 8, duration: 'base' }}>
-			<span class="type-meta mr-2 text-ink">{selection.length} selected</span>
-			<DropdownMenu.Root>
-				<DropdownMenu.Trigger class="motion-interactive grid size-10 place-items-center rounded-full bg-accent text-on-accent hover:brightness-110" aria-label="Actions for the selection" {@attach tip('Change the selected notes')}>
-					<Ellipsis class="size-5" />
-				</DropdownMenu.Trigger>
-				<DropdownMenu.Portal>
-					<DropdownMenu.Content class="menu" side="top" sideOffset={10} collisionPadding={12}>
-						<NoteMenu notes={selection} {labels} {me} reminders={remindersByNote} onfinish={() => selected.clear()} />
-					</DropdownMenu.Content>
-				</DropdownMenu.Portal>
-			</DropdownMenu.Root>
-			<button class="icon-button rounded-full" aria-label="Clear selection" onclick={() => selected.clear()}><X class="size-4" /></button>
+		<div class="pointer-events-auto flex min-w-0 items-center gap-0.5 rounded-full border border-line bg-raised/85 p-1 pl-4 shadow-xl backdrop-blur-xl sm:gap-1 sm:pl-5" in:rise={{ y: 8, duration: 'base' }}>
+			<span class="type-meta mr-1 text-ink sm:mr-2">{selection.length}<span class="max-sm:hidden"> selected</span></span>
+			<NoteMenu bar notes={selection} {labels} {me} reminders={remindersByNote} onfinish={() => selected.clear()} />
+			<span class="mx-1 h-6 w-px bg-line"></span>
+			<button class="icon-button size-10 rounded-full" aria-label="Clear selection" onclick={() => selected.clear()}><X class="size-4" /></button>
 		</div>
 	{:else}
 	<div class="pointer-events-auto flex min-w-0 items-center gap-3" in:rise={{ y: 8, duration: 'base' }}>
