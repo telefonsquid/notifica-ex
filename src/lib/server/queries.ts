@@ -86,9 +86,10 @@ export async function updateOnePartial<K extends keyof CollectionMap>(collection
 }
 
 // FIND
-export async function findOne<K extends keyof CollectionMap>(collectionName: K, query: string, options?: FetchOptions) {
+// Values go in as {:name} placeholders through params, pocketbase escapes them
+export async function findOne<K extends keyof CollectionMap>(collectionName: K, query: string, options?: FetchOptions, params?: Record<string, unknown>) {
     const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).getFirstListItem(query, options) as Promise<CollectionMap[K]>)
+    return await pbErrorHandler(pb.collection(collectionName).getFirstListItem(params ? pb.filter(query, params) : query, options) as Promise<CollectionMap[K]>)
 }
 
 

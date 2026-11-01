@@ -77,7 +77,7 @@ export const updateProfile = command(userInputSchema.pick({ name: true, email: t
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
 
-    const taken = await findOne('users', `email = "${changes.email}" && id != "${locals.user.id}"`)
+    const taken = await findOne('users', 'email = {:email} && id != {:id}', undefined, { email: changes.email, id: locals.user.id })
     if(taken.success) error(400, 'Another account already uses this address.')
 
     const user = unwrap(await updateOnePartial('users', locals.user.id, changes), 'Could not update your account.')

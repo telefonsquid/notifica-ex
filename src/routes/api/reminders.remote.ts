@@ -64,7 +64,7 @@ export const setReminderDone = command(idSchema, async (id) => {
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
     unwrap(await getOwned('reminders', id, locals.user.id), 'Reminder not found.')
-    const occurrence = unwrap(await findOne('occurrences', `reminder = "${id}" && task = true && done = ""`, { sort: '-at' }), 'Nothing left to check off.')
+    const occurrence = unwrap(await findOne('occurrences', 'reminder = {:id} && task = true && done = ""', { sort: '-at' }, { id }), 'Nothing left to check off.')
     unwrap(await updateOnePartial('occurrences', occurrence.id, { done: new Date().toISOString() }), 'Could not check off the reminder.')
     unwrap(await countOpenOccurrences(id), 'Could not update the reminder.')
 
