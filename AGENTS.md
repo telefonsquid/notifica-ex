@@ -31,6 +31,8 @@ Bun, SvelteKit 3 + adapter-node, Svelte 5 (runes, experimental remote functions 
 
 Ports: dev server 55560, PocketBase 8091, ntfy 8092. Server side URLs use `127.0.0.1`, Node tries IPv6 first for `localhost` and loses about 250 ms on every new connection. `.claude/launch.json` starts the dev server for the preview pane.
 
+Cloud sessions can't download release binaries (GitHub answers 403), but proxy.golang.org works: build PocketBase from `github.com/pocketbase/pocketbase` with a few line `main.go` that registers `plugins/jsvm`, then run the whole stack and drive it with the preinstalled Playwright.
+
 Reference implementation for structure and conventions: `D:\Repositories\fsd-flight-check`. Follow its architecture, not its visual style.
 
 ## SvelteKit 3 differences
@@ -47,7 +49,8 @@ Most docs and examples online, and fsd-flight-check, are still SvelteKit 2. In t
 ## Conventions carried over from fsd-flight-check
 
 - **Server data access**: remote functions in `src/routes/api/*.remote.ts`, wrapped by `#lib/server/remote_function_error_trace` so rejected arguments get logged. Every argument has a zod schema; size caps live in `#lib/schema_limits.ts`.
-- **Query layer**: `#lib/server/queries.ts` returns `Result<T>`; callers `unwrap()` into a SvelteKit error. Client calls go through `safeAction()`, which turns errors into toasts.
+- **Query layer**: `#lib/server/queries.ts` returns `Result<T>`; callers `unwrap()` (same file) into a SvelteKit error. Client calls go through `safeAction()`, which turns errors into toasts.
+- **Tests**: `bun run test`, `*.test.ts` next to the code they cover. Pure logic only (recurrence, markdown), the UI gets checked in a browser.
 - **Auth**: `hooks.server.ts` re-verifies the PocketBase cookie on every request and exposes `locals.user`. The client-side `pb` instance in `#lib/pocketbase.ts` is never imported into server files.
 - **Global dialogs**: state in `#lib/singletons/*.svelte.ts` (+ `createDialogPromise` for awaited results), component mounted once in the root layout.
 - **Folders**: `#lib/ui` holds generic primitives, `#lib/components` holds domain components, `#lib/server` holds server-only code.
@@ -55,6 +58,7 @@ Most docs and examples online, and fsd-flight-check, are still SvelteKit 2. In t
 - **Deployment**: compose with `web`, `pocketbase` (entrypoint upserts the superuser) and a one-shot `migration` curl container. PocketBase cron hooks call SvelteKit endpoints for scheduled work.
 - **Comments**: uppercase section labels (`// FETCH DATA`), `// ====` dividers between groups of functions. CSS comments must be `/* */`.
 - Use the Svelte MCP (`svelte-autofixer`) on every component written or changed.
+- **Commits** are authored as the user, never with Claude co-author or session lines.
 
 ## Look and motion
 
@@ -70,7 +74,8 @@ Until the `theming` and `motion` skills exist:
 - **Height changes inside a card** use `unfold()` both ways (`in:` and `out:`), which animates size, padding, margin and the flex gap with a symmetric easing, so a swap of two branches keeps the sum steady. Open only controls fade under `.folded` first, then fold away while the card shrinks.
 - **Band heights** follow their content with `morph()` (`#lib/motion.ts`), timed per change: its own easing while the card is open and settled, the glide's while it closes.
 - **Tooltips**: icon only buttons get `{@attach tip('Text')}` (`#lib/tooltip.svelte.ts`), the one `Tooltip` in the root layout shows it. Mouse and keyboard only, no `title` attributes. Skip it only where the icon is obvious (close X). Shows after 250 ms with a soft `rise`.
-- **Number inputs** use `#lib/ui/NumberField.svelte` with its own stepper, not the browser spinner.
+- **Number inputs** use `#lib/ui/NumberField.svelte` with its own stepper, not the browser spinner. Other inputs and selects take the `field` utility, floating panels the `popover` utility (open and close animation included).
+- **Shared controls** in `#lib/ui`: `ConfirmButton` for anything destructive (first click arms, blur disarms), `InlineInput` for rename in place (Enter or blur saves, empty or rejected snaps back), `CheckBadge` for the picked option.
 - **Note menu**: `NoteMenu.svelte` holds the actions for one card or the whole selection and renders in the card's `ContextMenu` (right click, touch long press) and the selection bar's `DropdownMenu`, both share bits' item parts. A mouse long press or the menu's Select starts the selection, then a click on a card toggles it. Menus use the `menu`, `menu-item` and `menu-separator` utilities from `app.css`.
 
 ## Decisions
