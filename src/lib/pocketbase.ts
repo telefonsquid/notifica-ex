@@ -1,5 +1,6 @@
 import { PUBLIC_POCKETBASE_URL } from '$app/env/public';
 import { notify } from '#lib/notifications.svelte.ts';
+import { track } from '#lib/singletons/busy.svelte.ts';
 import type { Result } from '#lib/server/queries.ts';
 import { error } from '@sveltejs/kit';
 import PocketBase from 'pocketbase';
@@ -17,7 +18,7 @@ export function pocketbaseTimestamp(): string {
 
 export async function safeAction<T>(promise: Promise<T>): Promise<T | null> {
     try {
-        const result = await promise;
+        const result = await track(promise); // Slow ones show the progress bar
         return result;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

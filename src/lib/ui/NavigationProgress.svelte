@@ -1,15 +1,17 @@
 <script lang="ts">
     import { navigating } from '$app/state';
     import { duration, easing } from '#lib/motion.ts';
+    import { busy } from '#lib/singletons/busy.svelte.ts';
     import { fade } from 'svelte/transition';
 
-    // A thin running bar on top, only for navigations slow enough to wonder about
+    // A thin running bar on top, only for page switches and server actions slow enough to wonder about
     const DELAY = 250
 
+    let working = $derived(!!navigating.to || busy.actions > 0)
     let shown = $state(false)
 
     $effect(() => {
-        if(!navigating.to){
+        if(!working){
             shown = false
             return
         }
@@ -19,7 +21,7 @@
 </script>
 
 {#if shown}
-    <div class="progress" role="progressbar" aria-label="Loading page" transition:fade={{ duration: duration('fast'), easing: easing('out') }}>
+    <div class="progress" role="progressbar" aria-label="Working" transition:fade={{ duration: duration('fast'), easing: easing('out') }}>
         <span></span>
     </div>
 {/if}
