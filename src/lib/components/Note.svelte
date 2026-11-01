@@ -23,15 +23,19 @@
     import LabelAdder from '#lib/components/LabelAdder.svelte';
     import LabelEditor from '#lib/components/LabelEditor.svelte';
     import ReminderList from '#lib/components/ReminderList.svelte';
+    import NoteImages from '#lib/components/NoteImages.svelte';
+    import { IMAGE_TYPES, imagesIn, shrink, uploadImage } from '#lib/images.ts';
     import { rise, unfold } from '#lib/motion.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
+    import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
+    import { LIMITS } from '#lib/schema_limits.ts';
     import type { Label, Note, NoteContent, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, Pin, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, ImagePlus, Pin, Trash2, X } from '@lucide/svelte';
     import { untrack } from 'svelte';
-    import { createNote, deleteNote, updateNote } from '../../routes/api/notes.remote';
+    import { createNote, deleteNote, removeImage, updateNote } from '../../routes/api/notes.remote';
 
     /*
         One note, closed as a card in the grid or open for editing. Opening keeps every element
@@ -103,11 +107,12 @@
     // SAVING | one save at a time, a new note gets created exactly once
     let queue: Promise<unknown> = Promise.resolve()
 
-    function save(): Promise<string | null> {
+    // Forced, an empty new note gets created anyway, images need a stored note to hang on
+    function save(force = false): Promise<string | null> {
         const run = queue.then(async () => {
             const snapshot = JSON.stringify(draft)
-            if(deleted || snapshot === saved) return id ?? null
-            if(!id && isEmpty(draft)) return null
+            if(deleted || (snapshot === saved && (id || !force))) return id ?? null
+            if(!id && isEmpty(draft) && !force) return null
 
             const content = $state.snapshot(draft)
             const result = await safeAction(id ? updateNote({ id, ...content }) : createNote(content))
@@ -150,6 +155,67 @@
     $effect(() => {
         if(open) loadEditor()
     })
+
+    // IMAGES | stored apart from the draft, uploads show as local previews until they're through
+    let images = $state(initial?.images ?? [])
+    let imagesAt = initial?.updated ?? ''
+    let uploads = $state<{ key: string, url: string }[]>([])
+    let picker = $state<HTMLInputElement>()
+
+    // A copy older than the last upload or removal is stale
+    $effect.pre(() => {
+        if(!note || uploads.length || note.updated < imagesAt) return
+        images = note.images ?? []
+    })
+
+    async function addImages(files: File[]){
+        const room = LIMITS.NOTE_IMAGES - images.length - uploads.length
+        if(files.length > room) notify(`A note holds at most ${LIMITS.NOTE_IMAGES} images.`, { type: 'error' })
+        files = files.slice(0, Math.max(room, 0))
+        if(!files.length) return
+
+        const queued = files.map((file) => ({ key: crypto.randomUUID(), url: URL.createObjectURL(file) }))
+        uploads = [...uploads, ...queued]
+
+        const noteId = await save(true)
+        for(const [index, file] of files.entries()){
+            const result = noteId && await safeAction(shrink(file).then((small) => uploadImage(noteId, small)))
+            if(result){
+                images = result.images
+                imagesAt = result.updated
+            }
+            URL.revokeObjectURL(queued[index].url)
+            uploads = uploads.filter((upload) => upload.key !== queued[index].key)
+        }
+    }
+
+    async function dropImage(name: string){
+        if(!id) return
+        images = images.filter((image) => image !== name)
+        const result = await safeAction(removeImage({ id, name }))
+        if(result) imagesAt = result.updated
+    }
+
+    // Pasted or dropped onto the open note | caught before the editor, which would ignore them or paste a file name
+    function pasteImages(event: ClipboardEvent){
+        const files = imagesIn(event.clipboardData?.files)
+        if(!open || !files.length) return
+        event.preventDefault()
+        event.stopPropagation()
+        addImages(files)
+    }
+
+    function dropImages(event: DragEvent){
+        const files = imagesIn(event.dataTransfer?.files)
+        if(!open || !files.length) return
+        event.preventDefault()
+        event.stopPropagation()
+        addImages(files)
+    }
+
+    function dragOver(event: DragEvent){
+        if(open && event.dataTransfer?.types.includes('Files')) event.preventDefault()
+    }
 
     // NAVIGATION | waits for unsaved changes, then goes where it was headed
     beforeNavigate((navigation) => {
@@ -272,6 +338,9 @@
 <svelte:window onpointerdown={pressOutside} onkeydown={escape} />
 
 {#snippet actions()}
+    <button class="icon-button" aria-label="Add images" onclick={() => picker?.click()} {@attach tip('Add images')}>
+        <ImagePlus class="size-4" />
+    </button>
     <ColorPicker value={draft.color} onpick={(color) => draft.color = color} label="Note color" class="ml-1 mr-2" />
     <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
         {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
@@ -325,10 +394,20 @@
         onpointerup={release}
         onpointerleave={release}
         onclickcapture={swallow}
+        onpastecapture={pasteImages}
+        ondragovercapture={dragOver}
+        ondropcapture={dropImages}
     >
         {#if !open}
             <button class="cover absolute inset-0 rounded-card" aria-label={`Open ${draft.title || 'note'}`} aria-pressed={selected || undefined} onpointerenter={loadEditor} onfocus={loadEditor} onclick={onopen}></button>
         {/if}
+
+        <!-- IMAGES | on top, edge to edge, the picker sits hidden for the button among the actions -->
+        <NoteImages note={id} {images} {uploads} editable={open} alone={!open && !draft.title && !draft.body && !draft.pinned && !reminders.length} onremove={dropImage} />
+        <input bind:this={picker} type="file" accept={IMAGE_TYPES.join(',')} multiple hidden onchange={(event) => {
+            addImages(imagesIn(event.currentTarget.files))
+            event.currentTarget.value = ''
+        }} />
 
         <!-- TITLE | colour, archive and delete join the pin up here once the note is wide enough -->
         {#if open || draft.title || draft.pinned}

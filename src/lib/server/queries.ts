@@ -144,6 +144,34 @@ export async function getDueReminders(now: Date) {
     return await pbErrorHandler(pb.collection('reminders').getFullList({ filter, expand: 'note,owner' }) as Promise<Reminder[]>)
 }
 
+// IMAGES | the files are protected, so every fetch needs a short lived token
+let fileToken: { value: string, expires: number } | null = null
+
+export async function fetchNoteImage(id: string, name: string, thumb?: string) {
+    const pb = await getPbAdminConnection()
+    if(!fileToken || fileToken.expires < Date.now()){
+        fileToken = { value: await pb.files.getToken(), expires: Date.now() + 60_000 } // pocketbase keeps it valid for a few minutes
+    }
+
+    const url = new URL(`/api/files/notes/${encodeURIComponent(id)}/${encodeURIComponent(name)}`, pb.baseURL)
+    url.searchParams.set('token', fileToken.value)
+    if(thumb) url.searchParams.set('thumb', thumb)
+    return await fetch(url)
+}
+
+// Appends to what the note already holds
+export async function addNoteImages(id: string, files: File[]) {
+    const pb = await getPbAdminConnection()
+    const form = new FormData()
+    files.forEach((file) => form.append('images+', file))
+    return await pbErrorHandler(pb.collection('notes').update(id, form) as Promise<CollectionMap['notes']>)
+}
+
+export async function removeNoteImage(id: string, name: string) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection('notes').update(id, { 'images-': [name] }) as Promise<CollectionMap['notes']>)
+}
+
 // Sends the set password mail, the same one invites use
 export async function requestPasswordReset(email: string) {
     const pb = await getPbAdminConnection()

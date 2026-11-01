@@ -27,6 +27,7 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 ENV PORT=3000
+ENV BODY_SIZE_LIMIT=16M
 
 # Production dependencies
 COPY --from=builder /app/node_modules ./node_modules

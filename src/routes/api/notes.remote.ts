@@ -2,8 +2,8 @@ import { getRequestEvent } from '$app/server';
 import z from 'zod';
 import { unwrap } from '#lib/pocketbase.ts';
 import { idSchema } from '#lib/schema_limits.ts';
-import { noteContentSchema, notePositionSchema, type Note } from '#lib/schemas.ts';
-import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { fileNameSchema, noteContentSchema, notePositionSchema, type Note } from '#lib/schemas.ts';
+import { deleteOne, getAllOwned, getOwned, insertOnePartial, removeNoteImage, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 
@@ -54,6 +54,19 @@ export const moveNote = command(z.object({ id: idSchema, position: notePositionS
 
     await getNotes().refresh()
     return true
+
+});
+
+// Adding goes through POST /api/notes/[id]/images, files don't fit through a command
+export const removeImage = command(z.object({ id: idSchema, name: fileNameSchema }), async ({ id, name }) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    unwrap(await getOwned('notes', id, locals.user.id), 'Note not found.')
+    const note = unwrap(await removeNoteImage(id, name), 'Could not remove the image.')
+
+    await getNotes().refresh()
+    return note
 
 });
 

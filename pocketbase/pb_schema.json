@@ -652,6 +652,28 @@
             },
             {
                 "hidden": false,
+                "id": "file1700097331",
+                "maxSelect": 12,
+                "maxSize": 15728640,
+                "mimeTypes": [
+                    "image/jpeg",
+                    "image/png",
+                    "image/webp",
+                    "image/gif",
+                    "image/avif"
+                ],
+                "name": "images",
+                "presentable": false,
+                "protected": true,
+                "required": false,
+                "system": false,
+                "thumbs": [
+                    "640x0"
+                ],
+                "type": "file"
+            },
+            {
+                "hidden": false,
                 "presentable": false,
                 "system": false,
                 "id": "autodate2990389176",

@@ -210,6 +210,9 @@ export const noteContentSchema = z.object({
     archived: z.boolean()
 });
 
+// Name pocketbase gave an uploaded file
+export const fileNameSchema = limitedText('File name', LIMITS.FILE_NAME).regex(/^[\w.-]+$/, 'File name may only contain letters, numbers, dots, underscores and dashes.');
+
 // Zero until the note gets dragged, it sorts by its creation time until then
 export const notePositionSchema = z.number().min(0).max(LIMITS.NOTE_POSITION);
 
@@ -217,7 +220,8 @@ export type Note = z.infer<typeof noteSchema>;
 export const noteSchema = recordModelSchema.extend({
     owner: idSchema,
     ...noteContentSchema.shape,
-    position: notePositionSchema // order in a manual sort
+    position: notePositionSchema, // order in a manual sort
+    images: z.array(fileNameSchema).max(LIMITS.NOTE_IMAGES).default([]) // uploaded through /api/notes/[id]/images, never part of a draft
 });
 
 

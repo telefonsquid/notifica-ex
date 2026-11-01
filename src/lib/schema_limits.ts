@@ -18,6 +18,7 @@ export const LIMITS = {
     LABEL_NAME: 64,
     VIEW_NAME: 64,
     NTFY_TOPIC: 64,                     // ntfy rejects longer topics
+    FILE_NAME: 128,                     // pocketbase stores a sanitized name plus a random suffix
     TIMEZONE: 64,                       // iana zone name like America/Argentina/Buenos_Aires
 
     // TEXT => NOTES
@@ -36,6 +37,7 @@ export const LIMITS = {
     // COLLECTION SIZES
     EXPAND_KEYS: 32,                    // relations pocketbase may expand into one record
     NOTE_LABELS: 50,
+    NOTE_IMAGES: 12,                    // matches maxSelect of the images field
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them
 
@@ -48,6 +50,7 @@ export const LIMITS = {
     VIEW_AMOUNT: 999,                   // days, weeks or months a date filter reaches back or ahead
     VIEW_POSITION: 10000,
     NOTE_POSITION: 1e15,                // a timestamp in ms or between two of them
+    IMAGE_BYTES: 15 * 1024 * 1024,      // one uploaded image, matches maxSize of the images field
 
 } as const;
 
