@@ -1,7 +1,7 @@
 {
 	"extends": "$app/tsconfig",
 	"compilerOptions": {
-		"types": ["$app/types", "node"],
+		"types": ["$app/types", "node", "bun"],
 		"allowJs": true,
 		"checkJs": true,
 		"esModuleInterop": true,
