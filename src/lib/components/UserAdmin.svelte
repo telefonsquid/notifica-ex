@@ -2,9 +2,11 @@
 	import { notify } from '#lib/notifications.svelte.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
+	import { LIMITS } from '#lib/schema_limits.ts';
 	import type { AuthorizationLevel, UserSummary } from '#lib/schemas.ts';
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import Button from '#lib/ui/Button.svelte';
+	import InlineInput from '#lib/ui/InlineInput.svelte';
 	import Input from '#lib/ui/Input.svelte';
 	import { KeyRound, RotateCcw, Send, UserX } from '@lucide/svelte';
 	import { getUsers, inviteUser, sendPasswordLink, setUserState, updateUser } from '../../routes/api/users.remote';
@@ -43,16 +45,9 @@
 	}
 
 	// EDITING | fields save when they lose focus, a rejected value snaps back
-	function edit(user: UserSummary, field: 'name' | 'email', input: HTMLInputElement) {
-		const value = input.value.trim();
-		if (!value || value === user[field]) {
-			input.value = user[field];
-			return;
-		}
+	function edit(user: UserSummary, field: 'name' | 'email', value: string) {
 		const { id, name, email, authorizationLevel } = user;
-		safeAction(updateUser({ id, name, email, authorizationLevel, [field]: value })).then((result) => {
-			if (!result) input.value = user[field];
-		});
+		return safeAction(updateUser({ id, name, email, authorizationLevel, [field]: value }));
 	}
 
 	function changeRole(user: UserSummary, authorizationLevel: AuthorizationLevel) {
@@ -121,21 +116,8 @@
 				{@const self = user.id === userId}
 				<li class="flex flex-wrap items-center gap-x-4 gap-y-2 bg-card py-3 pr-2 pl-card">
 					<div class="grid min-w-48 flex-1">
-						<input
-							value={user.name}
-							aria-label={`Name of ${user.name}`}
-							class="type-title min-w-0 bg-transparent text-ink outline-none"
-							onchange={(event) => edit(user, 'name', event.currentTarget)}
-							onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-						/>
-						<input
-							value={user.email}
-							type="email"
-							aria-label={`Email of ${user.name}`}
-							class="min-w-0 bg-transparent text-sm text-ink-muted outline-none"
-							onchange={(event) => edit(user, 'email', event.currentTarget)}
-							onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-						/>
+						<InlineInput value={user.name} label={`Name of ${user.name}`} maxlength={LIMITS.USER_NAME} class="type-title text-ink" onsave={(value) => edit(user, 'name', value)} />
+						<InlineInput value={user.email} label={`Email of ${user.name}`} type="email" maxlength={LIMITS.USER_EMAIL} class="text-sm text-ink-muted" onsave={(value) => edit(user, 'email', value)} />
 					</div>
 
 					{@render roles(user.authorizationLevel, (value) => changeRole(user, value), self)}

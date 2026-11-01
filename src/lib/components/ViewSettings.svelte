@@ -5,9 +5,11 @@
     import { safeAction } from '#lib/pocketbase.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
     import { duration, easing } from '#lib/motion.ts';
+    import { LIMITS } from '#lib/schema_limits.ts';
     import { VIEW_ICONS, type Label, type ViewFilter, type ViewIcon, type ViewSort } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
+    import InlineInput from '#lib/ui/InlineInput.svelte';
     import { viewIcon } from '#lib/view_icons.ts';
     import { countActive, defaultSort, emptyFilter } from '#lib/views.ts';
     import { ChevronDown, ChevronUp, Plus, Search, SlidersHorizontal, Trash2, X } from '@lucide/svelte';
@@ -54,18 +56,6 @@
     })
 
     // ====================================================================================================
-
-    // NAME | an empty or unchanged name puts the old one back
-    function rename(id: string, input: HTMLInputElement, current: string){
-        const name = input.value.trim()
-        if(!name || name === current){
-            input.value = current
-            return
-        }
-        safeAction(updateView({ id, name })).then((result) => {
-            if(!result) input.value = current
-        })
-    }
 
     function pickIcon(id: string, icon: ViewIcon){
         picking = null
@@ -159,13 +149,7 @@
                 </Popover.Root>
 
                 <!-- NAME -->
-                <input
-                    value={view.name}
-                    aria-label={`Rename ${view.name}`}
-                    class="min-w-0 flex-1 bg-transparent py-1.5 text-ink outline-none"
-                    onchange={(event) => rename(view.id, event.currentTarget, view.name)}
-                    onkeydown={(event) => { if(event.key === 'Enter') event.currentTarget.blur() }}
-                />
+                <InlineInput value={view.name} label={`Rename ${view.name}`} maxlength={LIMITS.VIEW_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateView({ id: view.id, name }))} />
                 {#if index === 0}<span class="type-meta hidden text-ink-faint sm:inline">Home</span>{/if}
 
                 <!-- ORDER -->

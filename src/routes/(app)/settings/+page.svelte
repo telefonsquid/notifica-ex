@@ -13,9 +13,11 @@
 	import { notify } from '#lib/notifications.svelte.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
+	import { LIMITS } from '#lib/schema_limits.ts';
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import { hasPermission } from '#lib/user.ts';
 	import Button from '#lib/ui/Button.svelte';
+	import InlineInput from '#lib/ui/InlineInput.svelte';
 	import { Check, CircleUserRound, Dices, KeyRound, Palette, PanelsTopLeft, Send, SlidersHorizontal, Trash2, Users } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
@@ -59,17 +61,6 @@
 	let labels = $derived(await getLabels());
 
 	$effect(() => onCollectionChange('labels', () => getLabels().refresh()));
-
-	function rename(id: string, input: HTMLInputElement, current: string) {
-		const name = input.value.trim();
-		if (!name || name === current) {
-			input.value = current;
-			return;
-		}
-		safeAction(updateLabel({ id, name })).then((result) => {
-			if (!result) input.value = current;
-		});
-	}
 
 	// SECTIONS | one long scroll that snaps to a section, the one at the top is current
 	const SECTIONS = [
@@ -275,13 +266,7 @@
 						{#each labels as label (label.id)}
 							<li class="flex items-center gap-3 bg-card py-2 pr-2 pl-card">
 								<ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} />
-								<input
-									value={label.name}
-									aria-label={`Rename ${label.name}`}
-									class="min-w-0 flex-1 bg-transparent py-1.5 text-ink outline-none"
-									onchange={(event) => rename(label.id, event.currentTarget, label.name)}
-									onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-								/>
+								<InlineInput value={label.name} label={`Rename ${label.name}`} maxlength={LIMITS.LABEL_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateLabel({ id: label.id, name }))} />
 								<button class="icon-button" aria-label={`Delete ${label.name}`} onclick={() => deleteLabelEverywhere(label)} {@attach tip('Delete label')}>
 									<Trash2 class="size-4" />
 								</button>
