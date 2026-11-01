@@ -35,7 +35,7 @@ export function confirmNoteRemoval(count: number, owned: number){
     return confirmAction({
         title: leaving ? `Leave ${what}?` : `Delete ${what}?`,
         message: leaving
-            ? 'It disappears from your notes and stays with its owner.'
+            ? 'It disappears from your notes together with your reminders on it, and stays with its owner.'
             : owned < count
                 ? 'Your own notes are gone for good, the ones shared with you stay with their owners.'
                 : 'This can’t be undone, its images and reminders go with it.',
