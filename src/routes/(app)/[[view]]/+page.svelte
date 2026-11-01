@@ -12,6 +12,7 @@
 	import { removeNotes } from '#lib/deletions.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
+	import { Selection, typing } from '#lib/selection.svelte.ts';
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts';
 	import { defaultSort, emptyFilter, groupReminders, matchesView, noteDefaults, noteText, positionBetween, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
@@ -19,7 +20,6 @@
 	import { ContextMenu, Popover } from 'bits-ui';
 	import { flushSync, tick, untrack } from 'svelte';
 	import type { TransitionConfig } from 'svelte/transition';
-	import { SvelteSet } from 'svelte/reactivity';
 	import { getLabels } from '../../api/labels.remote';
 	import { getNotes, moveNote, updateNote } from '../../api/notes.remote';
 	import { getReminders, setReminderDone } from '../../api/reminders.remote';
@@ -115,8 +115,7 @@
 
 	// Slash jumps to the search like on most sites
 	function focusSearch(event: KeyboardEvent) {
-		const target = event.target as HTMLElement;
-		if (event.key !== '/' || target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+		if (event.key !== '/' || typing(event)) return;
 		event.preventDefault();
 		openSearch();
 	}
@@ -291,39 +290,17 @@
 	});
 
 	// SELECTION | a card click toggles while anything is selected, notes that vanished drop out on their own
-	const selected = new SvelteSet<string>();
+	const selected = new Selection();
 	let selection = $derived(notes.filter((note) => selected.has(note.id)));
 
-	let anchor: string | null = null; // The last note clicked in the selection, where a shift click range starts
-
-	function toggleSelected(id: string) {
-		if (selected.has(id)) selected.delete(id);
-		else selected.add(id);
-		anchor = id;
-	}
-
-	// The whole stretch from the anchor to this note in grid order follows the note: picked when it wasn't, dropped when it was
-	function toggleRange(id: string) {
-		const ids = visible.map((note) => note.id);
-		const from = anchor && selection.length ? ids.indexOf(anchor) : -1;
-		const to = ids.indexOf(id);
-		if (from < 0) return toggleSelected(id);
-
-		const pick = !selected.has(id);
-		for (const other of ids.slice(Math.min(from, to), Math.max(from, to) + 1)) {
-			if (pick) selected.add(other);
-			else selected.delete(other);
-		}
-		anchor = id;
-	}
 
 	// Ctrl picks a single note, shift a range | an open card keeps its clicks
 	function modifiedClick(event: MouseEvent, id: string) {
 		if (editing?.id === id || (!event.shiftKey && !event.ctrlKey && !event.metaKey)) return;
 		event.stopPropagation();
 		event.preventDefault();
-		if (event.shiftKey) toggleRange(id);
-		else toggleSelected(id);
+		if (event.shiftKey) selected.toggleRange(id, visible.map((note) => note.id));
+		else selected.toggle(id);
 	}
 
 	// A shift press would otherwise mark the text between two cards
@@ -334,11 +311,6 @@
 	// A right click on a selected card acts on the whole selection
 	function targetsOf(note: Note): Note[] {
 		return selected.has(note.id) ? selection : [note];
-	}
-
-	// Keys meant for a field stay there
-	function typing(event: KeyboardEvent) {
-		return event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName));
 	}
 
 	let removing = false; // A second Delete while the dialog asks opens no second one
@@ -520,8 +492,8 @@
 								reminders={remindersByNote.get(note.id) ?? []}
 								selected={selected.has(note.id)}
 								focus={open ? editing?.focus : undefined}
-								onopen={() => (selection.length ? toggleSelected(note.id) : edit(note))}
-								onlongpress={() => toggleSelected(note.id)}
+								onopen={() => (selection.length ? selected.toggle(note.id) : edit(note))}
+								onlongpress={() => selected.toggle(note.id)}
 								ontoggle={(index) => tickTask(note, index)}
 								ondone={markDone}
 								onclose={closeEditor}
@@ -535,7 +507,7 @@
 									{me}
 									reminders={remindersByNote}
 									selected={selected.has(note.id)}
-									onselect={() => toggleSelected(note.id)}
+									onselect={() => selected.toggle(note.id)}
 									onedit={(target, focus) => edit(target, focus)}
 									onfinish={() => selected.clear()}
 								/>
