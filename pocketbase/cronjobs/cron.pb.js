@@ -1,33 +1,6 @@
-cronAdd("notifica-ex-maintenance", "0 3 * * *", () => { // daily at 3am
-
-    // WEB CONTAINER AND SHARED SECRET FROM THE COMPOSE FILE
-    const webUrl = $os.getenv("WEB_INTERNAL_URL");
-    const secret = $os.getenv("SERVER_AUTH_SECRET");
-    if (!webUrl || !secret) { console.log("Error: WEB_INTERNAL_URL and SERVER_AUTH_SECRET must be set"); return; }
-    const targetUrl = `${webUrl}/api/maintenance`;
-
-    // HTTP REQUEST
-    try {
-        const response = $http.send({
-            url: targetUrl,
-            method: "POST",
-            headers: { "Authorization": `Bearer ${secret}` },
-            timeout: 30 // seconds
-        });
-
-        console.log(`Cron job visited ${targetUrl} - Status: ${response.statusCode}`);
-
-    } catch (err) {
-        console.log("Cron job request failed:", err);
-    }
-
-})
-
-
-
 cronAdd("notifica-ex-reminders", "* * * * *", () => { // every minute
 
-    // Handlers can't reach outer helpers, so this repeats the maintenance call
+    // WEB CONTAINER AND SHARED SECRET FROM THE COMPOSE FILE | handlers can't reach outer helpers, so everything lives in here
     const webUrl = $os.getenv("WEB_INTERNAL_URL");
     const secret = $os.getenv("SERVER_AUTH_SECRET");
     if (!webUrl || !secret) { console.log("Error: WEB_INTERNAL_URL and SERVER_AUTH_SECRET must be set"); return; }

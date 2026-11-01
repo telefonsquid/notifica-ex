@@ -11,10 +11,6 @@ import PocketBase from 'pocketbase';
 */
 export const pb = new PocketBase(PUBLIC_POCKETBASE_URL);
 
-export function pocketbaseTimestamp(): string {
-    return new Date().toISOString().slice(0, 23).replace('T', ' ') + 'Z' // yyyy-mm-dd hh:mm:ss.sssZ
-}
-
 export async function safeAction<T>(promise: Promise<T>): Promise<T | null> {
     try {
         const result = await promise;

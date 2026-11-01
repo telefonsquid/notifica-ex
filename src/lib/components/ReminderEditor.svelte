@@ -66,11 +66,16 @@
         return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1)
     }
 
-    // DAYS | switching to weekdays starts with the day of the first time
+    // A cleared date field leaves nothing to save
+    let start = $derived(at ? new Date(at) : null)
+    let valid = $derived(!!start && !isNaN(start.getTime()) && (repeat !== 'weekdays' || weekdays.length > 0))
+
+    // DAYS | switching to weekdays starts with the day of the first time, today without one
     function pickRepeat(value: ReminderRepeat){
         repeat = value
         if(value !== 'weekdays' || weekdays.length) return
-        weekdays = [WEEKDAYS[(new Date(at).getDay() + 6) % 7].value]
+        const day = start && !isNaN(start.getTime()) ? start : new Date()
+        weekdays = [WEEKDAYS[(day.getDay() + 6) % 7].value]
     }
 
     function toggleDay(day: Weekday){
@@ -85,9 +90,10 @@
     }
 
     async function save(){
+        if(!valid || !start) return
         saving = true
         const rule = {
-            at: new Date(at).toISOString(),
+            at: start.toISOString(),
             repeat,
             every: counted ? every : 1,
             weekdays: repeat === 'weekdays' ? weekdays : [],
@@ -185,7 +191,7 @@
                         <X class="size-4" />
                     </button>
                 {/if}
-                <button type="submit" class="icon-button text-accent" aria-label="Save reminder" disabled={saving || (repeat === 'weekdays' && !weekdays.length)} {@attach tip('Save reminder')}>
+                <button type="submit" class="icon-button text-accent" aria-label="Save reminder" disabled={saving || !valid} {@attach tip('Save reminder')}>
                     <Check class="size-4" />
                 </button>
             </div>
