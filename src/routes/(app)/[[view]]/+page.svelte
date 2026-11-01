@@ -292,9 +292,40 @@
 	const selected = new SvelteSet<string>();
 	let selection = $derived(notes.filter((note) => selected.has(note.id)));
 
+	let anchor: string | null = null; // The last note picked, where a shift click range starts
+
 	function toggleSelected(id: string) {
 		if (selected.has(id)) selected.delete(id);
-		else selected.add(id);
+		else {
+			selected.add(id);
+			anchor = id;
+		}
+	}
+
+	// Everything from the anchor to this note in grid order joins, nothing leaves
+	function selectRange(id: string) {
+		const ids = visible.map((note) => note.id);
+		const from = anchor && selected.has(anchor) ? ids.indexOf(anchor) : -1;
+		const to = ids.indexOf(id);
+		if (from < 0) return toggleSelected(id);
+		for (const picked of ids.slice(Math.min(from, to), Math.max(from, to) + 1)) selected.add(picked);
+		anchor = id;
+	}
+
+	// Ctrl picks a single note, shift a range once something is selected | an open card keeps its clicks
+	function modifiedClick(event: MouseEvent, id: string) {
+		if (editing?.id === id) return;
+		const range = event.shiftKey && selection.length;
+		if (!range && !event.ctrlKey && !event.metaKey) return;
+		event.stopPropagation();
+		event.preventDefault();
+		if (range) selectRange(id);
+		else toggleSelected(id);
+	}
+
+	// A shift press would otherwise mark the text between two cards
+	function holdTextSelection(event: MouseEvent) {
+		if (event.shiftKey && selection.length) event.preventDefault();
 	}
 
 	// A right click on a selected card acts on the whole selection
@@ -393,9 +424,10 @@
 
 	// The release over its own card would open it
 	function swallowDrop(event: MouseEvent) {
-		if (!dropped) return;
+		if (!dropped) return false;
 		event.stopPropagation();
 		event.preventDefault();
+		return true;
 	}
 </script>
 
@@ -435,7 +467,7 @@
 				{@const open = editing?.id === note.id}
 				<!-- A finger opens the menu with a long press, selecting goes through it | the open note keeps the trigger but turns it off -->
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
-				<div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }} out:leave={note.id} onpointerdown={(event) => grab(event, note.id)} onclickcapture={swallowDrop} ondragstart={(event) => event.preventDefault()}>
+				<div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }} out:leave={note.id} onpointerdown={(event) => grab(event, note.id)} onclickcapture={(event) => swallowDrop(event) || modifiedClick(event, note.id)} onmousedown={holdTextSelection} ondragstart={(event) => event.preventDefault()}>
 					<ContextMenu.Root>
 						<ContextMenu.Trigger class="block" disabled={open}>
 							<NoteView
