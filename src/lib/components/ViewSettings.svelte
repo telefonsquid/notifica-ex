@@ -112,7 +112,7 @@
     }
 </script>
 
-<ul class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
+<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
     {#each views as view, index (view.id)}
         {@const Icon = viewIcon(view.icon)}
         {@const active = countActive(pending[view.id]?.filter ?? view.filter)}

@@ -116,7 +116,7 @@
 	<div>
 		<p class="mb-4 text-ink-muted">Edit a name or email right in place. Deactivated users get logged out everywhere and keep their notes.</p>
 
-		<ul class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
+		<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
 			{#each active as user (user.id)}
 				{@const self = user.id === userId}
 				<li class="flex flex-wrap items-center gap-x-4 gap-y-2 bg-card py-3 pr-2 pl-card">
@@ -167,7 +167,7 @@
 	{#if inactive.length}
 		<div>
 			<h3 class="type-meta mb-4 text-ink-faint">Deactivated</h3>
-			<ul class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
+			<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
 				{#each inactive as user (user.id)}
 					<li class="flex items-center gap-4 bg-card py-3 pr-2 pl-card">
 						<div class="grid min-w-0 flex-1">
