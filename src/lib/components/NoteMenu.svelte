@@ -7,7 +7,7 @@
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
-    import { createNote, deleteNote, updateNote } from '../../routes/api/notes.remote';
+    import { deleteNote, duplicateNote, updateNote } from '../../routes/api/notes.remote';
     import { removeReminder } from '../../routes/api/reminders.remote';
 
     /*
@@ -76,7 +76,7 @@
 
     // Copies leave reminders behind, two pushes for the same thing would only confuse
     async function duplicate(){
-        await each(({ title, body, color, labels, pinned, archived }) => createNote({ title, body, color, labels, pinned, archived }))
+        await each((note) => duplicateNote(note.id))
         onfinish?.()
     }
 

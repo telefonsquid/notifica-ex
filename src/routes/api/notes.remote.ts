@@ -1,7 +1,7 @@
 import { getRequestEvent } from '$app/server';
 import { idSchema } from '#lib/schema_limits.ts';
 import { imageNameSchema, noteContentSchema, userBaseSchema, type Note } from '#lib/schemas.ts';
-import { deleteOne, findActiveUser, getAllOwned, getNoteOf, getNotesOf, getPeople as fetchPeople, insertOnePartial, removeImage, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { addImages, deleteOne, fetchImage, findActiveUser, getAllOwned, getNoteOf, getNotesOf, getPeople as fetchPeople, insertOnePartial, removeImage, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
@@ -27,6 +27,27 @@ export const createNote = command(noteContentSchema, async (content) => {
 
     await getNotes().refresh()
     return note
+
+});
+
+// A copy of the user's own, images included | reminders and sharing stay with the original
+export const duplicateNote = command(idSchema, async (id) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    const original = unwrap(await getNoteOf(id, locals.user.id), 'Note not found.')
+
+    const { title, body, color, pinned, archived } = original
+    const labels = await ownLabels(locals.user.id, original.labels)
+    let copy = unwrap(await insertOnePartial('notes', { title, body, color, labels, pinned, archived, owner: locals.user.id }), 'Could not copy the note.')
+
+    if(original.images.length){
+        const files = await Promise.all(original.images.map((file) => imageFile(original, file)))
+        copy = unwrap(await addImages(copy.id, files), 'The note was copied, but its images could not be.')
+    }
+
+    await getNotes().refresh()
+    return copy
 
 });
 
@@ -133,6 +154,13 @@ export const removeNoteImage = command(z.object({ id: idSchema, file: imageNameS
 
 
 // HELPERS ============================================================
+
+// The stored image as a file again, to go on another note
+async function imageFile(note: Note, file: string): Promise<File> {
+    const response = await fetchImage(note, file)
+    if(!response.ok) error(502, 'Could not read an image of the note.')
+    return new File([await response.blob()], file, { type: response.headers.get('content-type') ?? undefined })
+}
 
 // A new note only carries labels of the one who wrote it
 async function ownLabels(owner: string, ids: string[]): Promise<string[]> {
