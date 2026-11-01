@@ -285,6 +285,16 @@
 		});
 	});
 
+	// The open note got deleted elsewhere, its card is gone so the editor goes too
+	$effect(() => {
+		if (!editing?.id || editing.fresh || notes.some((note) => note.id === editing?.id)) return;
+		untrack(() => {
+			editing = null;
+			frozen = null;
+			closing = false;
+		});
+	});
+
 	// SELECTION | a card click toggles while anything is selected, notes that vanished drop out on their own
 	const selected = new SvelteSet<string>();
 	let selection = $derived(notes.filter((note) => selected.has(note.id)));

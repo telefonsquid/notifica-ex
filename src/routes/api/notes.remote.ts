@@ -35,10 +35,11 @@ export const updateNote = command(noteContentSchema.partial().extend({ id: idSch
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    const existing = unwrap(await getNoteOf(id, locals.user.id), 'Note not found.')
+    const existing = await getNoteOf(id, locals.user.id)
+    if(!existing.success) error(404, 'Note not found.') // gone meanwhile, the open note tells its writer
 
     const update: Partial<Note> = { ...changes }
-    if(changes.labels) update.labels = await mergeLabels(locals.user.id, existing.labels, changes.labels)
+    if(changes.labels) update.labels = await mergeLabels(locals.user.id, existing.data.labels, changes.labels)
     const note = unwrap(await updateOnePartial('notes', id, update), 'Could not save the note.')
 
     await getNotes().refresh()
