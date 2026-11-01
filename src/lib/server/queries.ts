@@ -1,5 +1,5 @@
 import { getRequestEvent } from '$app/server';
-import type { CollectionMap, FetchOptions, Reminder } from '#lib/schemas.ts';
+import type { CollectionMap, FetchOptions, Note, Person, Reminder, User } from '#lib/schemas.ts';
 import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
 import { error } from '@sveltejs/kit';
 import type { CollectionModel } from 'pocketbase';
@@ -133,6 +133,39 @@ export async function getOwned<K extends OwnedCollection>(collectionName: K, id:
     const pb = await getPbAdminConnection()
     const filter = pb.filter('id = {:id} && owner = {:owner}', { id, owner })
     return await pbErrorHandler(pb.collection(collectionName).getFirstListItem(filter) as Promise<CollectionMap[K]>)
+}
+
+
+
+// NOTES OF A USER =====================================================================
+// The ones they own and the ones shared with them, the same filter as the collection's list rule
+const NOTES_OF = 'owner = {:user} || sharedWith.id ?= {:user}'
+
+export async function getNotesOf(user: string, options?: Omit<FetchOptions, 'filter'>) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter(NOTES_OF, { user })
+    return await pbErrorHandler(pb.collection('notes').getFullList({ ...options, filter }) as Promise<Note[]>)
+}
+
+// Fails like a missing record when the user has no access, so foreign ids reveal nothing
+export async function getNoteOf(id: string, user: string) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter(`id = {:id} && (${NOTES_OF})`, { id, user })
+    return await pbErrorHandler(pb.collection('notes').getFirstListItem(filter) as Promise<Note>)
+}
+
+// Name and email of the given accounts, nothing else of them
+export async function getPeople(ids: string[]) {
+    const pb = await getPbAdminConnection()
+    if(!ids.length) return { success: true as const, data: [] as Person[], error: null }
+    const filter = ids.map((id, index) => pb.filter(`id = {:id${index}}`, { [`id${index}`]: id })).join(' || ')
+    return await pbErrorHandler(pb.collection('users').getFullList({ filter, fields: 'id,name,email' }) as Promise<Person[]>)
+}
+
+export async function findActiveUser(email: string) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter("email = {:email} && state = 'active'", { email })
+    return await pbErrorHandler(pb.collection('users').getFirstListItem(filter) as Promise<User>)
 }
 
 

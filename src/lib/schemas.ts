@@ -47,7 +47,8 @@ export const fetchOptionsSchema = z.object({
     perPage: z.number().int('Page size must be a whole number.').min(1, 'Page size must be at least 1.').max(LIMITS.PAGE_SIZE, `Page size must not be larger than ${LIMITS.PAGE_SIZE}.`).optional(),
     sort: limitedText('Sort', LIMITS.FETCH_SORT).regex(/^[A-Za-z0-9_,.@+-]*$/, 'Sort may only name fields.').optional(),
     filter: limitedText('Filter', LIMITS.FETCH_FILTER).optional(), // stays a raw pocketbase expression, only its size is bounded here
-    expand: limitedText('Expand', LIMITS.FETCH_EXPAND).regex(/^[A-Za-z0-9_,.]*$/, 'Expand may only name relations.').optional()
+    expand: limitedText('Expand', LIMITS.FETCH_EXPAND).regex(/^[A-Za-z0-9_,.]*$/, 'Expand may only name relations.').optional(),
+    fields: limitedText('Fields', LIMITS.FETCH_EXPAND).regex(/^[A-Za-z0-9_,.]*$/, 'Fields may only name fields.').optional()
 });
 
 
@@ -193,11 +194,16 @@ export const noteContentSchema = z.object({
     archived: z.boolean()
 });
 
+// Labels hold the ids of everyone's labels on a shared note, each person only sees their own
 export type Note = z.infer<typeof noteSchema>;
 export const noteSchema = recordModelSchema.extend({
     owner: idSchema,
+    sharedWith: z.array(idSchema).max(LIMITS.NOTE_SHARES), // can read and edit it, only the owner deletes it
     ...noteContentSchema.shape
 });
+
+// Someone a note is shared with or by, all the others get to see of an account
+export type Person = Pick<User, 'id' | 'name' | 'email'>;
 
 
 
@@ -284,6 +290,7 @@ export const viewFilterSchema = z.object({
     labelled: z.enum(['any', 'with', 'without']).default('any'),
     colors: z.array(noteColorSchema).max(NOTE_COLORS.length + 1).default([]), // empty means every color
     pinned: z.enum(['any', 'only', 'hide']).default('any'),
+    shared: z.enum(['any', 'only', 'hide']).default('any'), // shared with others or by others
     archived: z.enum(['hide', 'only', 'any']).default('hide'),
     reminder: reminderStateSchema.default('any'),
     list: z.enum(['any', 'open', 'complete']).default('any'), // checklist progress

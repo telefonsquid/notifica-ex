@@ -461,8 +461,8 @@
     },
     {
         "id": "pbc_1871542719",
-        "listRule": "owner = @request.auth.id",
-        "viewRule": "owner = @request.auth.id",
+        "listRule": "owner = @request.auth.id || sharedWith.id ?= @request.auth.id",
+        "viewRule": "owner = @request.auth.id || sharedWith.id ?= @request.auth.id",
         "createRule": null,
         "updateRule": null,
         "deleteRule": null,
@@ -617,6 +617,19 @@
                 "maxSelect": 50,
                 "minSelect": 0,
                 "name": "labels",
+                "required": false,
+                "type": "relation"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "cascadeDelete": false,
+                "collectionId": "_pb_users_auth_",
+                "id": "relation1700093210",
+                "maxSelect": 50,
+                "minSelect": 0,
+                "name": "sharedWith",
                 "required": false,
                 "type": "relation"
             },

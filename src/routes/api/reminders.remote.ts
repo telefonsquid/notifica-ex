@@ -3,7 +3,7 @@ import { occurrenceAfter } from '#lib/reminders.ts';
 import { idSchema } from '#lib/schema_limits.ts';
 import { ntfyTopicSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
 import { publish } from '#lib/server/ntfy.ts';
-import { deleteOne, getAllOwned, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { deleteOne, getAllOwned, getNoteOf, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
@@ -18,12 +18,12 @@ export const getReminders = query(async () => {
 
 });
 
-// A note holds as many as wanted
+// A note holds as many as wanted, on a shared note everyone sets their own
 export const addReminder = command(reminderRuleSchema.extend({ note: idSchema }), async ({ note, ...rule }) => {
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    unwrap(await getOwned('notes', note, locals.user.id), 'Note not found.')
+    unwrap(await getNoteOf(note, locals.user.id), 'Note not found.')
 
     const reminder = unwrap(await insertOnePartial('reminders', { ...ruleFields(rule), note, owner: locals.user.id }), 'Could not save the reminder.')
 

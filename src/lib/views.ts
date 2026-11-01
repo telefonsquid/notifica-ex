@@ -70,6 +70,8 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
     if(filter.archived === 'only' && !note.archived) return false
     if(filter.pinned === 'only' && !note.pinned) return false
     if(filter.pinned === 'hide' && note.pinned) return false
+    if(filter.shared === 'only' && !isShared(note)) return false
+    if(filter.shared === 'hide' && isShared(note)) return false
     if(filter.colors.length && !filter.colors.includes(note.color)) return false
 
     // LABELS
@@ -103,6 +105,11 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
     if(wordsOf(filter.without).some((word) => text.includes(word))) return false
 
     return true
+}
+
+// Shared with someone or by someone, either way more than one person sees it
+export function isShared(note: Note): boolean {
+    return note.sharedWith.length > 0
 }
 
 // Lowercased, ready to look for words in

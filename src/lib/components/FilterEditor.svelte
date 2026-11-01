@@ -28,6 +28,7 @@
     // OPTIONS
     const PINNED: [ViewFilter['pinned'], string][] = [['any', 'Any'], ['only', 'Only'], ['hide', 'Hide']]
     const ARCHIVED: [ViewFilter['archived'], string][] = [['hide', 'Hide'], ['only', 'Only'], ['any', 'Both']]
+    const SHARED: [ViewFilter['shared'], string][] = [['any', 'Any'], ['only', 'Only'], ['hide', 'Hide']]
     const CHECKLIST: [ViewFilter['list'], string][] = [['any', 'Any'], ['open', 'Open'], ['complete', 'Done']]
     const LABELLED: [ViewFilter['labelled'], string][] = [['any', 'Any'], ['with', 'Labelled'], ['without', 'Unlabelled']]
     const MATCH: [ViewFilter['labelMatch'], string][] = [['any', 'Any of them'], ['all', 'All of them']]
@@ -136,6 +137,10 @@
         <fieldset>
             <legend class="type-meta">Archived</legend>
             {@render segmented('Archived', ARCHIVED, filter.archived, (value) => update({ archived: value as ViewFilter['archived'] }))}
+        </fieldset>
+        <fieldset>
+            <legend class="type-meta">Shared</legend>
+            {@render segmented('Shared', SHARED, filter.shared, (value) => update({ shared: value as ViewFilter['shared'] }))}
         </fieldset>
     </div>
 

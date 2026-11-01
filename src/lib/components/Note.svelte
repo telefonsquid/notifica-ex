@@ -23,14 +23,16 @@
     import LabelAdder from '#lib/components/LabelAdder.svelte';
     import LabelEditor from '#lib/components/LabelEditor.svelte';
     import ReminderList from '#lib/components/ReminderList.svelte';
+    import ShareEditor from '#lib/components/ShareEditor.svelte';
     import { rise, unfold } from '#lib/motion.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
     import { safeAction } from '#lib/pocketbase.ts';
-    import type { Label, Note, NoteContent, Reminder } from '#lib/schemas.ts';
+    import type { Label, Note, NoteContent, Person, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import ConfirmButton from '#lib/ui/ConfirmButton.svelte';
+    import Initials from '#lib/ui/Initials.svelte';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, Pin, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, LogOut, Pin, Trash2, X } from '@lucide/svelte';
     import { untrack } from 'svelte';
     import { createNote, deleteNote, updateNote } from '../../routes/api/notes.remote';
 
@@ -42,6 +44,8 @@
     // PROPS
     let {
         note,
+        me,
+        people,
         open = false,
         closing = false,
         labels,
@@ -55,7 +59,9 @@
         oncreate,
         onclose
     }: {
-        note: Note | null                                       // null starts a new note, which comes open
+        note: Note | null                                       // null starts a new note, which comes open | a new one gets its record once stored
+        me: string                                              // the user looking at it
+        people: Map<string, Person>                             // everyone it may be shared with or by
         open?: boolean
         closing?: boolean                                       // the controls fade out before the card shrinks
         labels: Label[]
@@ -79,6 +85,16 @@
     let deleted = false
     let root = $state<HTMLElement>()
     let card = $state<HTMLElement>()
+
+    // SHARING | the stored record decides, a new note is the user's own
+    let owner = $derived(note?.owner ?? me)
+    let sharedWith = $derived(note?.sharedWith ?? [])
+    let mine = $derived(owner === me)
+    let others = $derived([owner, ...sharedWith].filter((person) => person !== me))
+
+    function nameOf(person: string): string {
+        return people.get(person)?.name || people.get(person)?.email || 'Someone'
+    }
 
     let labelsById = $derived(new Map(labels.map((label) => [label.id, label])))
     let tabs = $derived(draft.labels.map((labelId) => labelsById.get(labelId)).filter((label) => !!label))
@@ -272,7 +288,12 @@
     <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
         {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
     </button>
-    <ConfirmButton icon={Trash2} label="Delete" confirmLabel="Confirm delete" hint="Delete note" confirmHint="Click again to delete" onconfirm={remove} />
+    <ShareEditor {owner} {sharedWith} {me} {people} ensureNote={save} onleave={() => { deleted = true; onclose?.() }} />
+    {#if mine}
+        <ConfirmButton icon={Trash2} label="Delete" confirmLabel="Confirm delete" hint={sharedWith.length ? 'Delete note for everyone' : 'Delete note'} confirmHint="Click again to delete" onconfirm={remove} />
+    {:else}
+        <ConfirmButton icon={LogOut} label="Leave" confirmLabel="Confirm leaving" hint="Leave, the owner keeps it" confirmHint="Click again to leave" onconfirm={remove} />
+    {/if}
 {/snippet}
 
 <!-- The tabs sit beside the colored card, not on it, so they keep the page ink -->
@@ -325,7 +346,7 @@
         {/if}
 
         <!-- TITLE | colour, archive and delete join the pin up here once the note is wide enough -->
-        {#if open || draft.title || draft.pinned}
+        {#if open || draft.title || draft.pinned || others.length}
             <header class={['flex items-start gap-2', !open && 'pointer-events-none']} in:appear out:unfold>
                 <h3
                     class={['title type-title min-w-0 flex-1 text-lg leading-snug break-words outline-none', !draft.title && 'blank']}
@@ -338,6 +359,12 @@
                 >{initialTitle}</h3>
                 <!-- One row with the pin, so every button keeps the same distance -->
                 <div class="-my-1 -mr-2 flex items-center gap-0.5">
+                    {#if !open && others.length}
+                        <!-- PEOPLE | who else sees this note -->
+                        <span class="mr-1 flex -space-x-1.5" role="img" aria-label={`Shared ${mine ? 'with' : 'by'} ${others.map(nameOf).join(', ')}`} in:appear out:unfold={{ axis: 'x' }}>
+                            {#each others.slice(0, 3) as person (person)}<Initials name={nameOf(person)} class="ring-2 ring-[var(--note-bg,var(--theme-card))]" />{/each}
+                        </span>
+                    {/if}
                     {#if open}
                         <div class="extra hidden items-center gap-0.5 @min-[26rem]/note:flex" in:appear out:unfold={{ axis: 'x' }}>{@render actions()}</div>
                     {/if}

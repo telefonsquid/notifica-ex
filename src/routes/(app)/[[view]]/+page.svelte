@@ -18,16 +18,22 @@
 	import type { TransitionConfig } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getLabels } from '../../api/labels.remote';
-	import { getNotes, updateNote } from '../../api/notes.remote';
+	import { getNotes, getPeople, updateNote } from '../../api/notes.remote';
 	import { getReminders, setReminderDone } from '../../api/reminders.remote';
 	import { createView, getViews, updateView } from '../../api/views.remote';
+	import type { PageProps } from './$types';
+
+	// PROPS
+	let { data }: PageProps = $props();
+	let me = $derived(data.user.id);
 
 	// DATA | refreshed by every command and by realtime events from other devices
-	let [notes, labels, reminders, views] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews()]));
+	let [notes, labels, reminders, views, people] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews(), getPeople()]));
 
 	let remindersByNote = $derived(groupReminders(reminders));
+	let peopleById = $derived(new Map(people.map((person) => [person.id, person])));
 
-	$effect(() => onCollectionChange('notes', () => getNotes().refresh()));
+	$effect(() => onCollectionChange('notes', () => Promise.all([getNotes().refresh(), getPeople().refresh()])));
 	$effect(() => onCollectionChange('labels', () => getLabels().refresh()));
 	$effect(() => onCollectionChange('reminders', () => getReminders().refresh()));
 
@@ -322,7 +328,9 @@
 					<div class="note-cell fresh wide @container/note" data-flip={editing.id ?? 'new'} out:retreat|global>
 						<NoteView
 							bind:this={freshNote}
-							note={null}
+							note={(editing.id && notes.find((item) => item.id === editing?.id)) || null}
+							{me}
+							people={peopleById}
 							open
 							{closing}
 							{labels}
@@ -342,6 +350,8 @@
 						<ContextMenu.Trigger class="block" disabled={open}>
 							<NoteView
 								{note}
+								{me}
+								people={peopleById}
 								{open}
 								closing={open && closing}
 								{labels}
@@ -359,6 +369,7 @@
 							<ContextMenu.Content class="menu" collisionPadding={12}>
 								<NoteMenu
 									notes={targetsOf(note)}
+									{me}
 									{labels}
 									reminders={remindersByNote}
 									selected={selected.has(note.id)}
@@ -415,7 +426,7 @@
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Portal>
 					<DropdownMenu.Content class="menu" side="top" sideOffset={10} collisionPadding={12}>
-						<NoteMenu notes={selection} {labels} reminders={remindersByNote} onfinish={() => selected.clear()} />
+						<NoteMenu notes={selection} {me} {labels} reminders={remindersByNote} onfinish={() => selected.clear()} />
 					</DropdownMenu.Content>
 				</DropdownMenu.Portal>
 			</DropdownMenu.Root>

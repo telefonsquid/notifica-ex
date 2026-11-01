@@ -4,7 +4,7 @@
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
-    import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
     import { createNote, deleteNote, updateNote } from '../../routes/api/notes.remote';
     import { removeReminder } from '../../routes/api/reminders.remote';
@@ -17,6 +17,7 @@
     // PROPS
     let {
         notes,
+        me,
         labels,
         reminders,
         selected = false,
@@ -25,6 +26,7 @@
         onfinish
     }: {
         notes: Note[]                                           // one card, or the whole selection
+        me: string                                              // notes of others only get left, not deleted
         labels: Label[]
         reminders: Map<string, Reminder[]>
         selected?: boolean
@@ -38,6 +40,7 @@
     let allPinned = $derived(notes.every((note) => note.pinned))
     let allArchived = $derived(notes.every((note) => note.archived))
     let confirmDelete = $state(false)
+    let leaving = $derived(notes.every((note) => note.owner !== me))
 
     // ACTIONS | every note gets its own update, the list stays short enough for that
     async function each(change: (note: Note) => Promise<unknown>){
@@ -73,8 +76,10 @@
         Promise.all(attached.map((reminder) => safeAction(removeReminder(reminder.id))))
     }
 
-    async function remove(){
+    // The first select only arms it and keeps the menu open | bits reads closeOnSelect after this ran, so it can't do that
+    async function remove(event: Event){
         if(!confirmDelete){
+            event.preventDefault()
             confirmDelete = true
             return
         }
@@ -167,7 +172,8 @@
     {#if allArchived}<ArchiveRestore class="size-4" />Unarchive{:else}<Archive class="size-4" />Archive{/if}
 </Menu.Item>
 
-<!-- Asks once more in place before anything is gone -->
-<Menu.Item class={['menu-item', confirmDelete && 'bg-accent text-on-accent data-highlighted:bg-accent data-highlighted:text-on-accent']} closeOnSelect={confirmDelete} onSelect={remove}>
-    <Trash2 class="size-4" />{confirmDelete ? 'Click again to delete' : 'Delete'}{notes.length > 1 ? ` ${notes.length} notes` : ''}
+<!-- Asks once more in place before anything is gone | notes shared by others only get left -->
+<Menu.Item class={['menu-item', confirmDelete && 'bg-accent text-on-accent data-highlighted:bg-accent data-highlighted:text-on-accent']} onSelect={remove}>
+    {#if leaving}<LogOut class="size-4" />{:else}<Trash2 class="size-4" />{/if}
+    {confirmDelete ? `Click again to ${leaving ? 'leave' : 'delete'}` : leaving ? 'Leave' : 'Delete'}{notes.length > 1 ? ` ${notes.length} notes` : ''}
 </Menu.Item>
