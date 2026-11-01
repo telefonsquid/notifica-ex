@@ -1,7 +1,5 @@
 import { PUBLIC_POCKETBASE_URL } from '$app/env/public';
 import { notify } from '#lib/notifications.svelte.ts';
-import type { Result } from '#lib/server/queries.ts';
-import { error } from '@sveltejs/kit';
 import PocketBase from 'pocketbase';
 
 /*
@@ -38,15 +36,4 @@ export async function safeAction<T>(promise: Promise<T>): Promise<T | null> {
 
         return null;
     }
-}
-
-export function unwrap<T>(result: Result<T>, fallbackMessage?: string): NonNullable<T> {
-    if(!result.success || !result.data){
-        console.error(result)
-        error(400, {
-            message: fallbackMessage ?? result.error ?? 'Unknown Error',
-            ...(result.error ? { details: result.error } : {})
-        });
-    }
-    return result.data as NonNullable<T>;
 }

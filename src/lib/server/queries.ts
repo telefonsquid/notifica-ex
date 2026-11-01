@@ -1,6 +1,7 @@
 import { getRequestEvent } from '$app/server';
 import type { CollectionMap, FetchOptions, Reminder } from '#lib/schemas.ts';
 import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
+import { error } from '@sveltejs/kit';
 import type { CollectionModel } from 'pocketbase';
 
 // ERROR HANDLING
@@ -34,6 +35,20 @@ export async function pbErrorHandler<T>(promise: Promise<T>): Promise<Result<T>>
         });
 }
 
+
+
+
+// UNWRAP | the data of a successful result, a 400 with the database's reason otherwise
+export function unwrap<T>(result: Result<T>, fallbackMessage?: string): NonNullable<T> {
+    if(!result.success || !result.data){
+        console.error(result)
+        error(400, {
+            message: fallbackMessage ?? result.error ?? 'Unknown Error',
+            ...(result.error ? { details: result.error } : {})
+        });
+    }
+    return result.data as NonNullable<T>;
+}
 
 
 
