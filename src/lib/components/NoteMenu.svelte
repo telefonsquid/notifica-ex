@@ -7,7 +7,7 @@
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
-    import { createNote, updateNote } from '../../routes/api/notes.remote';
+    import { duplicateNote, updateNote } from '../../routes/api/notes.remote';
     import { removeReminder } from '../../routes/api/reminders.remote';
 
     /*
@@ -71,9 +71,8 @@
         onfinish?.()
     }
 
-    // Copies leave reminders behind, two pushes for the same thing would only confuse | someone else's labels stay with them
     async function duplicate(){
-        await each((note) => createNote({ title: note.title, body: note.body, color: note.color, labels: note.owner === me ? note.labels : [], pinned: note.pinned, archived: note.archived }))
+        await each((note) => duplicateNote(note.id))
         onfinish?.()
     }
 

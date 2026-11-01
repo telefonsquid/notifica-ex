@@ -3,7 +3,7 @@ import z from 'zod';
 import { unwrap } from '#lib/pocketbase.ts';
 import { LIMITS, idSchema } from '#lib/schema_limits.ts';
 import { fileNameSchema, noteContentSchema, notePositionSchema, type Note } from '#lib/schemas.ts';
-import { deleteOne, getAll, getAllNotesFor, getAllOwned, getNoteFor, getOwned, insertOnePartial, leaveNote as leave, removeNoteImage, updateOnePartial } from '#lib/server/queries.ts';
+import { addNoteImages, deleteOne, fetchNoteImage, getAll, getAllNotesFor, getAllOwned, getNoteFor, getOwned, insertOnePartial, leaveNote as leave, removeNoteImage, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
@@ -24,6 +24,33 @@ export const createNote = command(noteContentSchema, async (content) => {
 
     const labels = await ownLabels(locals.user.id, content.labels)
     const note = unwrap(await insertOnePartial('notes', { ...content, labels, owner: locals.user.id }), 'Could not save the note.')
+
+    await getNotes().refresh()
+    return note
+
+});
+
+// Copies leave reminders and sharing behind | someone else's labels stay with them
+export const duplicateNote = command(idSchema, async (id) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    const stored = unwrap(await getNoteFor(id, locals.user.id), 'Note not found.')
+
+    // COPY THE CONTENT
+    const { title, body, color, pinned, archived } = stored
+    const labels = await ownLabels(locals.user.id, stored.labels)
+    let note = unwrap(await insertOnePartial('notes', { title, body, color, pinned, archived, labels, owner: locals.user.id }), 'Could not duplicate the note.')
+
+    // COPY THE IMAGES | pocketbase appends a fresh suffix, so the old one is dropped first
+    if(stored.images.length){
+        const files = await Promise.all(stored.images.map(async (name) => {
+            const response = await fetchNoteImage(stored.id, name)
+            if(!response.ok) error(502, 'Could not copy the images.')
+            return new File([await response.blob()], name.replace(/_[a-z0-9]{10}(?=\.\w+$)/i, ''), { type: response.headers.get('content-type') ?? undefined })
+        }))
+        note = unwrap(await addNoteImages(note.id, files), 'Could not copy the images.')
+    }
 
     await getNotes().refresh()
     return note
