@@ -337,6 +337,27 @@
 
 
 
+/* FIELD | plain input in the look of the dropdowns beside it */
+@utility field {
+    height: 2.25rem;
+    padding-inline: 0.625rem;
+    border: 1px solid var(--theme-line);
+    border-radius: var(--layout-radius-control);
+    background: var(--theme-raised);
+    color: var(--theme-ink);
+    font-size: 0.875rem;
+    transition: border-color var(--duration-fast) var(--ease-out);
+
+    &:hover {
+        border-color: var(--theme-line-strong);
+    }
+
+    &:focus {
+        border-color: var(--theme-accent);
+        outline: none;
+    }
+}
+
 /* MENU | floating panel for context and dropdown menus, rows light up under the pointer or keyboard */
 @utility menu {
     z-index: 60;
