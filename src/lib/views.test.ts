@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import type { Note, Reminder } from '#lib/schemas.ts';
-import { countActive, emptyFilter, groupReminders, matchesView, readFilter, sortNotes } from '#lib/views.ts';
+import { countActive, emptyFilter, groupReminders, matchesView, noteDefaults, positionBetween, positionOf, readFilter, sortNotes } from '#lib/views.ts';
 
 // A note as pocketbase returns it, with only what a test cares about changed
 const note = (overrides: Partial<Note>): Note => ({
@@ -101,5 +101,37 @@ describe('saved filters', () => {
     test('count the changed fields', () => {
         expect(countActive(emptyFilter())).toBe(0)
         expect(countActive({ ...emptyFilter(), pinned: 'only', words: 'x' })).toBe(2)
+    })
+})
+
+
+
+// MANUAL ORDER AND NEW NOTES ====================================================================================================
+describe('manual order', () => {
+    const at = (position: number) => note({ position })
+
+    test('a drop lands between its neighbours either way the sort runs', () => {
+        expect(positionBetween(at(300), at(100), 'desc')).toBe(200)
+        expect(positionBetween(at(100), at(300), 'asc')).toBe(200)
+    })
+
+    test('the ends move past the last neighbour', () => {
+        expect(positionBetween(at(300), undefined, 'desc')).toBeLessThan(300)
+        expect(positionBetween(undefined, at(300), 'desc')).toBeGreaterThan(300)
+    })
+
+    test('notes never moved sort by when they were made', () => {
+        expect(positionOf(note({ position: 0, created: '2026-10-01 10:00:00.000Z' }))).toBe(Date.parse('2026-10-01T10:00:00Z'))
+    })
+})
+
+describe('new notes in a view', () => {
+    test('take what the view demands', () => {
+        expect(noteDefaults({ ...emptyFilter(), include: ['a'], colors: ['mint'], pinned: 'only' })).toEqual({ color: 'mint', labels: ['a'], pinned: true, archived: false })
+    })
+
+    test('several labels any of which would do pick none', () => {
+        expect(noteDefaults({ ...emptyFilter(), include: ['a', 'b'] }).labels).toEqual([])
+        expect(noteDefaults({ ...emptyFilter(), include: ['a', 'b'], labelMatch: 'all' }).labels).toEqual(['a', 'b'])
     })
 })
