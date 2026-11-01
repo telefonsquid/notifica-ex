@@ -27,6 +27,7 @@
     import ShareEditor from '#lib/components/ShareEditor.svelte';
     import { IMAGE_TYPES, imagesIn, shrink, uploadImage } from '#lib/images.ts';
     import { rise, unfold } from '#lib/motion.ts';
+    import { confirmNoteRemoval, deleteLabelEverywhere } from '#lib/deletions.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
     import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
@@ -34,7 +35,8 @@
     import type { Label, Note, NoteContent, Person, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pin, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pencil, Pin, Trash2, X } from '@lucide/svelte';
+    import { ContextMenu } from 'bits-ui';
     import { untrack } from 'svelte';
     import { createNote, deleteNote, leaveNote, removeImage, shareNote, updateNote } from '../../routes/api/notes.remote';
 
@@ -84,7 +86,6 @@
     let draft = $state<NoteContent>(initial ? contentOf(initial) : emptyNote())
     let saved = $state(untrack(() => JSON.stringify(draft)))
     let savedAt = initial?.updated ?? ''
-    let confirmDelete = $state(false)
     let deleted = false
     let root = $state<HTMLElement>()
     let card = $state<HTMLElement>()
@@ -267,14 +268,23 @@
     }
 
     async function remove(){
-        if(!confirmDelete){
-            confirmDelete = true
-            return
-        }
+        if(!await confirmNoteRemoval(1, owned ? 1 : 0)) return
         await queue
         if(id && !await safeAction(owned ? deleteNote(id) : leaveNote(id))) return
         deleted = true
         onclose?.()
+    }
+
+    // LABELS | the tab menu opens the same editor as a click on the tab name
+    let editingLabel = $state<string | null>(null)
+
+    function dropLabel(labelId: string){
+        draft.labels = draft.labels.filter((item) => item !== labelId)
+    }
+
+    // Waits for the menu to close, its focus return would shut the popover again
+    function editLabel(labelId: string){
+        setTimeout(() => editingLabel = labelId)
     }
 
     // CLOSE | a press anywhere else or Escape folds the card back, its tabs and the popovers opened from it count as inside
@@ -374,13 +384,7 @@
         </button>
     {/if}
     <!-- Someone else's note can only be left, it stays with its owner -->
-    <button
-        class={['icon-button', confirmDelete && 'bg-accent text-on-accent hover:text-on-accent']}
-        aria-label={confirmDelete ? `Confirm ${owned ? 'delete' : 'leave'}` : owned ? 'Delete' : 'Leave'}
-        onclick={remove}
-        onblur={() => confirmDelete = false}
-        {@attach tip(confirmDelete ? `Click again to ${owned ? 'delete' : 'leave'}` : owned ? 'Delete note' : 'Leave this note')}
-    >
+    <button class="icon-button" aria-label={owned ? 'Delete' : 'Leave'} onclick={remove} {@attach tip(owned ? 'Delete note' : 'Leave this note')}>
         {#if owned}<Trash2 class="size-4" />{:else}<LogOut class="size-4" />{/if}
     </button>
 {/snippet}
@@ -398,18 +402,43 @@
     {#if tabs.length || (open && owned)}
         <ul class="tabs absolute flex gap-1" aria-label="Labels">
             {#each tabs as label (label.id)}
-                <li class="tab note-mark type-meta flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
-                    {#if open}
-                        <LabelEditor {label} ondelete={() => draft.labels = draft.labels.filter((item) => item !== label.id)} />
-                    {:else}
-                        <span class="name truncate">{label.name}</span>
-                    {/if}
-                    {#if open}
-                        <button class="remove extra -mr-2 grid shrink-0 place-items-center rounded-full p-0.5" aria-label={`Remove ${label.name}`} onclick={() => draft.labels = draft.labels.filter((item) => item !== label.id)} in:appear out:unfold={{ axis: 'x' }}>
-                            <X class="size-3" />
-                        </button>
-                    {/if}
-                </li>
+                <!-- A closed card's right click opens the note's menu, an open one gives each tab its own -->
+                <ContextMenu.Root>
+                    <ContextMenu.Trigger disabled={!open}>
+                        {#snippet child({ props })}
+                            <li {...props} class="tab note-mark type-meta flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
+                                {#if open}
+                                    <LabelEditor
+                                        {label}
+                                        bind:open={() => editingLabel === label.id, (value) => editingLabel = value ? label.id : null}
+                                        ondelete={() => dropLabel(label.id)}
+                                    />
+                                {:else}
+                                    <span class="name truncate">{label.name}</span>
+                                {/if}
+                                {#if open}
+                                    <button class="remove extra -mr-2 grid shrink-0 place-items-center rounded-full p-0.5" aria-label={`Remove ${label.name}`} onclick={() => dropLabel(label.id)} in:appear out:unfold={{ axis: 'x' }}>
+                                        <X class="size-3" />
+                                    </button>
+                                {/if}
+                            </li>
+                        {/snippet}
+                    </ContextMenu.Trigger>
+                    <ContextMenu.Portal>
+                        <ContextMenu.Content class="menu" collisionPadding={12}>
+                            <ContextMenu.Item class="menu-item" onSelect={() => editLabel(label.id)}>
+                                <Pencil class="size-4" />Edit label
+                            </ContextMenu.Item>
+                            <ContextMenu.Item class="menu-item" onSelect={() => dropLabel(label.id)}>
+                                <X class="size-4" />Remove from note
+                            </ContextMenu.Item>
+                            <ContextMenu.Separator class="menu-separator" />
+                            <ContextMenu.Item class="menu-item" onSelect={async () => { if(await deleteLabelEverywhere(label)) dropLabel(label.id) }}>
+                                <Trash2 class="size-4" />Delete label
+                            </ContextMenu.Item>
+                        </ContextMenu.Content>
+                    </ContextMenu.Portal>
+                </ContextMenu.Root>
             {/each}
             {#if open && owned}
                 <li class="adder-tab extra ml-auto shrink-0" in:appear out:unfold={{ axis: 'x' }}>

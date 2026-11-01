@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { PUBLIC_NTFY_URL } from '$app/env/public';
 	import { invalidateAll } from '$app/navigation';
+	import { page } from '$app/state';
 	import ColorPicker from '#lib/components/ColorPicker.svelte';
 	import ImageFitPicker from '#lib/components/ImageFitPicker.svelte';
 	import LabelPositionPicker from '#lib/components/LabelPositionPicker.svelte';
@@ -8,6 +9,7 @@
 	import ThemePicker from '#lib/components/ThemePicker.svelte';
 	import UserAdmin from '#lib/components/UserAdmin.svelte';
 	import ViewSettings from '#lib/components/ViewSettings.svelte';
+	import { deleteLabelEverywhere } from '#lib/deletions.ts';
 	import { notify } from '#lib/notifications.svelte.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
@@ -16,7 +18,7 @@
 	import Button from '#lib/ui/Button.svelte';
 	import { Check, CircleUserRound, Dices, KeyRound, Palette, PanelsTopLeft, Send, SlidersHorizontal, Trash2, Users } from '@lucide/svelte';
 	import { untrack } from 'svelte';
-	import { deleteLabel, getLabels, updateLabel } from '../../api/labels.remote';
+	import { getLabels, updateLabel } from '../../api/labels.remote';
 	import { sendTestReminder, setNtfyTopic } from '../../api/reminders.remote';
 	import { sendPasswordLink } from '../../api/users.remote';
 	import type { PageProps } from './$types';
@@ -53,7 +55,6 @@
 
 	// LABELS
 	let labels = $derived(await getLabels());
-	let confirmDelete = $state<string | null>(null);
 
 	$effect(() => onCollectionChange('labels', () => getLabels().refresh()));
 
@@ -66,15 +67,6 @@
 		safeAction(updateLabel({ id, name })).then((result) => {
 			if (!result) input.value = current;
 		});
-	}
-
-	async function remove(id: string) {
-		if (confirmDelete !== id) {
-			confirmDelete = id;
-			return;
-		}
-		await safeAction(deleteLabel(id));
-		confirmDelete = null;
 	}
 
 	// SECTIONS | one long scroll that snaps to a section, the one at the top is current
@@ -131,6 +123,16 @@
 		const top = stage.scrollTop + section.getBoundingClientRect().top - stage.getBoundingClientRect().top - peek;
 		stage.scrollTo({ top, behavior: 'smooth' });
 	}
+
+	// The rail's Edit view lands here with ?view=<id> and opens that view's filters
+	let editing = $state<string | null>(null);
+
+	$effect(() => {
+		const id = page.url.searchParams.get('view');
+		if (!id || !stage) return;
+		editing = id;
+		requestAnimationFrame(() => go('views'));
+	});
 
 	// The last section whose top reached the snap line, with some slack for a scroll that isn't done yet
 	function follow() {
@@ -222,7 +224,7 @@
 	<!-- VIEWS -->
 	<SettingsSection id="views" title="Views" current={tab === 'views'} onselect={() => go('views')}>
 		<div class="max-w-3xl">
-			<ViewSettings {labels} />
+			<ViewSettings {labels} bind:expanded={editing} />
 		</div>
 	</SettingsSection>
 
@@ -266,13 +268,7 @@
 									onchange={(event) => rename(label.id, event.currentTarget, label.name)}
 									onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
 								/>
-								<button
-									class={['icon-button', confirmDelete === label.id && 'bg-accent text-on-accent hover:text-on-accent']}
-									aria-label={confirmDelete === label.id ? `Confirm deleting ${label.name}` : `Delete ${label.name}`}
-									onclick={() => remove(label.id)}
-									onblur={() => (confirmDelete = null)}
-									{@attach tip(confirmDelete === label.id ? 'Click again to delete, its notes stay' : 'Delete label')}
-								>
+								<button class="icon-button" aria-label={`Delete ${label.name}`} onclick={() => deleteLabelEverywhere(label)} {@attach tip('Delete label')}>
 									<Trash2 class="size-4" />
 								</button>
 							</li>

@@ -1,5 +1,6 @@
 <script lang="ts">
     import FilterEditor from '#lib/components/FilterEditor.svelte';
+    import { deleteSavedView } from '#lib/deletions.ts';
     import SortEditor from '#lib/components/SortEditor.svelte';
     import { safeAction } from '#lib/pocketbase.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
@@ -11,19 +12,23 @@
     import { ChevronDown, ChevronUp, Plus, SlidersHorizontal, Trash2 } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
     import { flip } from 'svelte/animate';
-    import { createView, deleteView, getViews, reorderViews, updateView } from '../../routes/api/views.remote';
+    import { createView, getViews, reorderViews, updateView } from '../../routes/api/views.remote';
 
     // PROPS
-    let { labels }: { labels: Label[] } = $props()
+    let {
+        labels,
+        expanded = $bindable(null)
+    }: {
+        labels: Label[]
+        expanded?: string | null        // the view whose filters show, the rail menu can open one
+    } = $props()
 
     let views = $derived(await getViews())
 
     $effect(() => onCollectionChange('views', () => getViews().refresh()))
 
-    // ROW STATE | one open filter editor, one open icon picker, one armed delete at a time
-    let expanded = $state<string | null>(null)
+    // ROW STATE | one open icon picker at a time
     let picking = $state<string | null>(null)
-    let confirmDelete = $state<string | null>(null)
 
     // ====================================================================================================
 
@@ -79,15 +84,6 @@
         const created = await safeAction(createView({ name: `View ${number}`, icon: 'star', filter: emptyFilter(), sort: defaultSort() }))
         if(created) expanded = created.id
         creating = false
-    }
-
-    async function remove(id: string){
-        if(confirmDelete !== id){
-            confirmDelete = id
-            return
-        }
-        await safeAction(deleteView(id))
-        confirmDelete = null
     }
 </script>
 
@@ -148,12 +144,11 @@
 
                 <!-- DELETE | the last view stays -->
                 <button
-                    class={['icon-button', confirmDelete === view.id && 'bg-accent text-on-accent hover:text-on-accent']}
-                    aria-label={confirmDelete === view.id ? `Confirm deleting ${view.name}` : `Delete ${view.name}`}
-                    {@attach tip(views.length === 1 ? 'Keep at least one view' : confirmDelete === view.id ? 'Click again to delete' : 'Delete view')}
+                    class="icon-button"
+                    aria-label={`Delete ${view.name}`}
+                    {@attach tip(views.length === 1 ? 'Keep at least one view' : 'Delete view')}
                     disabled={views.length === 1}
-                    onclick={() => remove(view.id)}
-                    onblur={() => (confirmDelete = null)}
+                    onclick={() => deleteSavedView(view)}
                 >
                     <Trash2 class="size-4" />
                 </button>

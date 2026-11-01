@@ -2,12 +2,13 @@
     import { afterNavigate, goto } from '$app/navigation';
     import { resolve } from '$app/paths';
     import { page } from '$app/state';
+    import ViewMenu from '#lib/components/ViewMenu.svelte';
     import { duration, easing, rise, stagger } from '#lib/motion.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { disconnectRealtime, onCollectionChange } from '#lib/realtime.ts';
     import { VIEW_ICON_COMPONENTS } from '#lib/view_icons.ts';
     import { LogOut, Menu, Settings, X } from '@lucide/svelte';
-    import { Dialog } from 'bits-ui';
+    import { ContextMenu, Dialog } from 'bits-ui';
     import { logoutUser } from '../../routes/api/auth.remote';
     import { getViews } from '../../routes/api/views.remote';
 
@@ -52,7 +53,8 @@
     afterNavigate(() => menuOpen = false)
 
     // Grows as a circle out of the menu button and shrinks back into it
-    function spread(){
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Svelte hands every transition its node
+    function spread(_node: Element){
         const box = menuButton?.getBoundingClientRect()
         const x = box ? box.left + box.width / 2 : 0
         const y = box ? box.top + box.height / 2 : innerHeight
@@ -67,9 +69,9 @@
     }
 </script>
 
-<!-- A view id of undefined is the root | settings take no view at all -->
-{#snippet link(target: { view?: string } | 'settings', label: string, Icon: typeof Settings, active: boolean)}
-    <a href={target === 'settings' ? resolve('/(app)/settings') : resolve('/(app)/[[view]]', target)} {@attach tipAnchor} class={['item', active && 'active']} aria-label={label} aria-current={active ? 'page' : undefined}>
+<!-- A view id of undefined is the root | settings take no view at all | props come from a menu trigger -->
+{#snippet link(target: { view?: string } | 'settings', label: string, Icon: typeof Settings, active: boolean, props: Record<string, unknown> = {})}
+    <a {...props} href={target === 'settings' ? resolve('/(app)/settings') : resolve('/(app)/[[view]]', target)} {@attach tipAnchor} class={['item', active && 'active']} aria-label={label} aria-current={active ? 'page' : undefined}>
         {#if active}<span class="vt-rail-indicator indicator absolute inset-0 rounded-card bg-accent"></span>{/if}
         <!-- Hover tilts the icon inside, Firefox drops the new snapshot of a tilted element mid transition -->
         <span class="vt-rail-icon relative flex size-6"><Icon class="icon size-6" strokeWidth={1.75} /></span>
@@ -78,9 +80,9 @@
 {/snippet}
 
 <!-- A rail item with its name beside it, for the phone menu -->
-{#snippet entry(href: string, label: string, Icon: typeof Settings, active: boolean, index: number)}
+{#snippet entry(href: string, label: string, Icon: typeof Settings, active: boolean, index: number, props: Record<string, unknown> = {})}
     <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved by the caller -->
-    <a {href} class={['entry', active && 'active']} aria-current={active ? 'page' : undefined} in:rise|global={{ y: 16, delay: stagger(index), duration: 'base' }}>
+    <a {...props} {href} class={['entry', active && 'active']} aria-current={active ? 'page' : undefined} in:rise|global={{ y: 16, delay: stagger(index), duration: 'base' }}>
         <Icon class="size-6 shrink-0" strokeWidth={1.75} />
         <span class="type-title truncate text-lg">{label}</span>
     </a>
@@ -104,7 +106,18 @@
                             <nav class="flex flex-col gap-1">
                                 {#each views as view, index (view.id)}
                                     {@const Icon = VIEW_ICON_COMPONENTS[view.icon]}
-                                    {@render entry(resolve('/(app)/[[view]]', { view: index === 0 ? undefined : view.id }), view.name, Icon, openView === view.id, index)}
+                                    <ContextMenu.Root>
+                                        <ContextMenu.Trigger>
+                                            {#snippet child({ props })}
+                                                {@render entry(resolve('/(app)/[[view]]', { view: index === 0 ? undefined : view.id }), view.name, Icon, openView === view.id, index, props)}
+                                            {/snippet}
+                                        </ContextMenu.Trigger>
+                                        <ContextMenu.Portal>
+                                            <ContextMenu.Content class="menu z-[70]" collisionPadding={12}>
+                                                <ViewMenu {view} {views} current={openView === view.id} />
+                                            </ContextMenu.Content>
+                                        </ContextMenu.Portal>
+                                    </ContextMenu.Root>
                                 {/each}
                                 <hr class="my-3 border-line" />
                                 {@render entry(resolve('/(app)/settings'), 'Settings', Settings, inSettings, views.length)}
@@ -130,7 +143,18 @@
         <!-- Unkeyed on purpose, a keyed list froze the page on its second reorder -->
         <!-- eslint-disable-next-line svelte/require-each-key -->
         {#each views as view, index}
-            {@render link({ view: index === 0 ? undefined : view.id }, view.name, VIEW_ICON_COMPONENTS[view.icon], openView === view.id)}
+            <ContextMenu.Root>
+                <ContextMenu.Trigger>
+                    {#snippet child({ props })}
+                        {@render link({ view: index === 0 ? undefined : view.id }, view.name, VIEW_ICON_COMPONENTS[view.icon], openView === view.id, props)}
+                    {/snippet}
+                </ContextMenu.Trigger>
+                <ContextMenu.Portal>
+                    <ContextMenu.Content class="menu" collisionPadding={12}>
+                        <ViewMenu {view} {views} current={openView === view.id} />
+                    </ContextMenu.Content>
+                </ContextMenu.Portal>
+            </ContextMenu.Root>
         {/each}
     </div>
 
@@ -252,8 +276,8 @@
     }
 
     @media (hover: hover) and (min-width: 40rem) {
-        .item:hover .tip,
-        .item:focus-visible .tip {
+        .item:not([data-state='open']):hover .tip,
+        .item:not([data-state='open']):focus-visible .tip {
             opacity: 1;
             translate: 0 -50%;
         }

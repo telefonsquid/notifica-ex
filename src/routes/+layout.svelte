@@ -3,6 +3,7 @@
 	import { page } from '$app/state';
 	import { prefetchRoute } from '#lib/prefetch.ts';
 	import type { User } from '#lib/schemas.ts';
+	import ConfirmDialog from '#lib/ui/ConfirmDialog.svelte';
 	import ImageViewer from '#lib/ui/ImageViewer.svelte';
 	import NavigationProgress from '#lib/ui/NavigationProgress.svelte';
 	import Toaster from '#lib/ui/Toaster.svelte';
@@ -50,6 +51,9 @@
 
 <!-- TOOLTIP -->
 <Tooltip />
+
+<!-- CONFIRM DIALOG -->
+<ConfirmDialog />
 
 <!-- IMAGE VIEWER -->
 <ImageViewer />

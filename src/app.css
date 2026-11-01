@@ -370,6 +370,10 @@
         color: var(--theme-ink);
         background: var(--theme-line);
     }
+
+    &[data-disabled] {
+        opacity: 0.4;
+    }
 }
 
 @utility menu-separator {

@@ -1,5 +1,6 @@
 <script lang="ts">
     import ColorPicker from '#lib/components/ColorPicker.svelte';
+    import { deleteLabelEverywhere } from '#lib/deletions.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
     import type { Label } from '#lib/schemas.ts';
@@ -7,20 +8,20 @@
     import { Trash2 } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
     import type { ClassValue } from 'svelte/elements';
-    import { deleteLabel, updateLabel } from '../../routes/api/labels.remote';
+    import { updateLabel } from '../../routes/api/labels.remote';
 
     // PROPS
     let {
         label,
+        open = $bindable(false),
         ondelete,
         class: className = ''
     }: {
         label: Label
+        open?: boolean                  // the tab's right click menu opens it too
         ondelete?: () => void           // the label is gone from every note, the open one drops it too
         class?: ClassValue
     } = $props()
-
-    let confirmDelete = $state(false)
 
     // Renames on Enter or leaving the field, an empty name goes back to the old one
     function rename(input: HTMLInputElement){
@@ -35,17 +36,13 @@
     }
 
     async function remove(){
-        if(!confirmDelete){
-            confirmDelete = true
-            return
-        }
-        if(await safeAction(deleteLabel(label.id))) ondelete?.()
-        confirmDelete = false
+        open = false
+        if(await deleteLabelEverywhere(label)) ondelete?.()
     }
 </script>
 
 <!-- The tab's name opens it, changes apply to the label on every note -->
-<Popover.Root onOpenChange={(open) => { if(!open) confirmDelete = false }}>
+<Popover.Root bind:open>
     <Popover.Trigger class={['truncate text-left uppercase hover:underline', className]} aria-label={`Edit label ${label.name}`}>
         {label.name}
     </Popover.Trigger>
@@ -65,15 +62,9 @@
                 class="min-w-0 flex-1 rounded-control bg-card px-3 py-2 text-sm outline-none"
                 onchange={(event) => rename(event.currentTarget)}
                 onkeydown={(event) => { if(event.key === 'Enter') event.currentTarget.blur() }}
-                {@attach (node) => node.focus()}
+                {@attach (node) => node.focus({ preventScroll: true })}     // focus comes before the popover is placed and would jump the page
             />
-            <button
-                class={['icon-button', confirmDelete && 'bg-accent text-on-accent hover:text-on-accent']}
-                aria-label={confirmDelete ? `Confirm deleting ${label.name}` : `Delete ${label.name}`}
-                onclick={remove}
-                onblur={() => confirmDelete = false}
-                {@attach tip(confirmDelete ? 'Click again to delete it from every note' : 'Delete label')}
-            >
+            <button class="icon-button" aria-label={`Delete ${label.name}`} onclick={remove} {@attach tip('Delete label')}>
                 <Trash2 class="size-4" />
             </button>
         </Popover.Content>

@@ -1,5 +1,6 @@
 <script lang="ts">
     import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
+    import { confirmNoteRemoval } from '#lib/deletions.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
@@ -40,7 +41,6 @@
     let owned = $derived(notes.filter((note) => note.owner === me))
     let allPinned = $derived(owned.every((note) => note.pinned))
     let allArchived = $derived(owned.every((note) => note.archived))
-    let confirmDelete = $state(false)
 
     // Deleting a note shared with you only takes you off it
     let removeLabel = $derived(!owned.length ? 'Leave' : owned.length < notes.length ? 'Delete or leave' : 'Delete')
@@ -79,12 +79,11 @@
         Promise.all(attached.map((reminder) => safeAction(removeReminder(reminder.id))))
     }
 
+    // The menu is gone by the time the answer comes, so the notes are held on to first
     async function remove(){
-        if(!confirmDelete){
-            confirmDelete = true
-            return
-        }
-        await each((note) => note.owner === me ? deleteNote(note.id) : leaveNote(note.id))
+        const among = notes
+        if(!await confirmNoteRemoval(among.length, owned.length)) return
+        await each((note) => note.owner === me ? deleteNote(note.id) : leaveNote(note.id), among)
         onfinish?.()
     }
 </script>
@@ -180,7 +179,7 @@
 {/if}
 
 <!-- Asks once more in place before anything is gone -->
-<Menu.Item class={['menu-item', confirmDelete && 'bg-accent text-on-accent data-highlighted:bg-accent data-highlighted:text-on-accent']} closeOnSelect={confirmDelete} onSelect={remove}>
+<Menu.Item class="menu-item" onSelect={remove}>
     {#if owned.length}<Trash2 class="size-4" />{:else}<LogOut class="size-4" />{/if}
-    {confirmDelete ? `Click again to ${removeLabel.toLowerCase()}` : removeLabel}{notes.length > 1 ? ` ${notes.length} notes` : ''}
+    {removeLabel}{notes.length > 1 ? ` ${notes.length} notes` : ''}
 </Menu.Item>
