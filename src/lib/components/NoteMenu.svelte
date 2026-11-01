@@ -1,5 +1,6 @@
 <script lang="ts">
     import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
+    import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
@@ -61,9 +62,16 @@
         each((note) => updateNote({ id: note.id, pinned: !allPinned }))
     }
 
+    // Archiving offers to take it back, unarchiving needs no undo since nothing leaves the view for good
     async function archive(){
-        await each((note) => updateNote({ id: note.id, archived: !allArchived, pinned: allArchived && note.pinned }))
+        const before = notes.map(({ id, pinned }) => ({ id, pinned }))
+        const archiving = !allArchived
+        await each((note) => updateNote({ id: note.id, archived: archiving, pinned: !archiving && note.pinned }))
         onfinish?.()
+        if(!archiving) return
+
+        const undo = () => Promise.all(before.map(({ id, pinned }) => safeAction(updateNote({ id, archived: false, pinned }))))
+        notify(before.length === 1 ? 'Note archived.' : `${before.length} notes archived.`, { type: 'info', action: { label: 'Undo', run: undo } })
     }
 
     // Copies leave reminders behind, two pushes for the same thing would only confuse

@@ -1,15 +1,23 @@
 // TYPES
 export type NotificationType = 'success' | 'error' | 'info'
 
+// One button on the toast, like Undo | it dismisses the toast once pressed
+export type NotificationAction = {
+    label: string
+    run: () => unknown
+}
+
 type NotificationOptions = {
     duration?: number
     type?: NotificationType
+    action?: NotificationAction
 }
 
 export type Notification = {
     id: number
     content: string
     type: NotificationType
+    action?: NotificationAction
 }
 
 // STATE | rendered once by Toaster.svelte in the root layout
@@ -22,7 +30,7 @@ export function notify(content: string, options?: NotificationOptions){
     const duration = options?.duration ?? (type === 'error' ? 8000 : 4500)
 
     const id = nextId++
-    notifications.push({ id, content, type })
+    notifications.push({ id, content, type, action: options?.action })
     setTimeout(() => dismiss(id), duration)
 }
 

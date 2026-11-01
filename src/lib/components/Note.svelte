@@ -27,6 +27,7 @@
     import { imagesIn, imageUrl, uploadImages } from '#lib/images.ts';
     import { rise, unfold } from '#lib/motion.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
+    import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { IMAGE_TYPES, type Label, type Note, type NoteContent, type Person, type Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
@@ -224,10 +225,16 @@
     })
 
     // ACTIONS
-    function archive(){
+    // Archiving closes the note and offers to take it back, the pin included
+    async function archive(){
+        const pinned = draft.pinned
         draft.archived = !draft.archived
         if(draft.archived) draft.pinned = false     // pinned only matters among active notes
         onclose?.()
+        if(!draft.archived) return
+
+        const noteId = await save()
+        if(noteId) notify('Note archived.', { type: 'info', action: { label: 'Undo', run: () => safeAction(updateNote({ id: noteId, archived: false, pinned })) } })
     }
 
     async function remove(){

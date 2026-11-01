@@ -19,6 +19,12 @@
         >
             <Icon class={['mt-0.5 size-4 shrink-0', notification.type === 'error' ? 'text-accent' : 'text-secondary']} />
             <p class="flex-1 py-px whitespace-pre-line">{notification.content}</p>
+            {#if notification.action}
+                {@const action = notification.action}
+                <button class="type-meta motion-interactive -my-1 rounded-control px-2.5 py-1.5 text-accent hover:bg-accent-soft" onclick={() => { action.run(); dismiss(notification.id) }}>
+                    {action.label}
+                </button>
+            {/if}
             <button
                 class="motion-interactive -my-1 rounded-control p-1.5 text-ink-faint hover:bg-accent-soft hover:text-ink"
                 aria-label="Dismiss"

@@ -42,7 +42,7 @@
         const id = await ensureNote()
         const person = id && await safeAction(shareNote({ id, email: address }))
         busy = false
-        if(!id) notify('Write something first, an empty note can not be shared.', { type: 'error' })
+        if(!id) notify('Write something first, an empty note cannot be shared.', { type: 'error' })
         if(person) email = ''
     }
 

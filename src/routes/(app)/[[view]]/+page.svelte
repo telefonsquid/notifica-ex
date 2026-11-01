@@ -112,12 +112,17 @@
 		searchOpen = false;
 	}
 
-	// Slash jumps to the search like on most sites
-	function focusSearch(event: KeyboardEvent) {
+	// SHORTCUTS | slash jumps to the search like on most sites, n starts a new note | never while typing
+	function shortcut(event: KeyboardEvent) {
 		const target = event.target as HTMLElement;
-		if (event.key !== '/' || target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
-		event.preventDefault();
-		openSearch();
+		if (event.ctrlKey || event.metaKey || event.altKey || target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return;
+		if (event.key === '/') {
+			event.preventDefault();
+			openSearch();
+		} else if (event.key === 'n' && !editing && !document.querySelector('[role=menu], [role=dialog]')) {
+			event.preventDefault();
+			edit(null);
+		}
 	}
 
 	// EDITING | one card at a time opens in place, a new note grows out of the create button
@@ -297,7 +302,7 @@
 	function onKey(event: KeyboardEvent) {
 		const menuOpen = event.defaultPrevented || document.querySelector('[role=menu]'); // Escape closes the menu first, the selection stays
 		if (event.key === 'Escape' && selection.length && !editing && !menuOpen) selected.clear();
-		else focusSearch(event);
+		else shortcut(event);
 	}
 
 	// QUICK ACTIONS ON CARDS
@@ -487,7 +492,7 @@
 		</div>
 
 		<!-- CREATE | grows into a blank note at the front of the grid, gone while that one is open -->
-		<button bind:this={createButton} class={['create grid size-16 shrink-0 place-items-center rounded-full text-on-accent', editing?.fresh && 'away']} aria-label="New note" tabindex={editing?.fresh ? -1 : 0} onpointerenter={editor.load} onfocus={editor.load} onclick={() => edit(null)} {@attach tip('New note')}>
+		<button bind:this={createButton} class={['create grid size-16 shrink-0 place-items-center rounded-full text-on-accent', editing?.fresh && 'away']} aria-label="New note" tabindex={editing?.fresh ? -1 : 0} onpointerenter={editor.load} onfocus={editor.load} onclick={() => edit(null)} {@attach tip('New note, or press N')}>
 			<Plus class="plus size-7" strokeWidth={2.25} />
 		</button>
 	</div>
