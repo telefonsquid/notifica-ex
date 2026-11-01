@@ -1,7 +1,8 @@
 import { safeAction } from '#lib/pocketbase.ts';
-import type { Label, View } from '#lib/schemas.ts';
+import type { Label, Note, View } from '#lib/schemas.ts';
 import { confirmAction } from '#lib/singletons/confirm.svelte.ts';
 import { deleteLabel } from '../routes/api/labels.remote';
+import { deleteNote, leaveNote } from '../routes/api/notes.remote';
 import { deleteView } from '../routes/api/views.remote';
 
 /*
@@ -40,4 +41,12 @@ export function confirmNoteRemoval(count: number, owned: number){
                 : 'This can’t be undone, its images and reminders go with it.',
         action: leaving ? 'Leave' : 'Delete'
     })
+}
+
+// Asks once for the whole batch | resolves true once every note is gone or left
+export async function removeNotes(notes: Note[], me: string){
+    const owned = notes.filter((note) => note.owner === me).length
+    if(!await confirmNoteRemoval(notes.length, owned)) return false
+    await Promise.all(notes.map((note) => safeAction(note.owner === me ? deleteNote(note.id) : leaveNote(note.id))))
+    return true
 }

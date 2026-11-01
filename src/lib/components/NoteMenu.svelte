@@ -1,13 +1,13 @@
 <script lang="ts">
     import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
-    import { confirmNoteRemoval } from '#lib/deletions.ts';
+    import { removeNotes } from '#lib/deletions.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
-    import { createNote, deleteNote, leaveNote, updateNote } from '../../routes/api/notes.remote';
+    import { createNote, updateNote } from '../../routes/api/notes.remote';
     import { removeReminder } from '../../routes/api/reminders.remote';
 
     /*
@@ -83,10 +83,7 @@
 
     // The menu is gone by the time the answer comes, so the notes are held on to first
     async function remove(){
-        const among = notes
-        if(!await confirmNoteRemoval(among.length, owned.length)) return
-        await each((note) => note.owner === me ? deleteNote(note.id) : leaveNote(note.id), among)
-        onfinish?.()
+        if(await removeNotes(notes, me)) onfinish?.()
     }
 </script>
 

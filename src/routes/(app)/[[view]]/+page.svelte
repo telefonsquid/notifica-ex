@@ -9,6 +9,7 @@
 	import { toggleTask } from '#lib/markdown.ts';
 	import { masonry, pack } from '#lib/masonry.ts';
 	import { cssEasing, duration, easing, glide, measure, rise, stagger, unfold } from '#lib/motion.ts';
+	import { removeNotes } from '#lib/deletions.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
 	import { tip } from '#lib/tooltip.svelte.ts';
@@ -334,9 +335,23 @@
 		return selected.has(note.id) ? selection : [note];
 	}
 
+	// Keys meant for a field stay there
+	function typing(event: KeyboardEvent) {
+		return event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName));
+	}
+
+	let removing = false; // A second Delete while the dialog asks opens no second one
+	async function removeSelection() {
+		if (removing) return;
+		removing = true;
+		if (await removeNotes(selection, me)) selected.clear();
+		removing = false;
+	}
+
 	function onKey(event: KeyboardEvent) {
 		const menuOpen = event.defaultPrevented || document.querySelector('[role=menu]'); // Escape closes the menu first, the selection stays
 		if (event.key === 'Escape' && selection.length && !editing && !menuOpen) selected.clear();
+		else if (event.key === 'Delete' && selection.length && !editing && !menuOpen && !typing(event)) removeSelection();
 		else focusSearch(event);
 	}
 
