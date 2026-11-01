@@ -125,7 +125,7 @@
                         <Icon class="size-5" strokeWidth={1.75} />
                     </Popover.Trigger>
                     <Popover.Portal>
-                        <Popover.Content sideOffset={8} collisionPadding={12} class="icons z-[60] flex w-[18rem] flex-col gap-3 rounded-card border border-line-strong bg-raised p-3 text-ink shadow-2xl" aria-label="Icons">
+                        <Popover.Content sideOffset={8} collisionPadding={12} class="popover z-[60] flex w-[18rem] flex-col gap-3 rounded-card border border-line-strong bg-raised p-3 text-ink shadow-2xl" aria-label="Icons">
                             <!-- The curated icons, or what the search found -->
                             <div class="grid max-h-[14.5rem] grid-cols-6 gap-1 overflow-y-auto">
                                 {#each query.trim() ? found.slice(0, RESULTS) : VIEW_ICONS as name (name)}
@@ -231,20 +231,5 @@
         color: var(--theme-on-accent);
         font-size: 0.6875rem;
         line-height: 1;
-    }
-
-    /* Grows out of the icon that opened it */
-    :global(.icons[data-state='open']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: icons-in var(--duration-base) var(--ease-spring);
-    }
-
-    :global(.icons[data-state='closed']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: icons-in var(--duration-fast) var(--ease-in) reverse forwards;
-    }
-
-    @keyframes icons-in {
-        from { opacity: 0; scale: 0.94; }
     }
 </style>

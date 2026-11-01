@@ -50,7 +50,7 @@
             align="end"
             sideOffset={8}
             collisionPadding={12}
-            class="label-adder z-[60] flex max-h-72 w-64 flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl"
+            class="popover z-[60] flex max-h-72 w-64 flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl"
         >
             <form class="border-b border-line p-2" onsubmit={(event) => { event.preventDefault(); submit() }}>
                 <input
@@ -96,19 +96,5 @@
         border-top: none;
         border-bottom: 1px dashed var(--theme-line-strong);
         border-radius: 0 0 0.375rem 0.375rem;
-    }
-
-    :global(.label-adder[data-state='open']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: adder-in var(--duration-base) var(--ease-spring);
-    }
-
-    :global(.label-adder[data-state='closed']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: adder-in var(--duration-fast) var(--ease-in) reverse forwards;
-    }
-
-    @keyframes adder-in {
-        from { opacity: 0; scale: 0.92; }
     }
 </style>

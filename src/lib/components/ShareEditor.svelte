@@ -34,7 +34,7 @@
             align="end"
             sideOffset={8}
             collisionPadding={12}
-            class="z-[60] flex max-h-80 w-64 flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl"
+            class="popover z-[60] flex max-h-80 w-64 flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl"
         >
             {#if people.length > 6}
                 <div class="border-b border-line p-2">

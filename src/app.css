@@ -438,6 +438,19 @@
     from { opacity: 0; scale: 0.94; }
 }
 
+/* POPOVER | a floating panel grows out of whatever opened it and shrinks back into it, the look stays with each panel */
+@utility popover {
+    transform-origin: var(--bits-popover-content-transform-origin);
+
+    &[data-state='open'] {
+        animation: menu-in var(--duration-base) var(--ease-spring);
+    }
+
+    &[data-state='closed'] {
+        animation: menu-in var(--duration-fast) var(--ease-in) reverse forwards;
+    }
+}
+
 /* BASE ==================================================================================================== */
 @layer base {
 

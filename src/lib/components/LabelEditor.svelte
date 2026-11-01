@@ -52,7 +52,7 @@
             align="start"
             sideOffset={8}
             collisionPadding={12}
-            class="label-editor z-[60] flex w-64 items-center gap-2 rounded-card border border-line-strong bg-raised p-2 text-ink shadow-2xl"
+            class="popover z-[60] flex w-64 items-center gap-2 rounded-card border border-line-strong bg-raised p-2 text-ink shadow-2xl"
         >
             <ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} class="ml-1" />
             <input
@@ -70,19 +70,3 @@
         </Popover.Content>
     </Popover.Portal>
 </Popover.Root>
-
-<style>
-    :global(.label-editor[data-state='open']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: label-editor-in var(--duration-base) var(--ease-spring);
-    }
-
-    :global(.label-editor[data-state='closed']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: label-editor-in var(--duration-fast) var(--ease-in) reverse forwards;
-    }
-
-    @keyframes label-editor-in {
-        from { opacity: 0; scale: 0.92; }
-    }
-</style>
