@@ -2,7 +2,10 @@ services:
 
   web:
     container_name: notifica-ex-web
-    build: .
+    build:
+      context: .
+      args:
+        - "ORIGIN=http://localhost:3000" # same as ORIGIN below, the build needs it too
     ports:
       - "3000:3000" # EXPOSED-WEB-PORT:CONTAINER-PORT
     environment:
