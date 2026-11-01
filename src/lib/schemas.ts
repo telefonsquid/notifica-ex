@@ -221,8 +221,12 @@ export const noteSchema = recordModelSchema.extend({
     owner: idSchema,
     ...noteContentSchema.shape,
     position: notePositionSchema, // order in a manual sort
-    images: z.array(fileNameSchema).max(LIMITS.NOTE_IMAGES).default([]) // uploaded through /api/notes/[id]/images, never part of a draft
+    images: z.array(fileNameSchema).max(LIMITS.NOTE_IMAGES).default([]), // uploaded through /api/notes/[id]/images, never part of a draft
+    shared: z.array(idSchema).max(LIMITS.NOTE_SHARES).default([]) // people who may see and edit it besides the owner
 });
+
+// What the others on a shared note get to know about someone
+export type Person = { id: string, name: string }
 
 
 

@@ -1,7 +1,7 @@
 import { getRequestEvent } from '$app/server';
 import { unwrap } from '#lib/pocketbase.ts';
 import { idSchema } from '#lib/schema_limits.ts';
-import { setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type User, type UserSummary } from '#lib/schemas.ts';
+import { setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type Person, type User, type UserSummary } from '#lib/schemas.ts';
 import { confirmPasswordReset, getAll, getOne, insertOnePartial, requestPasswordReset, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { hasPermission, restrictAccess } from '#lib/user.ts';
@@ -19,6 +19,16 @@ export const getUsers = query(async () => {
     restrictAccess(locals.user, 'admin')
     const users = unwrap(await getAll('users', { sort: 'name' }), 'Could not load users.')
     return users.map(summary)
+
+});
+
+// Everyone a note can be shared with, names only so the others' mail addresses stay private
+export const getPeople = query(async (): Promise<Person[]> => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    const users = unwrap(await getAll('users', { filter: 'state = "active"', sort: 'name' }), 'Could not load people.')
+    return users.map(({ id, name, email }) => ({ id, name: name || email.split('@')[0] }))
 
 });
 

@@ -4,9 +4,9 @@
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
-    import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
-    import { createNote, deleteNote, updateNote } from '../../routes/api/notes.remote';
+    import { createNote, deleteNote, leaveNote, updateNote } from '../../routes/api/notes.remote';
     import { removeReminder } from '../../routes/api/reminders.remote';
 
     /*
@@ -18,6 +18,7 @@
     let {
         notes,
         labels,
+        me,
         reminders,
         selected = false,
         onselect,
@@ -26,6 +27,7 @@
     }: {
         notes: Note[]                                           // one card, or the whole selection
         labels: Label[]
+        me: string                                              // the signed in user, owner only actions skip notes shared with them
         reminders: Map<string, Reminder[]>
         selected?: boolean
         onselect?: () => void                                   // adds the card to the selection or takes it out
@@ -35,13 +37,17 @@
 
     let single = $derived(notes.length === 1 ? notes[0] : null)
     let attached = $derived(notes.flatMap((note) => reminders.get(note.id) ?? []))
-    let allPinned = $derived(notes.every((note) => note.pinned))
-    let allArchived = $derived(notes.every((note) => note.archived))
+    let owned = $derived(notes.filter((note) => note.owner === me))
+    let allPinned = $derived(owned.every((note) => note.pinned))
+    let allArchived = $derived(owned.every((note) => note.archived))
     let confirmDelete = $state(false)
 
+    // Deleting a note shared with you only takes you off it
+    let removeLabel = $derived(!owned.length ? 'Leave' : owned.length < notes.length ? 'Delete or leave' : 'Delete')
+
     // ACTIONS | every note gets its own update, the list stays short enough for that
-    async function each(change: (note: Note) => Promise<unknown>){
-        await Promise.all(notes.map((note) => safeAction(change(note))))
+    async function each(change: (note: Note) => Promise<unknown>, among = notes){
+        await Promise.all(among.map((note) => safeAction(change(note))))
     }
 
     function paint(color: NoteColor){
@@ -50,22 +56,22 @@
 
     // A label goes on every note once one lacks it, otherwise it comes off all of them
     function toggleLabel(label: Label){
-        const add = !notes.every((note) => note.labels.includes(label.id))
-        each((note) => updateNote({ id: note.id, labels: add ? [...new Set([...note.labels, label.id])] : note.labels.filter((id) => id !== label.id) }))
+        const add = !owned.every((note) => note.labels.includes(label.id))
+        each((note) => updateNote({ id: note.id, labels: add ? [...new Set([...note.labels, label.id])] : note.labels.filter((id) => id !== label.id) }), owned)
     }
 
     function pin(){
-        each((note) => updateNote({ id: note.id, pinned: !allPinned }))
+        each((note) => updateNote({ id: note.id, pinned: !allPinned }), owned)
     }
 
     async function archive(){
-        await each((note) => updateNote({ id: note.id, archived: !allArchived, pinned: allArchived && note.pinned }))
+        await each((note) => updateNote({ id: note.id, archived: !allArchived, pinned: allArchived && note.pinned }), owned)
         onfinish?.()
     }
 
-    // Copies leave reminders behind, two pushes for the same thing would only confuse
+    // Copies leave reminders behind, two pushes for the same thing would only confuse | someone else's labels stay with them
     async function duplicate(){
-        await each(({ title, body, color, labels, pinned, archived }) => createNote({ title, body, color, labels, pinned, archived }))
+        await each((note) => createNote({ title: note.title, body: note.body, color: note.color, labels: note.owner === me ? note.labels : [], pinned: note.pinned, archived: note.archived }))
         onfinish?.()
     }
 
@@ -78,7 +84,7 @@
             confirmDelete = true
             return
         }
-        await each((note) => deleteNote(note.id))
+        await each((note) => note.owner === me ? deleteNote(note.id) : leaveNote(note.id))
         onfinish?.()
     }
 </script>
@@ -115,13 +121,14 @@
     </Menu.SubContent>
 </Menu.Sub>
 
-<!-- LABELS | a dash marks labels only some of the notes carry -->
+<!-- LABELS | a dash marks labels only some of the notes carry, notes shared with you keep their owner's -->
+{#if owned.length}
 <Menu.Sub>
     <Menu.SubTrigger class="menu-item"><Tag class="size-4" />Labels<ChevronRight class="ml-auto size-3.5" /></Menu.SubTrigger>
     <Menu.SubContent class="menu max-h-80 overflow-y-auto" sideOffset={6}>
         {#each labels as label (label.id)}
-            {@const count = notes.filter((note) => note.labels.includes(label.id)).length}
-            <Menu.CheckboxItem class="menu-item" checked={count === notes.length} indeterminate={count > 0 && count < notes.length} closeOnSelect={false} onCheckedChange={() => toggleLabel(label)}>
+            {@const count = owned.filter((note) => note.labels.includes(label.id)).length}
+            <Menu.CheckboxItem class="menu-item" checked={count === owned.length} indeterminate={count > 0 && count < owned.length} closeOnSelect={false} onCheckedChange={() => toggleLabel(label)}>
                 {#snippet children({ checked, indeterminate })}
                     <span class="note-mark h-1.5 w-3 shrink-0 rounded-full" data-note={label.color || undefined}></span>
                     <span class="truncate">{label.name}</span>
@@ -133,6 +140,7 @@
         {/each}
     </Menu.SubContent>
 </Menu.Sub>
+{/if}
 
 <!-- REMINDERS | editing needs the open card, so only a single note offers it -->
 {#if single && onedit}
@@ -159,15 +167,20 @@
 
 <Menu.Separator class="menu-separator" />
 
-<Menu.Item class="menu-item" onSelect={pin}>
-    {#if allPinned}<PinOff class="size-4" />Unpin{:else}<Pin class="size-4" />Pin{/if}
-</Menu.Item>
+{#if owned.length}
+    <Menu.Item class="menu-item" onSelect={pin}>
+        {#if allPinned}<PinOff class="size-4" />Unpin{:else}<Pin class="size-4" />Pin{/if}
+    </Menu.Item>
+{/if}
 <Menu.Item class="menu-item" onSelect={duplicate}><Copy class="size-4" />Duplicate</Menu.Item>
-<Menu.Item class="menu-item" onSelect={archive}>
-    {#if allArchived}<ArchiveRestore class="size-4" />Unarchive{:else}<Archive class="size-4" />Archive{/if}
-</Menu.Item>
+{#if owned.length}
+    <Menu.Item class="menu-item" onSelect={archive}>
+        {#if allArchived}<ArchiveRestore class="size-4" />Unarchive{:else}<Archive class="size-4" />Archive{/if}
+    </Menu.Item>
+{/if}
 
 <!-- Asks once more in place before anything is gone -->
 <Menu.Item class={['menu-item', confirmDelete && 'bg-accent text-on-accent data-highlighted:bg-accent data-highlighted:text-on-accent']} closeOnSelect={confirmDelete} onSelect={remove}>
-    <Trash2 class="size-4" />{confirmDelete ? 'Click again to delete' : 'Delete'}{notes.length > 1 ? ` ${notes.length} notes` : ''}
+    {#if owned.length}<Trash2 class="size-4" />{:else}<LogOut class="size-4" />{/if}
+    {confirmDelete ? `Click again to ${removeLabel.toLowerCase()}` : removeLabel}{notes.length > 1 ? ` ${notes.length} notes` : ''}
 </Menu.Item>

@@ -137,6 +137,26 @@ export async function getOwned<K extends OwnedCollection>(collectionName: K, id:
 
 
 
+// SHARED NOTES | the owner's notes plus the ones others shared with them
+export async function getAllNotesFor(user: string, options?: Omit<FetchOptions, 'filter'>) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('owner = {:user} || shared ?= {:user}', { user })
+    return await pbErrorHandler(pb.collection('notes').getFullList({ ...options, filter }) as Promise<CollectionMap['notes'][]>)
+}
+
+export async function getNoteFor(id: string, user: string) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('id = {:id} && (owner = {:user} || shared ?= {:user})', { id, user })
+    return await pbErrorHandler(pb.collection('notes').getFirstListItem(filter) as Promise<CollectionMap['notes']>)
+}
+
+export async function leaveNote(id: string, user: string) {
+    const pb = await getPbAdminConnection()
+    return await pbErrorHandler(pb.collection('notes').update(id, { 'shared-': [user] }) as Promise<CollectionMap['notes']>)
+}
+
+
+
 // SPECIFIC FUNCTIONS =====================================================================
 export async function getDueReminders(now: Date) {
     const pb = await getPbAdminConnection()

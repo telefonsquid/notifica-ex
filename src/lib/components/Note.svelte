@@ -24,18 +24,19 @@
     import LabelEditor from '#lib/components/LabelEditor.svelte';
     import ReminderList from '#lib/components/ReminderList.svelte';
     import NoteImages from '#lib/components/NoteImages.svelte';
+    import ShareEditor from '#lib/components/ShareEditor.svelte';
     import { IMAGE_TYPES, imagesIn, shrink, uploadImage } from '#lib/images.ts';
     import { rise, unfold } from '#lib/motion.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
     import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
-    import type { Label, Note, NoteContent, Reminder } from '#lib/schemas.ts';
+    import type { Label, Note, NoteContent, Person, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, ImagePlus, Pin, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pin, Trash2, X } from '@lucide/svelte';
     import { untrack } from 'svelte';
-    import { createNote, deleteNote, removeImage, updateNote } from '../../routes/api/notes.remote';
+    import { createNote, deleteNote, leaveNote, removeImage, shareNote, updateNote } from '../../routes/api/notes.remote';
 
     /*
         One note, closed as a card in the grid or open for editing. Opening keeps every element
@@ -49,6 +50,8 @@
         closing = false,
         labels,
         reminders,
+        me,
+        people,
         selected = false,
         focus,
         onopen,
@@ -63,6 +66,8 @@
         closing?: boolean                                       // the controls fade out before the card shrinks
         labels: Label[]
         reminders: Reminder[]
+        me: string                                              // the signed in user
+        people: Person[]                                        // everyone with an account, for sharing and the faces on shared notes
         selected?: boolean
         focus?: string                                          // reminder to open right away, see ReminderList
         onopen?: () => void                                     // a click on the closed card, opens it or joins the selection
@@ -156,17 +161,25 @@
         if(open) loadEditor()
     })
 
-    // IMAGES | stored apart from the draft, uploads show as local previews until they're through
+    // IMAGES AND PEOPLE | stored apart from the draft, uploads show as local previews until they're through
     let images = $state(initial?.images ?? [])
-    let imagesAt = initial?.updated ?? ''
+    let shared = $state(initial?.shared ?? [])
+    let extrasAt = initial?.updated ?? ''
     let uploads = $state<{ key: string, url: string }[]>([])
     let picker = $state<HTMLInputElement>()
 
-    // A copy older than the last upload or removal is stale
+    // A copy older than the last change made here is stale
     $effect.pre(() => {
-        if(!note || uploads.length || note.updated < imagesAt) return
-        images = note.images ?? []
+        if(!note || note.updated < extrasAt) return
+        if(!uploads.length) images = note.images ?? []
+        shared = note.shared ?? []
     })
+
+    function stored(result: Note){
+        images = result.images
+        shared = result.shared
+        extrasAt = result.updated
+    }
 
     async function addImages(files: File[]){
         const room = LIMITS.NOTE_IMAGES - images.length - uploads.length
@@ -180,10 +193,7 @@
         const noteId = await save(true)
         for(const [index, file] of files.entries()){
             const result = noteId && await safeAction(shrink(file).then((small) => uploadImage(noteId, small)))
-            if(result){
-                images = result.images
-                imagesAt = result.updated
-            }
+            if(result) stored(result)
             URL.revokeObjectURL(queued[index].url)
             uploads = uploads.filter((upload) => upload.key !== queued[index].key)
         }
@@ -193,7 +203,20 @@
         if(!id) return
         images = images.filter((image) => image !== name)
         const result = await safeAction(removeImage({ id, name }))
-        if(result) imagesAt = result.updated
+        if(result) stored(result)
+    }
+
+    // SHARING | the owner picks who else sees the note, the others see whose it is
+    let owned = $derived(!note || note.owner === me)
+    let names = $derived(new Map(people.map((person) => [person.id, person.name])))
+    let others = $derived((owned ? shared : [note!.owner, ...shared.filter((person) => person !== me)]).map((person) => ({ id: person, name: names.get(person) ?? 'Someone' })))
+    let othersTip = $derived(owned ? `Shared with ${others.map((person) => person.name).join(', ')}` : `From ${others[0]?.name}`)
+
+    async function share(list: string[]){
+        shared = list
+        const noteId = await save(true)
+        const result = noteId && await safeAction(shareNote({ id: noteId, people: list }))
+        if(result) stored(result)
     }
 
     // Pasted or dropped onto the open note | caught before the editor, which would ignore them or paste a file name
@@ -249,7 +272,7 @@
             return
         }
         await queue
-        if(id && !await safeAction(deleteNote(id))) return
+        if(id && !await safeAction(owned ? deleteNote(id) : leaveNote(id))) return
         deleted = true
         onclose?.()
     }
@@ -341,12 +364,24 @@
     <button class="icon-button" aria-label="Add images" onclick={() => picker?.click()} {@attach tip('Add images')}>
         <ImagePlus class="size-4" />
     </button>
+    {#if owned}
+        <ShareEditor people={people.filter((person) => person.id !== me)} {shared} onchange={share} />
+    {/if}
     <ColorPicker value={draft.color} onpick={(color) => draft.color = color} label="Note color" class="ml-1 mr-2" />
-    <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
-        {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
-    </button>
-    <button class={['icon-button', confirmDelete && 'bg-accent text-on-accent hover:text-on-accent']} aria-label={confirmDelete ? 'Confirm delete' : 'Delete'} onclick={remove} onblur={() => confirmDelete = false} {@attach tip(confirmDelete ? 'Click again to delete' : 'Delete note')}>
-        <Trash2 class="size-4" />
+    {#if owned}
+        <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
+            {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
+        </button>
+    {/if}
+    <!-- Someone else's note can only be left, it stays with its owner -->
+    <button
+        class={['icon-button', confirmDelete && 'bg-accent text-on-accent hover:text-on-accent']}
+        aria-label={confirmDelete ? `Confirm ${owned ? 'delete' : 'leave'}` : owned ? 'Delete' : 'Leave'}
+        onclick={remove}
+        onblur={() => confirmDelete = false}
+        {@attach tip(confirmDelete ? `Click again to ${owned ? 'delete' : 'leave'}` : owned ? 'Delete note' : 'Leave this note')}
+    >
+        {#if owned}<Trash2 class="size-4" />{:else}<LogOut class="size-4" />{/if}
     </button>
 {/snippet}
 
@@ -360,7 +395,7 @@
     {/if}
 
     <!-- LABELS | folder tabs on the top or bottom edge, named on hover and while open, the add tab keeps to the far end -->
-    {#if tabs.length || open}
+    {#if tabs.length || (open && owned)}
         <ul class="tabs absolute flex gap-1" aria-label="Labels">
             {#each tabs as label (label.id)}
                 <li class="tab note-mark type-meta flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
@@ -376,7 +411,7 @@
                     {/if}
                 </li>
             {/each}
-            {#if open}
+            {#if open && owned}
                 <li class="adder-tab extra ml-auto shrink-0" in:appear out:unfold={{ axis: 'x' }}>
                     <LabelAdder class="h-full" {labels} taken={draft.labels} onadd={(labelId) => draft.labels = [...draft.labels, labelId]} />
                 </li>
@@ -410,7 +445,7 @@
         }} />
 
         <!-- TITLE | colour, archive and delete join the pin up here once the note is wide enough -->
-        {#if open || draft.title || draft.pinned}
+        {#if open || draft.title || draft.pinned || others.length}
             <header class={['flex items-start gap-2', !open && 'pointer-events-none']} in:appear out:unfold>
                 <h3
                     class={['title type-title min-w-0 flex-1 text-lg leading-snug break-words outline-none', !draft.title && 'blank']}
@@ -423,13 +458,25 @@
                 >{initialTitle}</h3>
                 <!-- One row with the pin, so every button keeps the same distance -->
                 <div class="-my-1 -mr-2 flex items-center gap-0.5">
+                    {#if others.length}
+                        <!-- The others on a shared note, the owner first when it's someone else's -->
+                        <span class="pointer-events-auto relative z-10 mr-1 flex -space-x-1.5" role="img" aria-label={othersTip} {@attach tip(othersTip)}>
+                            {#each others.slice(0, 3) as person (person.id)}
+                                <span class="face type-meta grid size-6 place-items-center rounded-full bg-secondary-soft text-ink">{person.name.slice(0, 1).toUpperCase()}</span>
+                            {/each}
+                            {#if others.length > 3}
+                                <span class="face type-meta grid size-6 place-items-center rounded-full bg-line text-ink-muted">+{others.length - 3}</span>
+                            {/if}
+                        </span>
+                    {/if}
                     {#if open}
                         <div class="extra hidden items-center gap-0.5 @min-[26rem]/note:flex" in:appear out:unfold={{ axis: 'x' }}>{@render actions()}</div>
                     {/if}
-                    {#if open || draft.pinned}
+                    {#if (open && owned) || draft.pinned}
                         <button
                             class={['icon-button', draft.pinned ? 'text-accent hover:text-accent' : 'extra']}
                             tabindex={open ? 0 : -1}
+                            disabled={!owned}
                             aria-label={draft.pinned ? 'Unpin' : 'Pin'}
                             aria-pressed={draft.pinned}
                             onclick={() => draft.pinned = !draft.pinned}
@@ -609,6 +656,11 @@
     .open .name {
         opacity: 1;
         transition-delay: calc(var(--duration-fast) * 0.5);
+    }
+
+    /* A ring in the card's own colour keeps overlapping faces apart */
+    .face {
+        box-shadow: 0 0 0 2px var(--note-bg, var(--theme-card));
     }
 
     .remove {

@@ -22,10 +22,12 @@
 	import { getLabels } from '../../api/labels.remote';
 	import { getNotes, moveNote, updateNote } from '../../api/notes.remote';
 	import { getReminders, setReminderDone } from '../../api/reminders.remote';
+	import { getPeople } from '../../api/users.remote';
 	import { createView, getViews, updateView } from '../../api/views.remote';
 
 	// DATA | refreshed by every command and by realtime events from other devices
-	let [notes, labels, reminders, views] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews()]));
+	let [notes, labels, reminders, views, people] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews(), getPeople()]));
+	let me = $derived(page.data.user?.id ?? '');
 
 	let remindersByNote = $derived(groupReminders(reminders));
 
@@ -315,6 +317,7 @@
 
 	function grab(event: PointerEvent, id: string) {
 		if (event.pointerType === 'touch' || event.button !== 0 || sort.by !== 'manual' || editing || selection.length) return;
+		if (notes.find((note) => note.id === id)?.owner !== me) return; // The order of a shared note is its owner's
 		const cell = event.currentTarget as HTMLElement;
 		const rect = cell.getBoundingClientRect();
 		drag = { id, cell, start: { x: event.clientX, y: event.clientY }, grab: { x: event.clientX - rect.left, y: event.clientY - rect.top }, from: null, over: null };
@@ -411,6 +414,8 @@
 							open
 							{closing}
 							{labels}
+							{me}
+							{people}
 							reminders={(editing.id && remindersByNote.get(editing.id)) || []}
 							ondone={markDone}
 							oncreate={(id) => editing && (editing.id = id)}
@@ -431,6 +436,8 @@
 								{open}
 								closing={open && closing}
 								{labels}
+								{me}
+								{people}
 								reminders={remindersByNote.get(note.id) ?? []}
 								selected={selected.has(note.id)}
 								focus={open ? editing?.focus : undefined}
@@ -446,6 +453,7 @@
 								<NoteMenu
 									notes={targetsOf(note)}
 									{labels}
+									{me}
 									reminders={remindersByNote}
 									selected={selected.has(note.id)}
 									onselect={() => toggleSelected(note.id)}
@@ -501,7 +509,7 @@
 				</DropdownMenu.Trigger>
 				<DropdownMenu.Portal>
 					<DropdownMenu.Content class="menu" side="top" sideOffset={10} collisionPadding={12}>
-						<NoteMenu notes={selection} {labels} reminders={remindersByNote} onfinish={() => selected.clear()} />
+						<NoteMenu notes={selection} {labels} {me} reminders={remindersByNote} onfinish={() => selected.clear()} />
 					</DropdownMenu.Content>
 				</DropdownMenu.Portal>
 			</DropdownMenu.Root>

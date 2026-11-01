@@ -1,13 +1,13 @@
 import { isId } from '#lib/schema_limits.ts';
 import { fileNameSchema } from '#lib/schemas.ts';
-import { fetchNoteImage, getOwned } from '#lib/server/queries.ts';
+import { fetchNoteImage, getNoteFor } from '#lib/server/queries.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
 
 // Sizes pocketbase generates, see the thumbs of the images field
 const THUMBS = ['640x0']
 
-// Passes the protected file through once the note turns out to be the user's own
+// Passes the protected file through to the owner and those the note is shared with
 export async function GET({ params, url, locals }) {
 
     // VERIFY
@@ -15,7 +15,7 @@ export async function GET({ params, url, locals }) {
     const thumb = url.searchParams.get('thumb') ?? undefined
     if(!isId(params.id) || !fileNameSchema.safeParse(params.name).success || (thumb && !THUMBS.includes(thumb))) error(400, 'Malformed request.')
 
-    const note = await getOwned('notes', params.id, locals.user.id)
+    const note = await getNoteFor(params.id, locals.user.id)
     if(!note.success || !note.data.images.includes(params.name)) error(404, 'Image not found.')
 
     // STREAM | names never get reused, so the browser may keep it for good

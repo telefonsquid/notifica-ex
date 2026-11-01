@@ -1,18 +1,19 @@
 import { getRequestEvent } from '$app/server';
 import z from 'zod';
 import { unwrap } from '#lib/pocketbase.ts';
-import { idSchema } from '#lib/schema_limits.ts';
+import { LIMITS, idSchema } from '#lib/schema_limits.ts';
 import { fileNameSchema, noteContentSchema, notePositionSchema, type Note } from '#lib/schemas.ts';
-import { deleteOne, getAllOwned, getOwned, insertOnePartial, removeNoteImage, updateOnePartial } from '#lib/server/queries.ts';
+import { deleteOne, getAll, getAllNotesFor, getAllOwned, getNoteFor, getOwned, insertOnePartial, leaveNote as leave, removeNoteImage, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
+import { error } from '@sveltejs/kit';
 
 // NOTES ============================================================
 export const getNotes = query(async () => {
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    return unwrap(await getAllOwned('notes', locals.user.id, { sort: '-pinned,-updated' }), 'Could not load notes.')
+    return unwrap(await getAllNotesFor(locals.user.id, { sort: '-pinned,-updated' }), 'Could not load notes.')
 
 });
 
@@ -33,10 +34,16 @@ export const updateNote = command(noteContentSchema.partial().extend({ id: idSch
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    unwrap(await getOwned('notes', id, locals.user.id), 'Note not found.')
+    const stored = unwrap(await getNoteFor(id, locals.user.id), 'Note not found.')
 
+    // Pin, archive and labels stay the owner's, the others edit only what the note says
     const update: Partial<Note> = { ...changes }
-    if(changes.labels) update.labels = await ownLabels(locals.user.id, changes.labels)
+    if(stored.owner !== locals.user.id){
+        delete update.pinned
+        delete update.archived
+        delete update.labels
+    }
+    else if(changes.labels) update.labels = await ownLabels(locals.user.id, changes.labels)
     const note = unwrap(await updateOnePartial('notes', id, update), 'Could not save the note.')
 
     await getNotes().refresh()
@@ -62,7 +69,7 @@ export const removeImage = command(z.object({ id: idSchema, name: fileNameSchema
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    unwrap(await getOwned('notes', id, locals.user.id), 'Note not found.')
+    unwrap(await getNoteFor(id, locals.user.id), 'Note not found.')
     const note = unwrap(await removeNoteImage(id, name), 'Could not remove the image.')
 
     await getNotes().refresh()
@@ -77,6 +84,41 @@ export const deleteNote = command(idSchema, async (id) => {
     restrictAccess(locals.user, 'user')
     unwrap(await getOwned('notes', id, locals.user.id), 'Note not found.')
     unwrap(await deleteOne('notes', id), 'Could not delete the note.')
+
+    await getNotes().refresh()
+    return true
+
+});
+
+
+
+// SHARING ============================================================
+
+// Only the owner picks who else sees the note | inactive accounts and the owner themself drop out
+export const shareNote = command(z.object({ id: idSchema, people: z.array(idSchema).max(LIMITS.NOTE_SHARES, `A note can be shared with at most ${LIMITS.NOTE_SHARES} people.`) }), async ({ id, people }) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    unwrap(await getOwned('notes', id, locals.user.id), 'Note not found.')
+
+    const owner = locals.user.id
+    const active = new Set(unwrap(await getAll('users', { filter: 'state = "active"' }), 'Could not load people.').map((user) => user.id))
+    const shared = [...new Set(people)].filter((person) => person !== owner && active.has(person))
+    const note = unwrap(await updateOnePartial('notes', id, { shared }), 'Could not share the note.')
+
+    await getNotes().refresh()
+    return note
+
+});
+
+// Someone else's note disappears from the user's own list again
+export const leaveNote = command(idSchema, async (id) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    const note = unwrap(await getNoteFor(id, locals.user.id), 'Note not found.')
+    if(note.owner === locals.user.id) error(400, 'You own this note, delete it instead.')
+    unwrap(await leave(id, locals.user.id), 'Could not leave the note.')
 
     await getNotes().refresh()
     return true

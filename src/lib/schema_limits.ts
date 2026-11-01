@@ -38,6 +38,7 @@ export const LIMITS = {
     EXPAND_KEYS: 32,                    // relations pocketbase may expand into one record
     NOTE_LABELS: 50,
     NOTE_IMAGES: 12,                    // matches maxSelect of the images field
+    NOTE_SHARES: 20,                    // matches maxSelect of the shared field
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them
 

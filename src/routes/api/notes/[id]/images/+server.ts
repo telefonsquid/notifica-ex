@@ -1,5 +1,5 @@
 import { LIMITS, isId } from '#lib/schema_limits.ts';
-import { addNoteImages, getOwned } from '#lib/server/queries.ts';
+import { addNoteImages, getNoteFor } from '#lib/server/queries.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error, json } from '@sveltejs/kit';
 
@@ -11,7 +11,7 @@ export async function POST({ params, request, locals }) {
     // VERIFY
     restrictAccess(locals.user, 'user')
     if(!isId(params.id)) error(400, 'Malformed request.')
-    const note = await getOwned('notes', params.id, locals.user.id)
+    const note = await getNoteFor(params.id, locals.user.id)
     if(!note.success) error(404, 'Note not found.')
 
     // CHECK THE FILES

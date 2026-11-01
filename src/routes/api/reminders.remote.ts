@@ -4,7 +4,7 @@ import { occurrenceAfter } from '#lib/reminders.ts';
 import { idSchema } from '#lib/schema_limits.ts';
 import { ntfyTopicSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
 import { publish } from '#lib/server/ntfy.ts';
-import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { deleteOne, getAllOwned, getNoteFor, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
@@ -24,7 +24,7 @@ export const addReminder = command(reminderRuleSchema.extend({ note: idSchema })
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    unwrap(await getOwned('notes', note, locals.user.id), 'Note not found.')
+    unwrap(await getNoteFor(note, locals.user.id), 'Note not found.')
 
     const reminder = unwrap(await insertOnePartial('reminders', { ...ruleFields(rule), note, owner: locals.user.id }), 'Could not save the reminder.')
 
