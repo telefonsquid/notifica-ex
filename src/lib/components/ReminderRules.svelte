@@ -8,6 +8,7 @@
     import { CalendarDays, CalendarRange, Clock, Plus, SlidersHorizontal, X } from '@lucide/svelte';
     import { Dialog } from 'bits-ui';
     import { prefersReducedMotion } from 'svelte/motion';
+    import type { Snippet } from 'svelte';
     import { fade, type TransitionConfig } from 'svelte/transition';
 
     // PROPS
@@ -17,14 +18,18 @@
         limits = $bindable(),
         start,
         summary,
-        anchor
+        recurring,
+        anchor,
+        schedule
     }: {
         open?: boolean
         until: string                   // last day as yyyy-mm-dd, empty for no end
         limits: ReminderLimit[]
         start: string                   // first time as datetime-local value, new rules start around it
         summary: string                 // the rule as the card line reads it
+        recurring: boolean              // end and rules only apply to a repeat
         anchor?: HTMLElement            // the button the panel grows out of and shrinks back into
+        schedule: Snippet               // start and repeat fields, bound to the form behind
     } = $props()
 
     const MODES = [{ value: 'only', text: 'Only' }, { value: 'except', text: 'Except' }]
@@ -97,55 +102,68 @@
                             </div>
 
                             <div class="flex min-h-0 flex-col gap-5 overflow-y-auto px-card pb-2">
-                                <!-- END -->
-                                <section class="grid gap-2" in:follow={{ index: 0 }}>
-                                    <h3 class="type-meta">End on</h3>
-                                    <div class="flex items-center gap-1.5">
-                                        <input type="date" bind:value={until} min={start.slice(0, 10)} aria-label="Last day" class={['field min-w-0 flex-1', !until && 'text-ink-faint']} />
-                                        {#if until}
-                                            <button type="button" class="icon-button" aria-label="Clear end" onclick={() => until = ''} transition:unfold={{ axis: 'x' }}><X class="size-3.5" /></button>
-                                        {/if}
-                                    </div>
-                                </section>
+                                <div class="grid gap-5" in:follow={{ index: 0 }}>
+                                    {@render schedule()}
+                                </div>
 
-                                <!-- RULES | only and except, the empty state says what they do -->
-                                <section class="grid gap-2" in:follow={{ index: 1 }}>
-                                    <h3 class="type-meta">Rules</h3>
-                                    {#if !limits.length}
-                                        <p class="empty text-sm text-ink-faint" transition:fold>Ring only at certain times, days or dates, or never at them.</p>
-                                    {/if}
-                                    {#each limits as limit, index (limit)}
-                                        <div class="rule grid grid-cols-[minmax(0,1fr)_auto] gap-x-1 gap-y-2.5 rounded-control border border-line p-2.5" transition:fold>
-                                            <div class="flex flex-wrap items-center gap-2">
-                                                <Glider name="Only or except" options={MODES} value={limit.mode} onpick={(mode) => limit.mode = mode as ReminderLimit['mode']} class="w-32" />
-                                                <Glider name="Limit by" options={KINDS} value={limit.kind} onpick={(kind) => switchKind(index, kind as ReminderLimit['kind'])} class="min-w-48 flex-1" />
-                                            </div>
-                                            <button type="button" class="icon-button -my-0.5 -mr-1 self-start" aria-label="Remove rule" onclick={() => limits.splice(index, 1)}><X class="size-3.5" /></button>
-
-                                            {#key limit.kind}
-                                                <div class="col-span-2 flex items-center gap-1.5" in:rise={{ y: 4, blur: 3, duration: 'base' }}>
-                                                    {#if limit.kind === 'times'}
-                                                        <input type="time" bind:value={limit.from} aria-label="From" required class="field min-w-0 flex-1" />
-                                                        <span class="type-meta">to</span>
-                                                        <input type="time" bind:value={limit.to} aria-label="To" required class="field min-w-0 flex-1" />
-                                                    {:else if limit.kind === 'days'}
-                                                        <DayPicker bind:value={limit.days} />
-                                                    {:else}
-                                                        <input type="date" bind:value={limit.from} aria-label="From" required class="field min-w-0 flex-1" />
-                                                        <span class="type-meta">to</span>
-                                                        <input type="date" bind:value={limit.to} aria-label="To" required class="field min-w-0 flex-1" />
+                                {#if recurring}
+                                    <!-- Folding and the stagger need separate elements -->
+                                    <div class="grid" transition:fold>
+                                        <div class="grid gap-5" in:follow={{ index: 1 }}>
+                                            <!-- END -->
+                                            <section class="grid gap-2">
+                                                <h3 class="type-meta">End on</h3>
+                                                <div class="flex items-center gap-1.5">
+                                                    <input type="date" bind:value={until} min={start.slice(0, 10)} aria-label="Last day" class={['field min-w-0 flex-1', !until && 'text-ink-faint']} />
+                                                    {#if until}
+                                                        <button type="button" class="icon-button" aria-label="Clear end" onclick={() => until = ''} transition:unfold={{ axis: 'x' }}><X class="size-3.5" /></button>
                                                     {/if}
                                                 </div>
-                                            {/key}
+                                            </section>
+
+                                            <!-- RULES | only and except, the empty state says what they do -->
+                                            <section class="grid gap-2">
+                                                <h3 class="type-meta">Rules</h3>
+                                                {#if !limits.length}
+                                                    <p class="empty text-sm text-ink-faint" transition:fold>Ring only at certain times, days or dates, or never at them.</p>
+                                                {/if}
+                                                {#each limits as limit, index (limit)}
+                                                    <div class="rule grid grid-cols-[minmax(0,1fr)_auto] gap-x-1 gap-y-2.5 rounded-control border border-line p-2.5" transition:fold>
+                                                        <div class="flex flex-wrap items-center gap-2">
+                                                            <Glider name="Only or except" options={MODES} value={limit.mode} onpick={(mode) => limit.mode = mode as ReminderLimit['mode']} class="w-32" />
+                                                            <Glider name="Limit by" options={KINDS} value={limit.kind} onpick={(kind) => switchKind(index, kind as ReminderLimit['kind'])} class="min-w-48 flex-1" />
+                                                        </div>
+                                                        <button type="button" class="icon-button -my-0.5 -mr-1 self-start" aria-label="Remove rule" onclick={() => limits.splice(index, 1)}><X class="size-3.5" /></button>
+
+                                                        {#key limit.kind}
+                                                            <div class="col-span-2 flex items-center gap-1.5" in:rise={{ y: 4, blur: 3, duration: 'base' }}>
+                                                                {#if limit.kind === 'times'}
+                                                                    <input type="time" bind:value={limit.from} aria-label="From" required class="field min-w-0 flex-1" />
+                                                                    <span class="type-meta">to</span>
+                                                                    <input type="time" bind:value={limit.to} aria-label="To" required class="field min-w-0 flex-1" />
+                                                                {:else if limit.kind === 'days'}
+                                                                    <DayPicker bind:value={limit.days} />
+                                                                {:else}
+                                                                    <input type="date" bind:value={limit.from} aria-label="From" required class="field min-w-0 flex-1" />
+                                                                    <span class="type-meta">to</span>
+                                                                    <input type="date" bind:value={limit.to} aria-label="To" required class="field min-w-0 flex-1" />
+                                                                {/if}
+                                                            </div>
+                                                        {/key}
+                                                    </div>
+                                                {/each}
+                                            </section>
                                         </div>
-                                    {/each}
-                                </section>
+                                    </div>
+                                {/if}
                             </div>
 
                             <!-- FOOTER -->
-                            <div class="flex items-center justify-between gap-2 p-card pt-4" in:follow={{ index: 2 }}>
-                                <Button style="ghost" icon={Plus} onclick={add}>Add rule</Button>
-                                <Button onclick={() => open = false}>Done</Button>
+                            <div class="flex items-center gap-2 p-card pt-4" in:follow={{ index: 2 }}>
+                                {#if recurring}
+                                    <span transition:fade={{ duration: duration('fast') }}><Button style="ghost" icon={Plus} onclick={add}>Add rule</Button></span>
+                                {/if}
+                                <Button class="ml-auto" onclick={() => open = false}>Done</Button>
                             </div>
                         </div>
                     </div>

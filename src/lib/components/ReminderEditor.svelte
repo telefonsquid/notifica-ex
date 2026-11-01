@@ -80,7 +80,6 @@
     // DAYS | switching to weekdays starts with the day of the first time
     function pickRepeat(value: ReminderRepeat){
         repeat = value
-        if(value === 'never') advanced = false
         if(value !== 'weekdays' || weekdays.length) return
         weekdays = [startDay()]
     }
@@ -152,6 +151,32 @@
     }
 </script>
 
+{#snippet schedule()}
+    <!-- SCHEDULE | the row's fields again, laid out for the dialog -->
+    <section class="grid gap-2">
+        <h3 class="type-meta">Start on</h3>
+        <input type="datetime-local" bind:value={at} aria-label="First time" class="field min-w-0" />
+    </section>
+
+    <section class="grid gap-2">
+        <h3 class="type-meta">Repeat</h3>
+        <div class="flex items-center gap-1.5">
+            {#if counted}
+                <div class="flex items-center gap-1.5" transition:unfold={{ axis: 'x' }}>
+                    <span class="type-meta pl-1">Every</span>
+                    <NumberField bind:value={every} label="Every" class="w-16" />
+                </div>
+            {/if}
+            <Choice value={repeat} groups={repeats} label="Repeat" class="flex-1" onchange={pickRepeat} />
+        </div>
+        {#if repeat === 'weekdays'}
+            <div class="flex" transition:unfold>
+                <DayPicker bind:value={weekdays} />
+            </div>
+        {/if}
+    </section>
+{/snippet}
+
 {#if open && editable}
     <!-- FORM | takes the place of the line -->
     <form class="reminder-form flex flex-col gap-1.5 py-1" onsubmit={(event) => { event.preventDefault(); save() }} in:enter|global>
@@ -172,15 +197,15 @@
                     </div>
                 {/if}
                 <Choice value={repeat} groups={repeats} label="Repeat" class="w-30" onchange={pickRepeat} />
-                {#if repeat !== 'never'}
-                    <button type="button" class={['icon-button relative', tuned && 'text-accent']} aria-label="Advanced" aria-haspopup="dialog" bind:this={advancedButton} onclick={() => advanced = true} transition:widen {@attach tip('Advanced')}>
-                        <SlidersHorizontal class="size-4" />
-                        {#if tuned}<span class="dot" aria-hidden="true"></span>{/if}
-                    </button>
-                {/if}
             </div>
 
             <div class="ml-auto flex items-center">
+            {#if repeat !== 'never'}
+                <button type="button" class={['icon-button relative', tuned && 'text-accent']} aria-label="Advanced" aria-haspopup="dialog" bind:this={advancedButton} onclick={() => advanced = true} transition:widen {@attach tip('Advanced')}>
+                    <SlidersHorizontal class="size-4" />
+                    {#if tuned}<span class="dot" aria-hidden="true"></span>{/if}
+                </button>
+            {/if}
                 <button type="button" class={['icon-button', task && 'text-accent']} aria-label="Done button in the notification" aria-pressed={task} onclick={() => task = !task} {@attach tip(task ? 'The notification can be checked off with a Done button' : 'Add a Done button to the notification')}>
                     <ListChecks class="size-4" />
                 </button>
@@ -207,7 +232,7 @@
         {/if}
 
         <!-- ADVANCED | end date and the only and except rules in their own dialog -->
-        <ReminderRules bind:open={advanced} bind:until bind:limits start={at} anchor={advancedButton} summary={describeRule({ repeat, every: counted ? every : 1, weekdays, rules: limits })} />
+        <ReminderRules bind:open={advanced} bind:until bind:limits start={at} recurring={repeat !== 'never'} anchor={advancedButton} {schedule} summary={describeRule({ repeat, every: counted ? every : 1, weekdays, rules: limits })} />
     </form>
 {:else if reminder}
     <!-- LINE | hatched while a task waits to be checked off -->

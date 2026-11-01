@@ -33,7 +33,7 @@
         <ChevronDown class="ml-auto size-3.5 shrink-0 text-ink-faint" />
     </Select.Trigger>
     <Select.Portal>
-        <Select.Content class="menu" style="min-width: max(8rem, var(--bits-select-anchor-width))" sideOffset={6} collisionPadding={12}>
+        <Select.Content class="menu z-[85]" style="min-width: max(8rem, var(--bits-select-anchor-width))" sideOffset={6} collisionPadding={12}>
             {#each groups as group, index (index)}
                 {#if index}<div class="menu-separator" role="separator"></div>{/if}
                 {#each group as option (option.value)}

@@ -38,7 +38,7 @@ Runs on server and client: `occurrenceAfter()` computes the next occurrence, `pa
 
 - The reminder band on a card: the first line carries the add button, a full Add reminder row only while there are none.
 - The form is one wrapping row: Start on, Every n, the repeat `Choice` (`#lib/ui/Choice.svelte`, Once and Weekdays set apart on top), then icon buttons. Weekdays (`DayPicker`) fold open below.
-- The sliders icon opens `ReminderRules`, a dialog for End on and the rules that grows out of the button and shrinks back into it. It edits the form's state directly, the form's save stores it. The icon turns accent with a dot while anything is set there.
+- The sliders icon, first in the icon group, opens `ReminderRules`, a dialog that repeats Start on and Repeat (a snippet from the form) above End on and the rules, which fold away for Once. It grows out of the button and shrinks back into it. It edits the form's state directly, the form's save stores it. The icon turns accent with a dot while anything is set there.
 - Changes unfold only once the card finished growing (`settled`), closing folds them too.
 - A closed card shows the line faint, leaves out "Once" and adds the time left on the right (`formatDistance`, ticking through `now()` in `#lib/clock.svelte.ts`).
 - The note menu lists a single note's reminders and opens the card at one, a selection only offers Remove reminders.
