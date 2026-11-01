@@ -13,7 +13,7 @@ description: Reminder recurrence model, timezones, the per minute scheduler, ntf
 - `rules` (`reminderLimitSchema`, json) narrow a repeat: each is `only` or `except` over `times` (from–to, may wrap past midnight), `days` or `dates`. Except rules always block. Only rules of the same kind are alternatives, different kinds must all hold. `occurrenceAfter()` hops past blocked stretches through `blockedUntil()`.
 - Each reminder stores its own IANA timezone, so a fixed time of day survives DST and dates render the same on server and client.
 - `next` is the coming occurrence, `open` how many logged task occurrences wait for Done (`countOpenOccurrences()` keeps it in step after every change). `task` reminders get a Done button.
-- **Occurrences** log every time a reminder went off: note, reminder (emptied once the reminder is removed), `at`, the `rule` line as it read then, `timezone`, `task`, `done` (when checked off), `comment` (written in the history). Rule changes and removals leave the log alone. Nothing prunes it yet, a minute reminder adds 1440 rows a day. An empty `next` means finished: a time in the past is saved as such, not refused.
+- **Occurrences** log every time a reminder went off: note, reminder (emptied once the reminder is removed), `at`, the `rule` line as it read then, `timezone`, `task`, `done` (when checked off), `comment` (written in the history). Rule changes and removals leave the log alone. Kept forever on purpose while the note exists (decided 2026-11-01), even though a minute reminder adds 1440 rows a day: never prune it. Deleting the note or the account cascades it away. An empty `next` means finished: a time in the past is saved as such, not refused.
 
 ## Shared logic `#lib/reminders.ts`
 
