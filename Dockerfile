@@ -9,7 +9,9 @@ WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile
 
-# Copy source and build
+# Copy source and build | ORIGIN gets baked in, see vite.config.ts
+ARG ORIGIN
+ENV ORIGIN=$ORIGIN
 COPY . .
 RUN bun prepare
 RUN bun node_modules/vite/bin/vite.js build

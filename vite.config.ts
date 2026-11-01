@@ -14,6 +14,12 @@ export default defineConfig({
 			version: {
 				name: pkg.version,
 			},
+
+			// ORIGIN | fixed at build time since SvelteKit 3, the trusted origin for remote calls and forms
+			// Unset it follows the host header and assumes https, which fits a TLS proxy but rejects plain http
+			paths: {
+				origin: process.env.ORIGIN || undefined,
+			},
 			experimental: {
 				remoteFunctions: true,
 			},
