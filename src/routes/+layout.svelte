@@ -12,10 +12,17 @@
 	onNavigate((navigation) => {
 		if (!document.startViewTransition) return;
 
+		// A page that stays mounted animates its own content, the transition only moves the shell
+		const root = document.documentElement;
+		if (navigation.from?.route.id && navigation.from.route.id === navigation.to?.route.id) root.dataset.transition = 'same-page';
+
 		return new Promise((resolve) => {
-			document.startViewTransition(async () => {
+			const transition = document.startViewTransition(async () => {
 				resolve();
 				await navigation.complete;
+			});
+			transition.finished.finally(() => {
+				if (root.dataset.transition === 'same-page') delete root.dataset.transition;
 			});
 		});
 	});

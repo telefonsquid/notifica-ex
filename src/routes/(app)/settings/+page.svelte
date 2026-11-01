@@ -76,7 +76,7 @@
 		confirmDelete = null;
 	}
 
-	// SECTIONS | one at a time, the stack slides so the chosen one sits in view
+	// SECTIONS | one long scroll that snaps to a section, the one at the top is current
 	const SECTIONS = [
 		{ id: 'appearance', label: 'Appearance', icon: Palette },
 		{ id: 'views', label: 'Views', icon: PanelsTopLeft },
@@ -90,19 +90,16 @@
 	let sections = $derived(SECTIONS.filter((item) => !('admin' in item) || hasPermission(data.user, 'admin')));
 
 	let tablist = $state<HTMLElement>();
-	let track = $state<HTMLElement>();
-	let offset = $state(0);
+	let stage = $state<HTMLElement>();
 	let indicator = $state({ x: 0, y: 0, width: 0, height: 0 });
 	let ready = $state(false);
+	let jumping = false; // A tab click scrolls past other sections, they shouldn't light up on the way
+	let landing: ReturnType<typeof setTimeout> | undefined;
 
-	// Offsets instead of rects, the track and indicator measure themselves and not their running slide
 	function place() {
-		const section = track?.querySelector<HTMLElement>(`[data-section="${tab}"]`);
-		const first = track?.firstElementChild as HTMLElement | null | undefined;
 		const button = tablist?.querySelector<HTMLElement>(`[data-tab="${tab}"]`);
-		if (!section || !first || !button) return;
+		if (!button) return;
 
-		offset = first.offsetTop - section.offsetTop;
 		indicator = { x: button.offsetLeft, y: button.offsetTop, width: button.offsetWidth, height: button.offsetHeight };
 		button.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: ready ? 'smooth' : 'instant' });
 	}
@@ -112,15 +109,45 @@
 		place();
 	});
 
-	// Sections change height with their content, the slide follows
 	$effect(() => {
-		if (!track || !tablist) return;
+		if (!tablist) return;
 		const observer = new ResizeObserver(place);
-		observer.observe(track);
 		observer.observe(tablist);
 		requestAnimationFrame(() => (ready = true)); // The first placement shows at once
 		return () => observer.disconnect();
 	});
+
+	function go(id: Tab) {
+		const section = stage?.querySelector<HTMLElement>(`[data-section="${id}"]`);
+		if (!stage || !section) return;
+
+		tab = id;
+		jumping = true;
+		clearTimeout(landing);
+		landing = setTimeout(() => (jumping = false), 1000); // In case scrollend never fires
+
+		const peek = parseFloat(getComputedStyle(stage).scrollPaddingTop) || 0;
+		const top = stage.scrollTop + section.getBoundingClientRect().top - stage.getBoundingClientRect().top - peek;
+		stage.scrollTo({ top, behavior: 'smooth' });
+	}
+
+	// The last section whose top reached the snap line, with some slack for a scroll that isn't done yet
+	function follow() {
+		if (jumping || !stage) return;
+
+		const line = stage.getBoundingClientRect().top + (parseFloat(getComputedStyle(stage).scrollPaddingTop) || 0) + 48;
+		let current = sections[0].id as Tab;
+		for (const item of sections) {
+			const section = stage.querySelector<HTMLElement>(`[data-section="${item.id}"]`);
+			if (section && section.getBoundingClientRect().top <= line) current = item.id;
+		}
+		tab = current;
+	}
+
+	function land() {
+		jumping = false;
+		clearTimeout(landing);
+	}
 
 	// Arrow keys walk the tabs and move focus along
 	function step(event: KeyboardEvent) {
@@ -130,7 +157,7 @@
 
 		const index = sections.findIndex((item) => item.id === tab);
 		const next = sections[Math.min(Math.max(index + delta, 0), sections.length - 1)];
-		tab = next.id;
+		go(next.id);
 		tablist?.querySelector<HTMLElement>(`[data-tab="${next.id}"]`)?.focus();
 	}
 
@@ -161,7 +188,7 @@
 			aria-selected={tab === item.id}
 			aria-controls={item.id}
 			tabindex={tab === item.id ? 0 : -1}
-			onclick={() => (tab = item.id)}
+			onclick={() => go(item.id)}
 		>
 			<item.icon class="icon size-5 shrink-0" strokeWidth={1.75} />
 			{item.label}
@@ -169,39 +196,37 @@
 	{/each}
 </div>
 
-<!-- STAGE | only the current section takes the pointer and the wheel, its neighbours peek in at the edges -->
-<div class="stage">
-<div bind:this={track} class={['track', ready && 'ready']} style:--offset="{offset}px">
+<!-- STAGE | scrolls on its own and snaps each section to the top, the neighbours peek in at the edges -->
+<div bind:this={stage} class="stage" onscroll={follow} onscrollend={land}>
+<div class="track">
 
 	<!-- APPEARANCE -->
-	<SettingsSection id="appearance" title="Appearance" description="Stored on this device, so every device can have its own." current={tab === 'appearance'} onselect={() => (tab = 'appearance')}>
+	<SettingsSection id="appearance" title="Appearance" current={tab === 'appearance'} onselect={() => go('appearance')}>
 		<div class="grid gap-10">
 			<div>
 				<h3 class="type-meta mb-4 text-ink-faint">Theme</h3>
 				<ThemePicker current={data.theme} />
 			</div>
 			<div>
-				<h3 class="type-meta mb-1 text-ink-faint">Label tabs</h3>
-				<p class="mb-6 text-ink-muted">Which edge of a note its labels hang from.</p>
+				<h3 class="type-meta mb-4 text-ink-faint">Label tabs</h3>
 				<LabelPositionPicker current={data.labelPosition} />
 			</div>
 		</div>
 	</SettingsSection>
 
 	<!-- VIEWS -->
-	<SettingsSection id="views" title="Views" description="Each view is a saved filter with its own place in the rail. The first one opens on start." current={tab === 'views'} onselect={() => (tab = 'views')}>
+	<SettingsSection id="views" title="Views" current={tab === 'views'} onselect={() => go('views')}>
 		<div class="max-w-3xl">
 			<ViewSettings {labels} />
 		</div>
 	</SettingsSection>
 
 	<!-- BEHAVIOUR -->
-	<SettingsSection id="behaviour" title="Behaviour" description="Where reminders go and how notes get sorted." current={tab === 'behaviour'} onselect={() => (tab = 'behaviour')}>
+	<SettingsSection id="behaviour" title="Behaviour" current={tab === 'behaviour'} onselect={() => go('behaviour')}>
 		<div class="grid max-w-xl gap-12">
 			<!-- REMINDERS -->
 			<div>
-				<h3 class="type-meta mb-1 text-ink-faint">Reminders</h3>
-				<p class="mb-6 text-ink-muted">Reminders get pushed to this ntfy topic. Subscribe to it in the ntfy app on every device that should ring.</p>
+				<h3 class="type-meta mb-4 text-ink-faint">Reminders</h3>
 
 				<form class="flex flex-wrap gap-2" onsubmit={(event) => { event.preventDefault(); saveTopic(); }}>
 					<input bind:value={topic} placeholder="Topic" aria-label="ntfy topic" class="field min-w-0 flex-1" />
@@ -222,8 +247,7 @@
 
 			<!-- LABELS -->
 			<div>
-				<h3 class="type-meta mb-1 text-ink-faint">Labels</h3>
-				<p class="mb-6 text-ink-muted">Rename a label by editing it, its color shows as a tab on every note. Deleting one keeps its notes.</p>
+				<h3 class="type-meta mb-4 text-ink-faint">Labels</h3>
 
 				{#if labels.length}
 					<ul class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
@@ -257,7 +281,7 @@
 	</SettingsSection>
 
 	<!-- ACCOUNT -->
-	<SettingsSection id="account" title="Account" description="How you log in on this server." current={tab === 'account'} onselect={() => (tab = 'account')}>
+	<SettingsSection id="account" title="Account" current={tab === 'account'} onselect={() => go('account')}>
 		<div class="max-w-xl">
 			<dl class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
 				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
@@ -282,7 +306,7 @@
 
 	<!-- USERS -->
 	{#if hasPermission(data.user, 'admin')}
-	<SettingsSection id="users" title="Users" description="Everyone with access to this server." current={tab === 'users'} onselect={() => (tab = 'users')}>
+	<SettingsSection id="users" title="Users" current={tab === 'users'} onselect={() => go('users')}>
 		<div class="max-w-3xl">
 			<UserAdmin userId={data.user.id} />
 		</div>
@@ -325,8 +349,8 @@
 		position: relative;
 		display: flex;
 		gap: 0.25rem;
-		margin-inline: calc(var(--layout-gutter) * -1);
-		padding-inline: var(--layout-gutter);
+		margin-inline: calc(var(--layout-content-gutter) * -1);
+		padding-inline: var(--layout-content-gutter);
 		overflow-x: auto;
 		scrollbar-width: none;
 		outline: none;
@@ -374,11 +398,10 @@
 	}
 
 	.tab :global(.icon) {
-		transition: rotate var(--duration-base) var(--ease-spring), scale var(--duration-base) var(--ease-spring);
+		transition: scale var(--duration-base) var(--ease-spring);
 	}
 
 	.tab:hover :global(.icon) {
-		rotate: -8deg;
 		scale: 1.08;
 	}
 
@@ -410,21 +433,19 @@
 	/* STAGE | the neighbours fade out towards its edges */
 	.stage {
 		min-height: 0;
-		overflow: clip;
+		overflow-y: auto;
+		overscroll-behavior: contain;
+		scroll-snap-type: y mandatory;
+		scroll-padding-top: var(--peek);
+		scrollbar-width: none;
 		container-type: size;
 		mask-image: linear-gradient(transparent, #000 var(--peek), #000 calc(100% - var(--peek)), transparent);
 	}
 
 	.track {
-		position: relative;
 		display: grid;
 		gap: 1.5rem;
-		padding-block: var(--peek);
-		translate: 0 var(--offset);
-	}
-
-	.track.ready {
-		transition: translate var(--duration-page) var(--ease-emphasized);
+		padding-top: var(--peek);
 	}
 
 	.field {

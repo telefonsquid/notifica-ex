@@ -53,6 +53,31 @@ export function formatMoment(value: string, timezone: string): string {
     return format.format(date)
 }
 
+const relative = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
+
+const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
+    ['minute', 60_000],
+    ['hour', 3_600_000],
+    ['day', 86_400_000],
+    ['week', 604_800_000],
+    ['month', 2_629_800_000],
+    ['year', 31_557_600_000],
+]
+
+// Time left as "in 3 hours" or "in 1 week", in the largest unit that fits at least once
+export function formatDistance(value: string, now: number): string {
+    const date = parseTimestamp(value)
+    if(!date) return ''
+
+    // A one off that already went out has nothing coming
+    const left = date.getTime() - now
+    if(left < -60_000) return ''
+    if(left < 60_000) return 'now'
+
+    const [unit, size] = STEPS.findLast(([, size]) => left >= size) ?? STEPS[0]
+    return relative.format(Math.round(left / size), unit)
+}
+
 // A task whose last notification went out but was not checked off yet
 export function isOpenTask(reminder: Reminder): boolean {
     return reminder.task && !!reminder.sent && reminder.done !== reminder.sent

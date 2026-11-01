@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { formatMoment, isOpenTask } from '#lib/notes.ts';
+    import { now } from '#lib/clock.svelte.ts';
+    import { formatDistance, formatMoment, isOpenTask } from '#lib/notes.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { describeRule, parseTimestamp, UNITS, WEEKDAYS } from '#lib/reminders.ts';
     import type { Reminder, ReminderRepeat, Weekday } from '#lib/schemas.ts';
@@ -121,6 +122,13 @@
         const date = parseTimestamp(reminder.until)
         return date ? ` until ${date.toLocaleDateString('en-GB', { timeZone: reminder.timezone, day: 'numeric', month: 'short' })}` : ''
     }
+
+    // A closed card leaves out "Once", the date alone says it
+    function summary(reminder: Reminder): string {
+        const next = reminder.next ? formatMoment(reminder.next, reminder.timezone) : ''
+        const rule = !editable && reminder.repeat === 'never' ? '' : describeRule(reminder) + endOf(reminder)
+        return [rule, next].filter(Boolean).join(' · ')
+    }
 </script>
 
 {#if open && editable}
@@ -186,10 +194,13 @@
 {:else if reminder}
     <!-- LINE | hatched while a task waits to be checked off -->
     {@const due = isOpenTask(reminder)}
-    <div class={['line flex min-h-9 items-center gap-2', due && 'due']} in:enter|global>
+    <div class={['line flex min-h-9 items-center gap-2', due && 'due', !editable && 'quiet']} in:enter|global>
         <button class={['type-meta flex min-w-0 flex-1 items-center gap-2 text-left', editable ? 'hover:text-ink' : 'pointer-events-none']} tabindex={editable ? 0 : -1} aria-label={`Edit reminder ${describeRule(reminder)}`} onclick={() => open = true}>
             {#if reminder.task}<ListChecks class="size-3.5 shrink-0" />{:else}<Bell class="size-3.5 shrink-0" />{/if}
-            <span class="truncate">{describeRule(reminder)}{endOf(reminder)}{reminder.next ? ` · ${formatMoment(reminder.next, reminder.timezone)}` : ''}</span>
+            <span class="truncate">{summary(reminder)}</span>
+            {#if !editable && reminder.next}
+                <span class="ml-auto shrink-0">{formatDistance(reminder.next, now())}</span>
+            {/if}
         </button>
         {#if due && ondone}
             <button class="type-meta motion-interactive pointer-events-auto relative flex shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-on-accent hover:brightness-110" onclick={ondone}>
@@ -245,6 +256,10 @@
         border-color: var(--theme-accent);
         background: var(--theme-accent);
         color: var(--theme-on-accent);
+    }
+
+    .line.quiet:not(.due) {
+        color: var(--theme-ink-faint);
     }
 
     /* Hatch runs across the whole band, not just the text */

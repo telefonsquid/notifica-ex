@@ -1,12 +1,14 @@
 <script lang="ts">
-    import { THEMES, type ThemeName } from '#lib/themes/index.ts';
+    import { browser } from '$app/env';
+    import { isThemeName, THEMES, type ThemeName } from '#lib/themes/index.ts';
     import { switchTheme } from '#lib/themes/switch.ts';
     import { Check } from '@lucide/svelte';
 
     // PROPS
     let { current }: { current: ThemeName } = $props()
 
-    let selected = $derived(current) // Flips at once on click, the server value catches up after
+    // The page attribute holds the latest choice, the load data keeps the value of the first page load
+    let selected = $derived(browser && isThemeName(document.documentElement.dataset.theme) ? document.documentElement.dataset.theme : current)
 
     // REVEAL FROM THE POINTER | keyboard clicks report no position, those reveal from the center
     function choose(theme: ThemeName, event: MouseEvent){

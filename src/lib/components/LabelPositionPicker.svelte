@@ -1,12 +1,14 @@
 <script lang="ts">
-    import { LABEL_POSITIONS, type LabelPosition } from '#lib/preferences.ts';
+    import { browser } from '$app/env';
+    import { isLabelPosition, LABEL_POSITIONS, type LabelPosition } from '#lib/preferences.ts';
     import { Check } from '@lucide/svelte';
     import { setLabelPosition } from '../../routes/api/settings.remote';
 
     // PROPS
     let { current }: { current: LabelPosition } = $props()
 
-    let selected = $derived(current) // Flips at once on click, the server value catches up after
+    // The page attribute holds the latest choice, the load data keeps the value of the first page load
+    let selected = $derived(browser && isLabelPosition(document.documentElement.dataset.labels) ? document.documentElement.dataset.labels : current)
 
     // Applies right away, the cookie only matters for the next page load
     function choose(position: LabelPosition){

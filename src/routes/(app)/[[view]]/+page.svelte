@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { afterNavigate, goto, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, onNavigate, replaceState } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import FilterEditor from '#lib/components/FilterEditor.svelte';
@@ -185,6 +185,11 @@
 		untrack(snapshot);
 	});
 
+	// Another view swaps the cells before the effect above runs, so cards on both glide from here
+	onNavigate(({ to }) => {
+		if (to?.route.id === page.route.id) snapshot();
+	});
+
 	// Waits for the effects of the cells too, the editor fills in its text only then
 	let pending = false;
 
@@ -203,6 +208,20 @@
 	// New cards rise into place, the card taking over from a new note glides there instead
 	function enter(node: Element, { id, index }: { id: string; index: number }): TransitionConfig {
 		return id === handover ? {} : rise(node, { delay: stagger(index) });
+	}
+
+	// Leaving cards fade where they stood, out of the flow so the rest glide into their place
+	function leave(node: HTMLElement, id: string): TransitionConfig {
+		const from = before?.get(id) ?? node.getBoundingClientRect();
+		const frame = grid?.getBoundingClientRect();
+		delete node.dataset.flip;
+		if (frame) Object.assign(node.style, { position: 'absolute', left: `${from.left - frame.left}px`, top: `${from.top - frame.top}px`, width: `${from.width}px` });
+
+		return {
+			duration: duration('fast'),
+			easing: easing('out'),
+			css: (t) => `opacity: ${t}; scale: ${0.97 + 0.03 * t};`
+		};
 	}
 
 	// A saved new note makes room for its card at once, an empty one shrinks back into the button
@@ -317,7 +336,7 @@
 			{#each visible as note, index (note.id)}
 				{@const open = editing?.id === note.id}
 				<!-- A finger opens the menu with a long press, selecting goes through it | the open note keeps the trigger but turns it off -->
-				<div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }}>
+				<div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }} out:leave={note.id}>
 					<ContextMenu.Root>
 						<ContextMenu.Trigger class="block" disabled={open}>
 							<NoteView
@@ -482,7 +501,7 @@
 	}
 
 	.search.open {
-		width: min(22rem, calc(100vw - 2 * var(--layout-gutter) - 8.5rem));
+		width: min(22rem, calc(100vw - 2 * var(--layout-content-gutter) - 8.5rem));
 	}
 
 	/* The field and its close button fade in while the pill slides open */

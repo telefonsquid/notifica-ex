@@ -360,6 +360,7 @@
         font-stretch: 100%;
         -webkit-font-smoothing: antialiased;
         -webkit-tap-highlight-color: transparent;
+        scrollbar-gutter: stable; /* A scrollbar that comes and goes mid glide would shift every card sideways */
     }
 
     body {
@@ -415,15 +416,22 @@
     z-index: 1;
 }
 
-/* Parts on both pages show live instead of crossfading, so icons keep their colour change and the toolbar holds still */
-::view-transition-old(*.rail-icon),
+/* Toolbar on both pages shows live so it holds still */
 ::view-transition-old(toolbar) {
     display: none;
 }
 
-::view-transition-new(*.rail-icon),
 ::view-transition-new(toolbar) {
     animation: none;
+}
+
+/* Icons change colour in step with the indicator, the live one would turn white before it arrives */
+::view-transition-old(*.rail-icon) {
+    animation: vt-fade-out var(--duration-base) var(--ease-in-out) both;
+}
+
+::view-transition-new(*.rail-icon) {
+    animation: vt-fade-in var(--duration-base) var(--ease-in-out) both;
 }
 
 /* Present on one side only, they come and go with the page */
@@ -444,6 +452,23 @@
 
 @keyframes vt-page-in {
     from { opacity: 0; transform: translateY(0.75rem); filter: blur(6px); }
+}
+
+@keyframes vt-fade-out {
+    to { opacity: 0; }
+}
+
+@keyframes vt-fade-in {
+    from { opacity: 0; }
+}
+
+/* SAME PAGE | the page shows live in the root, so cards glide between views instead of crossfading */
+:root[data-transition='same-page'] .vt-page {
+    view-transition-name: none;
+}
+
+:root[data-transition='same-page']::view-transition-old(root) {
+    display: none;
 }
 
 /* THEME SWITCH | the whole page reveals in one piece, see #lib/themes/switch.ts */
