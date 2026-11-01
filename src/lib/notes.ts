@@ -108,7 +108,10 @@ export function formatDistance(value: string, now: number): string {
     if(left < -60_000) return ''
     if(left < 60_000) return 'now'
 
-    const [unit, size] = STEPS.findLast(([, size]) => left >= size) ?? STEPS[0]
+    // Rounding may reach the next unit, 59.6 minutes read as in 1 hour, not in 60 minutes
+    let index = Math.max(0, STEPS.findLastIndex(([, size]) => left >= size))
+    if(index < STEPS.length - 1 && Math.round(left / STEPS[index][1]) * STEPS[index][1] >= STEPS[index + 1][1]) index++
+    const [unit, size] = STEPS[index]
     return relative.format(Math.round(left / size), unit)
 }
 

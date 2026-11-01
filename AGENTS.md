@@ -48,6 +48,7 @@ Most docs and examples online, and fsd-flight-check, are still SvelteKit 2. In t
 
 - **Server data access**: remote functions in `src/routes/api/*.remote.ts`, wrapped by `#lib/server/remote_function_error_trace` so rejected arguments get logged. Every argument has a zod schema; size caps live in `#lib/schema_limits.ts`.
 - **Query layer**: `#lib/server/queries.ts` returns `Result<T>`; callers `unwrap()` into a SvelteKit error. Client calls go through `safeAction()`, which turns errors into toasts.
+- **Tests**: `bun run test`, `*.test.ts` next to the code they cover. Pure logic only (recurrence, markdown, views), the UI gets checked in a browser.
 - **Auth**: `hooks.server.ts` re-verifies the PocketBase cookie on every request and exposes `locals.user`. The client-side `pb` instance in `#lib/pocketbase.ts` is never imported into server files.
 - **Global dialogs**: state in `#lib/singletons/*.svelte.ts` (+ `createDialogPromise` for awaited results), component mounted once in the root layout.
 - **Folders**: `#lib/ui` holds generic primitives, `#lib/components` holds domain components, `#lib/server` holds server-only code.

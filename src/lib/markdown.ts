@@ -84,27 +84,46 @@ function collectTasks(tokens: Token[], done: boolean[]){
     }
 }
 
-// Same order as tasksOf, code blocks hold no tasks
+// Lines that may hold a task, marked decides which really do
 const TASK_LINE = /^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[)([ xX])\]/
 const FENCE = /^\s*(```|~~~)/
 
+// Flips the task at that index of tasksOf, the source stays as it is when there is none
 export function toggleTask(source: string, index: number): string {
-    let inCode = false
-    let seen = 0
-    const lines = source.split('\n')
+    const before = tasksOf(source)
+    if(index < 0 || index >= before.length) return source
 
-    for(let i = 0; i < lines.length; i++){
-        if(FENCE.test(lines[i])){
-            inCode = !inCode
-            continue
-        }
-        const match = !inCode && lines[i].match(TASK_LINE)
-        if(!match) continue
-        if(seen++ === index){
-            const mark = match[2] === ' ' ? 'x' : ' '
-            lines[i] = match[1] + mark + lines[i].slice(match[1].length + 1)
-            break
-        }
+    // Only the task at the index may change, the parser has the last word on what counts as one
+    const flipsOnly = (candidate: string) => {
+        const after = tasksOf(candidate)
+        return after.length === before.length && after.every((done, i) => i === index ? done !== before[i] : done === before[i])
     }
+
+    // Usually the nth candidate line, edge cases like indented code fall back to trying them in turn
+    const lines = candidateLines(source)
+    const guess = lines[index] !== undefined ? flip(source, lines[index]) : null
+    if(guess && flipsOnly(guess)) return guess
+
+    for(const line of lines){
+        const candidate = flip(source, line)
+        if(flipsOnly(candidate)) return candidate
+    }
+    return source
+}
+
+// Line numbers that look like a task outside fenced code
+function candidateLines(source: string): number[] {
+    const found: number[] = []
+    let inCode = false
+    source.split('\n').forEach((line, i) => {
+        if(FENCE.test(line)) inCode = !inCode
+        else if(!inCode && TASK_LINE.test(line)) found.push(i)
+    })
+    return found
+}
+
+function flip(source: string, lineNumber: number): string {
+    const lines = source.split('\n')
+    lines[lineNumber] = lines[lineNumber].replace(TASK_LINE, (_, start: string, mark: string) => `${start}${mark === ' ' ? 'x' : ' '}]`)
     return lines.join('\n')
 }
