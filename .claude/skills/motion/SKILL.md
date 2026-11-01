@@ -1,0 +1,14 @@
+---
+name: motion
+description: Motion system of notifica-ex, the easing and duration tokens, view transitions between pages, the grid glide, unfold and morph inside cards, and reduced motion. Read before adding or changing any animation or transition.
+---
+
+# Motion
+
+- **Motion tokens** (`--ease-*`, `--duration-*`) live in CSS. `#lib/motion.ts` reads them for JS transitions (`rise`, `sink`, `stagger`) and returns 0 durations under reduced motion.
+- **Page changes** use view transitions from the root layout; `.vt-rail`, `.vt-page` and `.vt-rail-indicator` name the moving parts. The indicator glides with in-out, no spring. Within one route (switching views) `data-transition="same-page"` unnames `.vt-page`, so the page shows live and shared cards glide via `glide()`, snapshotted in the page's `onNavigate` since the async batch swaps cells before `$effect.pre`. Leaving cards fade in place (`leave`). Rail icons carry `.vt-rail-icon` (`match-element`, class `rail-icon`) so their own layers sit above the indicator. Icons crossfade with the indicator's timing (the live one would turn white before it arrives), the `.vt-toolbar` shows live (old image hidden, new one unanimated), only a part present on one side fades with the page (`:only-child`, since `:not()` never matches on these pseudos).
+- **Grid changes** glide: `measure()` before the update, `glide()` after (`#lib/motion.ts`). Cells carry `data-flip`, the part that resizes `data-flip-body`. It keeps its final size for the grid while the body animates width and height under `[data-resizing]`, so text reflows instead of stretching. Opening and closing call the page's `snapshot()` themselves, since a card's blocks can update before the page's `$effect.pre` runs. `measure()` and the cell height `glide()` holds skip `inert` elements, which Svelte sets on everything mid outro, so leaving parts count as gone and the grid doesn't jump when they finish. `html` keeps `scrollbar-gutter: stable`, a scrollbar appearing mid glide shifted every card.
+- **Height changes inside a card** use `unfold()` both ways (`in:` and `out:`), which animates size, padding, margin and the flex gap with a symmetric easing, so a swap of two branches keeps the sum steady. Open only controls fade under `.folded` first, then fold away while the card shrinks.
+- **Band heights** follow their content with `morph()` (`#lib/motion.ts`), timed per change: its own easing while the card is open and settled, the glide's while it closes.
+- **Durations in JS** always come from `duration('fast' | 'base' | 'slow' | 'page')` and `easing(...)`, never a number, so reduced motion turns them off everywhere. Popovers animate through the `popover` utility, menus through `menu`.
+- **Toasts** rise in and sink out (`Toaster.svelte`), their list reorders with `animate:flip` on the same tokens.

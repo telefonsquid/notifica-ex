@@ -19,10 +19,10 @@ Live in `.claude/skills/<name>/SKILL.md`. Status `planned` means the file doesn'
 
 | Skill | Covers | Status |
 |---|---|---|
-| `theming` | Token layers (color, layout, spacing, radius, motion), theme switching, the Tailwind palette | planned |
-| `motion` | Easing/duration tokens, transition patterns, view transitions, reduced motion | planned |
-| `data-model` | PocketBase collections, access rules, sharing, migrations | planned |
-| `reminders` | Recurrence model, scheduler, ntfy delivery and actions | planned |
+| `theming` | Token layers (color, layout, spacing, radius), themes, note colours, utilities, device preferences | done |
+| `motion` | Easing/duration tokens, view transitions, grid glide, unfold and morph, reduced motion | done |
+| `data-model` | PocketBase collections, access rules, sharing, images, schema changes | done |
+| `reminders` | Recurrence model, dispatch, ntfy delivery and the Done button, local testing | done |
 | `android` | Android client, share target, notification actions | planned |
 
 ## Stack
@@ -60,19 +60,11 @@ Most docs and examples online, and fsd-flight-check, are still SvelteKit 2. In t
 - Use the Svelte MCP (`svelte-autofixer`) on every component written or changed.
 - **Commits** are authored as the user, never with Claude co-author or session lines.
 
-## Look and motion
+## UI conventions
 
-Until the `theming` and `motion` skills exist:
+Theming lives in the `theming` skill, animation in the `motion` skill.
 
-- **Palette** in `src/app.css` `@theme`. Themes in `#lib/themes/*.css` set `--theme-*` colors and may override the `--layout-*` defaults (widths, gutters, gaps, paddings, radii). `@theme inline` maps both onto utilities like `bg-card`, `text-ink-muted`, `p-card`, `w-rail`. Components use those utilities only, never palette colors directly.
-- **Theme choice** is a cookie, rendered into `%theme%` by `hooks.server.ts` so the first paint is right. `#lib/themes/switch.ts` reveals the new theme as a circle from the click point.
-- **Label tabs** sit on the top or bottom card edge, a per-device `labels` cookie (`#lib/preferences.ts`) rendered into `<html data-labels>` the same way. Both pickers read the `<html>` attribute, not the load data, which keeps the first page load's value across client navigation.
 - **Settings page** has five sections: Appearance (device preferences), Views, Behaviour, Account, Users (admin only). The stage scrolls with `scroll-snap` so a section settles below a peek of its predecessor, the tab follows the scroll. Sections other than the current one stay faint and grey, a click on one scrolls there. No descriptions under titles. The tab indicator glides like the rail's.
-- **Motion tokens** (`--ease-*`, `--duration-*`) live in CSS. `#lib/motion.ts` reads them for JS transitions (`rise`, `sink`, `stagger`) and returns 0 durations under reduced motion.
-- **Page changes** use view transitions from the root layout; `.vt-rail`, `.vt-page` and `.vt-rail-indicator` name the moving parts. The indicator glides with in-out, no spring. Within one route (switching views) `data-transition="same-page"` unnames `.vt-page`, so the page shows live and shared cards glide via `glide()`, snapshotted in the page's `onNavigate` since the async batch swaps cells before `$effect.pre`. Leaving cards fade in place (`leave`). Rail icons carry `.vt-rail-icon` (`match-element`, class `rail-icon`) so their own layers sit above the indicator. Icons crossfade with the indicator's timing (the live one would turn white before it arrives), the `.vt-toolbar` shows live (old image hidden, new one unanimated), only a part present on one side fades with the page (`:only-child`, since `:not()` never matches on these pseudos).
-- **Grid changes** glide: `measure()` before the update, `glide()` after (`#lib/motion.ts`). Cells carry `data-flip`, the part that resizes `data-flip-body`. It keeps its final size for the grid while the body animates width and height under `[data-resizing]`, so text reflows instead of stretching. Opening and closing call the page's `snapshot()` themselves, since a card's blocks can update before the page's `$effect.pre` runs. `measure()` and the cell height `glide()` holds skip `inert` elements, which Svelte sets on everything mid outro, so leaving parts count as gone and the grid doesn't jump when they finish. `html` keeps `scrollbar-gutter: stable`, a scrollbar appearing mid glide shifted every card.
-- **Height changes inside a card** use `unfold()` both ways (`in:` and `out:`), which animates size, padding, margin and the flex gap with a symmetric easing, so a swap of two branches keeps the sum steady. Open only controls fade under `.folded` first, then fold away while the card shrinks.
-- **Band heights** follow their content with `morph()` (`#lib/motion.ts`), timed per change: its own easing while the card is open and settled, the glide's while it closes.
 - **Tooltips**: icon only buttons get `{@attach tip('Text')}` (`#lib/tooltip.svelte.ts`), the one `Tooltip` in the root layout shows it. Mouse and keyboard only, no `title` attributes. Skip it only where the icon is obvious (close X). Shows after 250 ms with a soft `rise`.
 - **Number inputs** use `#lib/ui/NumberField.svelte` with its own stepper, not the browser spinner. Other inputs and selects take the `field` utility, floating panels the `popover` utility (open and close animation included).
 - **Shared controls** in `#lib/ui`: `ConfirmButton` for anything destructive (first click arms, blur disarms), `InlineInput` for rename in place (Enter or blur saves, empty or rejected snaps back), `CheckBadge` for the picked option.
@@ -82,8 +74,8 @@ Until the `theming` and `motion` skills exist:
 
 - **No encryption** beyond TLS for now. E2E was considered and dropped (2026-10-31): too costly for search, sharing and reminder text.
 - **Groups are labels**: a note can carry several, groups act as filters. Each label has a colour from the note palette and shows as a folder tab on the card's edge, named only on hover.
-- **Sharing**: the owner shares a note by email (`sharedWith`), everyone on it reads and edits it, only the owner deletes it, the others leave it. `labels` holds everyone's label ids, each person sees and changes only their own. Reminders stay personal. Accounts only see their own user record, `getPeople()` hands out name and email of the people one shares with. Multi relation rules need `sharedWith.id ?=`, plain `sharedWith ?=` silently matches nothing in PocketBase 0.40.
-- **Images** live in the protected `images` file field of a note and reach the browser only through `/api/notes/[id]/images/[file]`, which checks access and lets the browser cache them for good (file names never change). Uploads go one image per request to `/api/notes/[id]/images`, so `BODY_SIZE_LIMIT` (Dockerfile) only has to fit one. Paste, drop or the image button on an open note add them.
+- **Sharing** by email: everyone on a note edits it, only the owner deletes it, labels and reminders stay personal. Details in the `data-model` skill.
+- **Images** sit in a protected file field and reach the browser only through an access checked endpoint, see the `data-model` skill.
 - **Accounts by admin invite** with a set-password link, as in fsd-flight-check. No open signup.
 - **Android via Tauri 2 mobile**, reusing the Svelte UI; Kotlin plugin for share target and notification actions.
 - **Light by default**: Platinum theme first, Charcoal (dark) second. Tangerine accent, Powder Blue secondary in both.
