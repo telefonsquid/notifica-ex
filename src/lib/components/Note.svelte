@@ -93,6 +93,10 @@
     let labelsById = $derived(new Map(labels.map((label) => [label.id, label])))
     let tabs = $derived(draft.labels.map((labelId) => labelsById.get(labelId)).filter((label) => !!label))
 
+    // Starts the breathing wash in phase with every other selected card, timed from page load
+    const BREATH = 2400
+    let breathOffset = $derived(selected ? `-${Math.round(performance.now() % BREATH)}ms` : undefined)
+
     function contentOf(note: Note): NoteContent {
         const { title, body, color, labels, pinned, archived } = note
         return { title, body, color, labels: [...labels], pinned, archived }
@@ -450,6 +454,7 @@
 
     <article
         bind:this={card}
+        style:--breath-offset={breathOffset}
         class={['card note-surface relative flex flex-col gap-3 rounded-card border p-card text-ink', open ? 'border-line-strong shadow-2xl' : 'border-line hover:border-line-strong', selected && 'selected']}
         data-note={draft.color || undefined}
         aria-label={open ? (id ? 'Edit note' : 'New note') : undefined}
@@ -572,7 +577,19 @@
         transition: opacity var(--duration-base) var(--ease-out);
     }
 
-    .card.selected::after { opacity: 0.18; }
+    /* Breathes through filter so the opacity fade in stays untouched */
+    .card.selected::after {
+        opacity: 0.18;
+        animation: breathe 2.4s var(--ease-in-out) var(--breath-offset, 0s) infinite;
+    }
+
+    @keyframes breathe {
+        50% { filter: opacity(0.45); }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .card.selected::after { animation: none; }
+    }
 
     /* RESIZING | the card fills the box that glides to its new size, see glide() in #lib/motion.ts */
     .note:global([data-resizing]) .card {
