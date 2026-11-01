@@ -43,10 +43,34 @@
             }
         }), index)
     }
+
+    // A closed card lets clicks through to its cover, so the hovered image is found by position
+    let hovered = $state(-1)
+
+    function track(gallery: HTMLElement){
+        const card = gallery.parentElement
+        if(editable || !card) return
+
+        const move = (event: PointerEvent) => {
+            hovered = cells.findIndex((cell) => {
+                const rect = cell?.getBoundingClientRect()
+                return rect && event.clientX >= rect.left && event.clientX < rect.right && event.clientY >= rect.top && event.clientY < rect.bottom
+            })
+        }
+        const leave = () => hovered = -1
+
+        card.addEventListener('pointermove', move)
+        card.addEventListener('pointerleave', leave)
+        return () => {
+            card.removeEventListener('pointermove', move)
+            card.removeEventListener('pointerleave', leave)
+            hovered = -1
+        }
+    }
 </script>
 
 {#if count}
-    <div class={['gallery relative -mx-card -mt-card grid gap-0.5 overflow-hidden', alone && 'alone -mb-card', count === 1 && 'single', !editable && 'pointer-events-none']} style:grid-template-columns={`repeat(${columns}, minmax(0, 1fr))`} in:rise={{ y: 0, scale: 1, duration: 'base' }} out:unfold>
+    <div class={['gallery relative -mx-card -mt-card grid gap-0.5 overflow-hidden', alone && 'alone -mb-card', count === 1 && 'single', !editable && 'pointer-events-none']} {@attach track} style:grid-template-columns={`repeat(${columns}, minmax(0, 1fr))`} in:rise={{ y: 0, scale: 1, duration: 'base' }} out:unfold>
         {#each images as name, index (name)}
             {@const src = note ? imageUrl(note, name) : undefined}
             <figure bind:this={cells[index]} class={['cell relative overflow-hidden', columns > 1 && 'aspect-square']}>
@@ -67,6 +91,11 @@
                             <X class="size-4" />
                         </button>
                     </div>
+                {:else}
+                    <!-- The one part of a closed card that takes clicks -->
+                    <button class={['control closed-view pointer-events-auto absolute top-2 right-2', hovered === index && 'hovered']} aria-label="View whole image" onpointerdown={(event) => event.stopPropagation()} onclick={() => view(index)}>
+                        <Expand class="size-3.5" />
+                    </button>
                 {/if}
             </figure>
         {/each}
@@ -76,13 +105,6 @@
                 <img src={upload.url} alt="" class="shown relative size-full object-cover" />
             </figure>
         {/each}
-
-        <!-- A closed card lets clicks through to open it, only this button takes them -->
-        {#if !editable && images.length}
-            <button class="control closed-view pointer-events-auto absolute top-2 right-2" aria-label="View whole image" onpointerdown={(event) => event.stopPropagation()} onclick={() => view(0)}>
-                <Expand class="size-3.5" />
-            </button>
-        {/if}
     </div>
 {/if}
 
@@ -145,7 +167,7 @@
     }
 
     .cell:hover .control,
-    :global(:hover) > .gallery .closed-view,
+    .closed-view.hovered,
     .control:focus-visible {
         opacity: 1;
     }
