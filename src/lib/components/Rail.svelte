@@ -5,7 +5,8 @@
     import { safeAction } from '#lib/pocketbase.ts';
     import { disconnectRealtime, onCollectionChange } from '#lib/realtime.ts';
     import { VIEW_ICON_COMPONENTS } from '#lib/view_icons.ts';
-    import { LogOut, Settings } from '@lucide/svelte';
+    import { LogOut, Menu, Settings } from '@lucide/svelte';
+    import { DropdownMenu } from 'bits-ui';
     import { logoutUser } from '../../routes/api/auth.remote';
     import { getViews } from '../../routes/api/views.remote';
 
@@ -54,11 +55,35 @@
     </a>
 {/snippet}
 
-<!-- Bottom bar on phones, side rail from sm up -->
-<nav class="vt-rail fixed inset-x-0 bottom-0 z-40 flex h-20 items-center gap-2 bg-canvas/80 px-4 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl sm:inset-y-0 sm:right-auto sm:h-auto sm:w-rail sm:flex-col sm:bg-transparent sm:px-0 sm:py-6 sm:backdrop-blur-none">
+<!-- A menu button in the bottom bar on phones, side rail from sm up -->
+<nav class="vt-rail fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] left-gutter z-40 flex items-center gap-2 sm:inset-y-0 sm:left-0 sm:w-rail sm:flex-col sm:py-6">
+
+    <!-- MENU | everything the rail holds, tucked away on phones -->
+    <DropdownMenu.Root>
+        <DropdownMenu.Trigger class="motion-interactive grid size-12 place-items-center rounded-full border border-line bg-raised/85 text-ink-muted shadow-xl backdrop-blur-xl hover:text-ink sm:hidden" aria-label="Menu">
+            <Menu class="size-5" />
+        </DropdownMenu.Trigger>
+        <DropdownMenu.Portal>
+            <DropdownMenu.Content class="menu max-h-[var(--bits-dropdown-menu-content-available-height)] overflow-y-auto" side="top" align="start" sideOffset={10} collisionPadding={12}>
+                {#each views as view, index (view.id)}
+                    {@const Icon = VIEW_ICON_COMPONENTS[view.icon]}
+                    <DropdownMenu.Item class={['menu-item', openView === view.id && 'current']} onSelect={() => goto(resolve('/(app)/[[view]]', { view: index === 0 ? undefined : view.id }))}>
+                        <Icon class="size-4" />{view.name}
+                    </DropdownMenu.Item>
+                {/each}
+                <DropdownMenu.Separator class="menu-separator" />
+                <DropdownMenu.Item class={['menu-item', inSettings && 'current']} onSelect={() => goto(resolve('/(app)/settings'))}>
+                    <Settings class="size-4" />Settings
+                </DropdownMenu.Item>
+                <DropdownMenu.Item class="menu-item" disabled={loggingOut} onSelect={logout}>
+                    <LogOut class="size-4" />Logout
+                </DropdownMenu.Item>
+            </DropdownMenu.Content>
+        </DropdownMenu.Portal>
+    </DropdownMenu.Root>
 
     <!-- VIEWS | scroll once there are more than fit -->
-    <div class="views flex min-w-0 flex-1 items-center gap-2 overflow-x-auto sm:min-h-0 sm:w-full sm:flex-col sm:overflow-x-hidden sm:overflow-y-auto">
+    <div class="views hidden min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto sm:flex">
         <!-- Unkeyed on purpose, a keyed list froze the page on its second reorder -->
         <!-- eslint-disable-next-line svelte/require-each-key -->
         {#each views as view, index}
@@ -67,7 +92,7 @@
     </div>
 
     <!-- ACCOUNT | settings carry the user admin too -->
-    <div class="flex shrink-0 items-center gap-2 sm:flex-col">
+    <div class="hidden shrink-0 flex-col items-center gap-2 sm:flex">
         {@render link('settings', 'Settings', Settings, inSettings)}
         <button class="item" {@attach tipAnchor} aria-label="Logout" disabled={loggingOut} onclick={logout}>
             <LogOut class="icon relative size-6" strokeWidth={1.75} />
@@ -80,6 +105,11 @@
 <style>
     .views {
         scrollbar-width: none;
+    }
+
+    /* The open view stands out in the phone menu */
+    :global(.menu-item.current) {
+        color: var(--theme-accent);
     }
 
     .item {

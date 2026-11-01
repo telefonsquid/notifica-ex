@@ -293,6 +293,14 @@
     grid-auto-rows: 1px;
 }
 
+/* ONE COLUMN | without room for a second note the one column takes the full width */
+@container (width < 31rem) {
+    .note-grid {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: none;
+    }
+}
+
 /* OPEN CARD | two columns need room for two minimum width notes and the gap | the start is the packer's */
 @container (width >= 31rem) {
     .note-cell.wide {

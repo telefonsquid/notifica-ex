@@ -23,7 +23,7 @@
 
 <!-- CONTENT -->
 <div class="sm:pl-rail">
-	<main class="vt-page flex min-h-dvh flex-col px-gutter pt-10 pb-28 sm:py-12">
+	<main class="vt-page flex min-h-dvh flex-col px-gutter pt-10 pb-20 sm:py-12">
 		{@render children()}
 	</main>
 </div>

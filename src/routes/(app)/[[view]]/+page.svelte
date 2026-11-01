@@ -133,17 +133,24 @@
 		busy = busy.then(async () => {
 			if (note && editing?.id === note.id) return;
 			await fold();
-			if (!note) {
-				await editor.load(); // One glide only, a late editor would move the grid a second time
-				origin = createButton?.getBoundingClientRect() ?? null;
-			}
+			await editor.load(); // One glide only, a late editor would move the grid a second time | touch screens never preload it
+			if (!note) origin = createButton?.getBoundingClientRect() ?? null;
 			frozen = visible.map((item) => item.id);
 			snapshot();
 			editing = { key: ++opened, id: note?.id ?? null, fresh: !note, focus };
 			closing = false;
 			await tick();
-			document.querySelector('.note.open')?.closest('[data-flip]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); // The cell already sits where the glide ends
+			reveal(document.querySelector('.note.open')?.closest<HTMLElement>('[data-flip]'));
 		});
+	}
+
+	// Brings the whole open note into view, its top first when it is taller than the screen
+	// The cell already has the size and spot the glide ends with
+	function reveal(cell: HTMLElement | null | undefined) {
+		if (!cell) return;
+		const style = getComputedStyle(cell);
+		const room = innerHeight - parseFloat(style.scrollMarginTop) - parseFloat(style.scrollMarginBottom);
+		cell.scrollIntoView({ block: cell.offsetHeight > room ? 'start' : 'nearest', behavior: 'smooth' });
 	}
 
 	function closeEditor() {
@@ -497,8 +504,8 @@
 
 </div>
 
-<!-- TOOLBAR | floats at the bottom, above the phone rail -->
-<div class="toolbar vt-toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-center px-gutter sm:left-rail">
+<!-- TOOLBAR | floats at the bottom, on phones to the right of the menu button -->
+<div class="toolbar vt-toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-end px-gutter sm:left-rail sm:justify-center">
 	{#if selection.length}
 		<!-- SELECTION BAR | stands in for the toolbar while notes are selected -->
 		<div class="pointer-events-auto flex items-center gap-1 rounded-full border border-line bg-raised/85 p-1 pl-5 shadow-xl backdrop-blur-xl" in:rise={{ y: 8, duration: 'base' }}>
@@ -591,13 +598,16 @@
 {/snippet}
 
 <style>
-	/* TOOLBAR | clears the phone rail, sits low on wider screens */
+	/* TOOLBAR | leaves room for the phone menu button on its left */
 	.toolbar {
-		bottom: calc(5.5rem + env(safe-area-inset-bottom));
+		--menu-room: 3.75rem;
+		bottom: calc(1rem + env(safe-area-inset-bottom));
+		padding-left: calc(var(--layout-content-gutter) + var(--menu-room));
 	}
 
 	@media (width >= 40rem) {
 		.toolbar {
+			--menu-room: 0rem;
 			bottom: 1.5rem;
 		}
 	}
@@ -609,7 +619,7 @@
 	}
 
 	.search.open {
-		width: min(22rem, calc(100vw - 2 * var(--layout-content-gutter) - 8.5rem));
+		width: min(22rem, calc(100vw - 2 * var(--layout-content-gutter) - var(--menu-room) - 8.5rem));
 	}
 
 	/* The field and its close button fade in while the pill slides open */
@@ -704,6 +714,11 @@
 	}
 
 	/* DRAG | the held card lifts above the rest */
+	/* Scrolling to an open note keeps it clear of the toolbar */
+	.note-cell {
+		scroll-margin: 1rem 0 calc(6.5rem + env(safe-area-inset-bottom));
+	}
+
 	.note-cell:global([data-dragging]) {
 		z-index: 10;
 		cursor: grabbing;
