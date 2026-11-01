@@ -1,10 +1,9 @@
 import { getRequestEvent } from '$app/server';
-import { unwrap } from '#lib/pocketbase.ts';
 import { occurrenceAfter } from '#lib/reminders.ts';
 import { idSchema, LIMITS } from '#lib/schema_limits.ts';
 import { ntfyTopicSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
 import { publish } from '#lib/server/ntfy.ts';
-import { countOpenOccurrences, deleteOne, findOne, getAllOwned, getNoteFor, getOccurrences, getOpenOccurrences, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { countOpenOccurrences, deleteOne, findOne, getAllOwned, getNoteFor, getOccurrences, getOpenOccurrences, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';

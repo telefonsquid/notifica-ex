@@ -1,8 +1,6 @@
 import { PUBLIC_POCKETBASE_URL } from '$app/env/public';
 import { notify } from '#lib/notifications.svelte.ts';
 import { track } from '#lib/singletons/busy.svelte.ts';
-import type { Result } from '#lib/server/queries.ts';
-import { error } from '@sveltejs/kit';
 import PocketBase from 'pocketbase';
 
 /*
@@ -11,10 +9,6 @@ import PocketBase from 'pocketbase';
     Only use client side, NEVER import this into a .server.ts file or you will have a bad time.
 */
 export const pb = new PocketBase(PUBLIC_POCKETBASE_URL);
-
-export function pocketbaseTimestamp(): string {
-    return new Date().toISOString().slice(0, 23).replace('T', ' ') + 'Z' // yyyy-mm-dd hh:mm:ss.sssZ
-}
 
 export async function safeAction<T>(promise: Promise<T>): Promise<T | null> {
     try {
@@ -43,15 +37,4 @@ export async function safeAction<T>(promise: Promise<T>): Promise<T | null> {
 
         return null;
     }
-}
-
-export function unwrap<T>(result: Result<T>, fallbackMessage?: string): NonNullable<T> {
-    if(!result.success || !result.data){
-        console.error(result)
-        error(400, {
-            message: fallbackMessage ?? result.error ?? 'Unknown Error',
-            ...(result.error ? { details: result.error } : {})
-        });
-    }
-    return result.data as NonNullable<T>;
 }

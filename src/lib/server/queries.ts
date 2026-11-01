@@ -1,7 +1,8 @@
 import { getRequestEvent } from '$app/server';
 import type { CollectionMap, FetchOptions, Occurrence, Reminder } from '#lib/schemas.ts';
 import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
-import type { CollectionModel, ListResult, RecordListOptions } from 'pocketbase';
+import { error } from '@sveltejs/kit';
+import type { CollectionModel, ListResult } from 'pocketbase';
 
 // ERROR HANDLING
 export type Result<T> =
@@ -38,6 +39,21 @@ export async function pbErrorHandler<T>(promise: Promise<T>): Promise<Result<T>>
 
 
 
+// UNWRAP | the data of a successful result, a 400 with the database's reason otherwise
+export function unwrap<T>(result: Result<T>, fallbackMessage?: string): NonNullable<T> {
+    if(!result.success || !result.data){
+        console.error(result)
+        error(400, {
+            message: fallbackMessage ?? result.error ?? 'Unknown Error',
+            ...(result.error ? { details: result.error } : {})
+        });
+    }
+    return result.data as NonNullable<T>;
+}
+
+
+
+
 // GENERIC FUNCTIONS =====================================================================
 
 // GET
@@ -51,17 +67,7 @@ export async function getAll<K extends keyof CollectionMap>(collectionName: K, o
     return await pbErrorHandler(pb.collection(collectionName).getFullList(options) as Promise<CollectionMap[K][]>)
 }
 
-export async function getPage<K extends keyof CollectionMap>(collectionName: K, page: number, perPage: number, options?: RecordListOptions) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).getList(page, perPage, options) as Promise<ListResult<CollectionMap[K]>>)
-}
-
 // INSERT
-export async function insertOne<K extends keyof CollectionMap>(collectionName: K, item: CollectionMap[K]) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).create(item) as Promise<CollectionMap[K]>)
-}
-
 export async function insertOnePartial<K extends keyof CollectionMap>(collectionName: K, item: Partial<CollectionMap[K]>) {
     const pb = await getPbAdminConnection()
     return await pbErrorHandler(pb.collection(collectionName).create(item) as Promise<CollectionMap[K]>)
@@ -74,11 +80,6 @@ export async function deleteOne<K extends keyof CollectionMap>(collectionName: K
 }
 
 // UPDATE
-export async function updateOne<K extends keyof CollectionMap>(collectionName: K, id: string, item: CollectionMap[K]) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).update(id, item) as Promise<CollectionMap[K]>)
-}
-
 export async function updateOnePartial<K extends keyof CollectionMap>(collectionName: K, id: string, item: Partial<CollectionMap[K]>) {
     const pb = await getPbAdminConnection()
     return await pbErrorHandler(pb.collection(collectionName).update(id, item) as Promise<CollectionMap[K]>)

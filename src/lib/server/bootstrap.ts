@@ -1,8 +1,7 @@
 import { dev } from '$app/env';
 import * as env from '$app/env/private';
-import { unwrap } from '#lib/pocketbase.ts';
 import type { CollectionMap, Note } from '#lib/schemas.ts';
-import { findOne, getAll, getCollection, importCollections, insertOnePartial, updateCollection, updateOnePartial, updateSettings } from '#lib/server/queries.ts';
+import { findOne, getAll, getCollection, importCollections, insertOnePartial, unwrap, updateCollection, updateOnePartial, updateSettings } from '#lib/server/queries.ts';
 import type { CollectionModel } from 'pocketbase';
 import pbSchema from '../../../pocketbase/pb_schema.json';
 

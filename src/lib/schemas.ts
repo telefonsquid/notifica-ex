@@ -43,14 +43,6 @@ export const recordModelSchema = z.object({
         .optional()
 });
 
-export const createListModelSchema = <T extends z.ZodTypeAny>(itemSchema: T) => z.object({
-    page: limitedCount('Page', LIMITS.PAGE_NUMBER),
-    perPage: limitedCount('Page size', LIMITS.PAGE_SIZE),
-    totalItems: limitedCount('Total items', LIMITS.TOTAL_ITEMS),
-    totalPages: limitedCount('Total pages', LIMITS.TOTAL_PAGES),
-    items: z.array(itemSchema)
-});
-
 export type FetchOptions = z.infer<typeof fetchOptionsSchema>;
 export const fetchOptionsSchema = z.object({
     page: z.number().int('Page must be a whole number.').min(1, 'Page must be at least 1.').max(LIMITS.PAGE_NUMBER, `Page must not be larger than ${LIMITS.PAGE_NUMBER}.`).optional(),
@@ -59,15 +51,6 @@ export const fetchOptionsSchema = z.object({
     filter: limitedText('Filter', LIMITS.FETCH_FILTER).optional(), // stays a raw pocketbase expression, only its size is bounded here
     expand: limitedText('Expand', LIMITS.FETCH_EXPAND).regex(/^[A-Za-z0-9_,.]*$/, 'Expand may only name relations.').optional()
 });
-
-export const pbOmitMap = {
-    id: true,
-    created: true,
-    updated: true,
-    collectionId: true,
-    collectionName: true,
-    expand: true
-};
 
 
 
