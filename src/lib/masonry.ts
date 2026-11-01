@@ -10,14 +10,16 @@ import type { Attachment } from 'svelte/attachments';
 
 // PACK | glide() runs it too, so cards glide straight to their packed place
 export function pack(grid: HTMLElement){
+    const cells = [...grid.children].filter((cell): cell is HTMLElement => cell instanceof HTMLElement)
+
+    // Count the columns without the old placements | a card left past the last column keeps an extra one alive, squeezed to its narrowest
+    cells.forEach((cell) => Object.assign(cell.style, { gridRow: '', gridColumnStart: '' }))
     const style = getComputedStyle(grid)
     const columns = style.gridTemplateColumns.split(' ').length
     const gap = Math.round(parseFloat(style.getPropertyValue('--note-row-gap')) || 0)
 
     // Leaving cards float above the grid and keep no spot | a placed one would measure from its old spot
-    const cells = [...grid.children].filter((cell): cell is HTMLElement => cell instanceof HTMLElement)
     const floating = cells.filter((cell) => cell.style.position === 'absolute')
-    floating.forEach((cell) => Object.assign(cell.style, { gridRow: '', gridColumnStart: '' }))
     const placed = cells.filter((cell) => !floating.includes(cell))
     const heights = withoutLeaving(grid, () => placed.map((cell) => Math.ceil(cell.offsetHeight)))
 
