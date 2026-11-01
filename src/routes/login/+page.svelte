@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
 	import AuthPage from '#lib/components/AuthPage.svelte';
 	import { safeAction } from '#lib/pocketbase.ts';
@@ -12,8 +11,8 @@
 
 	async function login() {
 		if (!(await safeAction(loginUser({ email, password })))) return false;
-		// eslint-disable-next-line svelte/no-navigation-without-resolve -- a path on this site, checked by returnPath
-		await goto(returnPath(page.url), { refreshAll: true });
+		// A full load, the way back may be an endpoint like the share target rather than a page
+		location.assign(returnPath(page.url));
 		return true;
 	}
 </script>

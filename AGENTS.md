@@ -78,6 +78,7 @@ Theming lives in the `theming` skill, animation in the `motion` skill.
 - **Images** sit in a protected file field and reach the browser only through an access checked endpoint, see the `data-model` skill.
 - **Accounts by admin invite** with a set-password link, as in fsd-flight-check. No open signup.
 - **Android via Tauri 2 mobile**, reusing the Svelte UI; Kotlin plugin for share target and notification actions.
+- **Installable web app meanwhile**: `static/manifest.webmanifest` with a GET share target on `/share`, which turns shared title, text and link into a note and opens it. Icons are rendered from the favicon artwork.
 - **Light by default**: Platinum theme first, Charcoal (dark) second. Tangerine accent, Powder Blue secondary in both.
 - **UI language**: English.
 - **Live UI through PocketBase realtime**: the root layout hands the auth token to the browser (the cookie stays httpOnly), the `(app)` layout connects once, pages subscribe with `onCollectionChange()` from `#lib/realtime.ts` (bursts coalesce into one refresh) and react with `query().refresh()` for remote queries, `invalidateAll()` for load data. Collection rules decide which events a user receives, so every new collection needs list/view rules before it gets subscribed to. After a reconnect everything is invalidated once to catch missed events.
