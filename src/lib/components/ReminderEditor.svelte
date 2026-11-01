@@ -56,7 +56,9 @@
     // Minutes to years take a count and read as "every 3 days"
     let counted = $derived(repeat !== 'never' && repeat !== 'weekdays')
     let tuned = $derived(!!until || limits.length > 0)
-    let incomplete = $derived((repeat === 'weekdays' && !weekdays.length) || limits.some((limit) => limit.kind === 'days' && !limit.days.length))
+    // A cleared date field leaves nothing to save
+    let start = $derived(at ? new Date(at) : null)
+    let incomplete = $derived(!start || isNaN(start.getTime()) || (repeat === 'weekdays' && !weekdays.length) || limits.some((limit) => limit.kind === 'days' && !limit.days.length))
 
     // Once and Weekdays sit apart on top, they don't count
     let repeats = $derived([
@@ -87,8 +89,10 @@
         weekdays = [startDay()]
     }
 
+    // Today while the date field is empty
     function startDay(): Weekday {
-        return WEEKDAYS[(new Date(at).getDay() + 6) % 7].value
+        const day = start && !isNaN(start.getTime()) ? start : new Date()
+        return WEEKDAYS[(day.getDay() + 6) % 7].value
     }
 
     // Date ranges picked backwards get turned round
@@ -103,9 +107,10 @@
     }
 
     async function save(){
+        if(incomplete || !start) return
         saving = true
         const rule = {
-            at: new Date(at).toISOString(),
+            at: start.toISOString(),
             repeat,
             every: counted ? every : 1,
             weekdays: repeat === 'weekdays' ? weekdays : [],
