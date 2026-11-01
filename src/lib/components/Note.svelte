@@ -278,7 +278,7 @@
     }
 
     // CLOSE | a press anywhere else or Escape folds the card back, its tabs and the popovers opened from it count as inside
-    const FLOATING = '[data-bits-floating-content-wrapper], [data-popover-content]'
+    const FLOATING = '[data-bits-floating-content-wrapper], [data-popover-content], [data-dialog-content]'
 
     function pressOutside(event: PointerEvent){
         const target = event.target as Element

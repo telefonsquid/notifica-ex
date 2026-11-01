@@ -2,6 +2,7 @@
 	import { PUBLIC_NTFY_URL } from '$app/env/public';
 	import { invalidateAll } from '$app/navigation';
 	import ColorPicker from '#lib/components/ColorPicker.svelte';
+	import ImageFitPicker from '#lib/components/ImageFitPicker.svelte';
 	import LabelPositionPicker from '#lib/components/LabelPositionPicker.svelte';
 	import SettingsSection from '#lib/components/SettingsSection.svelte';
 	import ThemePicker from '#lib/components/ThemePicker.svelte';
@@ -210,6 +211,10 @@
 			<div>
 				<h3 class="type-meta mb-4 text-ink-faint">Label tabs</h3>
 				<LabelPositionPicker current={data.labelPosition} />
+			</div>
+			<div>
+				<h3 class="type-meta mb-4 text-ink-faint">Images</h3>
+				<ImageFitPicker current={data.imageFit} />
 			</div>
 		</div>
 	</SettingsSection>

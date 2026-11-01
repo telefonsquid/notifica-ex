@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onNavigate } from '$app/navigation';
+	import ImageViewer from '#lib/ui/ImageViewer.svelte';
 	import Toaster from '#lib/ui/Toaster.svelte';
 	import Tooltip from '#lib/ui/Tooltip.svelte';
 	import '../app.css';
@@ -36,3 +37,6 @@
 
 <!-- TOOLTIP -->
 <Tooltip />
+
+<!-- IMAGE VIEWER -->
+<ImageViewer />

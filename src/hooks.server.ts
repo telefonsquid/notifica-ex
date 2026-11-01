@@ -1,6 +1,6 @@
 // IMPORTS
 import { INTERNAL_POCKETBASE_URL } from '$app/env/private'
-import { DEFAULT_LABEL_POSITION, LABEL_POSITION_COOKIE, isLabelPosition } from '#lib/preferences.ts'
+import { DEFAULT_IMAGE_FIT, DEFAULT_LABEL_POSITION, IMAGE_FIT_COOKIE, LABEL_POSITION_COOKIE, isImageFit, isLabelPosition } from '#lib/preferences.ts'
 import type { User } from '#lib/schemas.ts'
 import { DEFAULT_THEME, THEME_COOKIE, isThemeName } from '#lib/themes/index.ts'
 import { sequence, type Handle, type HandleServerError } from '@sveltejs/kit/hooks'
@@ -58,9 +58,12 @@ const applyTheme = (async ({ event, resolve }) => {
     const labels = event.cookies.get(LABEL_POSITION_COOKIE)
     event.locals.labelPosition = isLabelPosition(labels) ? labels : DEFAULT_LABEL_POSITION
 
+    const images = event.cookies.get(IMAGE_FIT_COOKIE)
+    event.locals.imageFit = isImageFit(images) ? images : DEFAULT_IMAGE_FIT
+
     // RENDER THEM INTO THE HTML | set before first paint so the page never flashes the wrong look
     return resolve(event, {
-        transformPageChunk: ({ html }) => html.replace('%theme%', event.locals.theme).replace('%labels%', event.locals.labelPosition)
+        transformPageChunk: ({ html }) => html.replace('%theme%', event.locals.theme).replace('%labels%', event.locals.labelPosition).replace('%images%', event.locals.imageFit)
     })
 
 }) satisfies Handle
