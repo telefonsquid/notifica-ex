@@ -2,9 +2,12 @@
 	import { notify } from '#lib/notifications.svelte.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
+	import { LIMITS } from '#lib/schema_limits.ts';
 	import type { AuthorizationLevel, UserSummary } from '#lib/schemas.ts';
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import Button from '#lib/ui/Button.svelte';
+	import ConfirmButton from '#lib/ui/ConfirmButton.svelte';
+	import InlineInput from '#lib/ui/InlineInput.svelte';
 	import Input from '#lib/ui/Input.svelte';
 	import { KeyRound, RotateCcw, Send, UserX } from '@lucide/svelte';
 	import { getUsers, inviteUser, sendPasswordLink, setUserState, updateUser } from '../../routes/api/users.remote';
@@ -43,16 +46,9 @@
 	}
 
 	// EDITING | fields save when they lose focus, a rejected value snaps back
-	function edit(user: UserSummary, field: 'name' | 'email', input: HTMLInputElement) {
-		const value = input.value.trim();
-		if (!value || value === user[field]) {
-			input.value = user[field];
-			return;
-		}
+	function edit(user: UserSummary, field: 'name' | 'email', value: string) {
 		const { id, name, email, authorizationLevel } = user;
-		safeAction(updateUser({ id, name, email, authorizationLevel, [field]: value })).then((result) => {
-			if (!result) input.value = user[field];
-		});
+		return safeAction(updateUser({ id, name, email, authorizationLevel, [field]: value }));
 	}
 
 	function changeRole(user: UserSummary, authorizationLevel: AuthorizationLevel) {
@@ -65,17 +61,6 @@
 		if (await safeAction(sendPasswordLink(user.id))) notify(`Password link sent to ${user.email}.`);
 	}
 
-	// DEACTIVATE | first click arms the button, the second one goes through
-	let confirmDeactivate = $state<string | null>(null);
-
-	async function deactivate(user: UserSummary) {
-		if (confirmDeactivate !== user.id) {
-			confirmDeactivate = user.id;
-			return;
-		}
-		await safeAction(setUserState({ id: user.id, state: 'inactive' }));
-		confirmDeactivate = null;
-	}
 </script>
 
 {#snippet roles(current: AuthorizationLevel, onpick: (role: AuthorizationLevel) => void, locked = false)}
@@ -121,21 +106,8 @@
 				{@const self = user.id === userId}
 				<li class="flex flex-wrap items-center gap-x-4 gap-y-2 bg-card py-3 pr-2 pl-card">
 					<div class="grid min-w-48 flex-1">
-						<input
-							value={user.name}
-							aria-label={`Name of ${user.name}`}
-							class="type-title min-w-0 bg-transparent text-ink outline-none"
-							onchange={(event) => edit(user, 'name', event.currentTarget)}
-							onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-						/>
-						<input
-							value={user.email}
-							type="email"
-							aria-label={`Email of ${user.name}`}
-							class="min-w-0 bg-transparent text-sm text-ink-muted outline-none"
-							onchange={(event) => edit(user, 'email', event.currentTarget)}
-							onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
-						/>
+						<InlineInput value={user.name} label={`Name of ${user.name}`} maxlength={LIMITS.USER_NAME} class="type-title text-ink" onsave={(value) => edit(user, 'name', value)} />
+						<InlineInput value={user.email} label={`Email of ${user.name}`} type="email" maxlength={LIMITS.USER_EMAIL} class="text-sm text-ink-muted" onsave={(value) => edit(user, 'email', value)} />
 					</div>
 
 					{@render roles(user.authorizationLevel, (value) => changeRole(user, value), self)}
@@ -147,15 +119,14 @@
 						{#if self}
 							<span class="type-meta w-9 text-center text-ink-faint">You</span>
 						{:else}
-							<button
-								class={['icon-button', confirmDeactivate === user.id && 'bg-accent text-on-accent hover:text-on-accent']}
-								aria-label={confirmDeactivate === user.id ? `Confirm deactivating ${user.name}` : `Deactivate ${user.name}`}
-								{@attach tip(confirmDeactivate === user.id ? 'Click again to deactivate' : 'Deactivate, signs them out everywhere')}
-								onclick={() => deactivate(user)}
-								onblur={() => (confirmDeactivate = null)}
-							>
-								<UserX class="size-4" />
-							</button>
+							<ConfirmButton
+								icon={UserX}
+								label={`Deactivate ${user.name}`}
+								confirmLabel={`Confirm deactivating ${user.name}`}
+								hint="Deactivate, signs them out everywhere"
+								confirmHint="Click again to deactivate"
+								onconfirm={() => safeAction(setUserState({ id: user.id, state: 'inactive' }))}
+							/>
 						{/if}
 					</div>
 				</li>

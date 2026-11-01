@@ -10,9 +10,11 @@
 	import { notify } from '#lib/notifications.svelte.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
-	import { tip } from '#lib/tooltip.svelte.ts';
+	import { LIMITS } from '#lib/schema_limits.ts';
 	import { hasPermission } from '#lib/user.ts';
 	import Button from '#lib/ui/Button.svelte';
+	import ConfirmButton from '#lib/ui/ConfirmButton.svelte';
+	import InlineInput from '#lib/ui/InlineInput.svelte';
 	import { Check, CircleUserRound, Dices, KeyRound, Palette, PanelsTopLeft, Send, SlidersHorizontal, Trash2, Users } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { deleteLabel, getLabels, updateLabel } from '../../api/labels.remote';
@@ -52,29 +54,8 @@
 
 	// LABELS
 	let labels = $derived(await getLabels());
-	let confirmDelete = $state<string | null>(null);
 
 	$effect(() => onCollectionChange('labels', () => getLabels().refresh()));
-
-	function rename(id: string, input: HTMLInputElement, current: string) {
-		const name = input.value.trim();
-		if (!name || name === current) {
-			input.value = current;
-			return;
-		}
-		safeAction(updateLabel({ id, name })).then((result) => {
-			if (!result) input.value = current;
-		});
-	}
-
-	async function remove(id: string) {
-		if (confirmDelete !== id) {
-			confirmDelete = id;
-			return;
-		}
-		await safeAction(deleteLabel(id));
-		confirmDelete = null;
-	}
 
 	// SECTIONS | one long scroll that snaps to a section, the one at the top is current
 	const SECTIONS = [
@@ -229,7 +210,7 @@
 				<h3 class="type-meta mb-4 text-ink-faint">Reminders</h3>
 
 				<form class="flex flex-wrap gap-2" onsubmit={(event) => { event.preventDefault(); saveTopic(); }}>
-					<input bind:value={topic} placeholder="Topic" aria-label="ntfy topic" class="field min-w-0 flex-1" />
+					<input bind:value={topic} placeholder="Topic" aria-label="ntfy topic" class="field h-11 flex-1 px-3.5" />
 					<Button type="button" style="ghost" icon={Dices} onclick={randomTopic}>Random</Button>
 					<Button type="submit" icon={Check} loading={savingTopic} disabled={topic.trim() === stored}>Save</Button>
 				</form>
@@ -254,22 +235,15 @@
 						{#each labels as label (label.id)}
 							<li class="flex items-center gap-3 bg-card py-2 pr-2 pl-card">
 								<ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} />
-								<input
-									value={label.name}
-									aria-label={`Rename ${label.name}`}
-									class="min-w-0 flex-1 bg-transparent py-1.5 text-ink outline-none"
-									onchange={(event) => rename(label.id, event.currentTarget, label.name)}
-									onkeydown={(event) => { if (event.key === 'Enter') event.currentTarget.blur(); }}
+								<InlineInput value={label.name} label={`Rename ${label.name}`} maxlength={LIMITS.LABEL_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateLabel({ id: label.id, name }))} />
+								<ConfirmButton
+									icon={Trash2}
+									label={`Delete ${label.name}`}
+									confirmLabel={`Confirm deleting ${label.name}`}
+									hint="Delete label"
+									confirmHint="Click again to delete, its notes stay"
+									onconfirm={() => safeAction(deleteLabel(label.id))}
 								/>
-								<button
-									class={['icon-button', confirmDelete === label.id && 'bg-accent text-on-accent hover:text-on-accent']}
-									aria-label={confirmDelete === label.id ? `Confirm deleting ${label.name}` : `Delete ${label.name}`}
-									onclick={() => remove(label.id)}
-									onblur={() => (confirmDelete = null)}
-									{@attach tip(confirmDelete === label.id ? 'Click again to delete, its notes stay' : 'Delete label')}
-								>
-									<Trash2 class="size-4" />
-								</button>
 							</li>
 						{/each}
 					</ul>
@@ -446,24 +420,5 @@
 		display: grid;
 		gap: 1.5rem;
 		padding-top: var(--peek);
-	}
-
-	.field {
-		height: 2.75rem;
-		padding-inline: 0.875rem;
-		border: 1px solid var(--theme-line);
-		border-radius: var(--layout-radius-control);
-		background: var(--theme-card);
-		color: var(--theme-ink);
-		transition: border-color var(--duration-fast) var(--ease-out);
-	}
-
-	.field:hover {
-		border-color: var(--theme-line-strong);
-	}
-
-	.field:focus {
-		border-color: var(--theme-accent);
-		outline: none;
 	}
 </style>

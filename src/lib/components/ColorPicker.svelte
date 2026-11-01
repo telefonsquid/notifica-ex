@@ -33,7 +33,7 @@
         <Popover.Content
             sideOffset={10}
             collisionPadding={12}
-            class="palette z-[60] grid gap-4 rounded-card border border-line-strong bg-raised p-4 text-ink shadow-2xl"
+            class="popover z-[60] grid gap-4 p-4"
         >
             {#each COLOR_GROUPS as group (group.name)}
                 <div>
@@ -70,20 +70,5 @@
     .picked {
         outline: 2px solid var(--theme-accent);
         outline-offset: 2px;
-    }
-
-    /* Grows out of the swatch that opened it */
-    :global(.palette[data-state='open']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: palette-in var(--duration-base) var(--ease-spring);
-    }
-
-    :global(.palette[data-state='closed']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: palette-in var(--duration-fast) var(--ease-in) reverse forwards;
-    }
-
-    @keyframes palette-in {
-        from { opacity: 0; scale: 0.9; }
     }
 </style>

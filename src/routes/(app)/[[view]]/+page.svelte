@@ -448,7 +448,7 @@
 					{#if tweaked}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
 				</Popover.Trigger>
 				<Popover.Portal>
-					<Popover.Content side="top" sideOffset={12} collisionPadding={12} class="filters z-40 flex max-h-[min(42rem,var(--bits-popover-content-available-height))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl">
+					<Popover.Content side="top" sideOffset={12} collisionPadding={12} class="popover z-40 flex max-h-[min(42rem,var(--bits-popover-content-available-height))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden">
 						<div class="min-h-0 overflow-y-auto p-5">
 							<FilterEditor {filter} {sort} {labels} onchange={(changedFilter, changedSort) => (draft = { filter: changedFilter, sort: changedSort })} />
 						</div>
@@ -635,20 +635,6 @@
 
 	.action.primary { background: var(--theme-accent); color: var(--theme-on-accent); }
 	.action.primary:hover { background: color-mix(in oklab, var(--theme-accent) 88%, white); }
-
-	:global(.filters[data-state='open']) {
-		transform-origin: var(--bits-popover-content-transform-origin);
-		animation: pop-in var(--duration-base) var(--ease-spring);
-	}
-
-	:global(.filters[data-state='closed']) {
-		transform-origin: var(--bits-popover-content-transform-origin);
-		animation: pop-in var(--duration-fast) var(--ease-in) reverse forwards;
-	}
-
-	@keyframes pop-in {
-		from { opacity: 0; scale: 0.94; }
-	}
 
 	.sheet {
 		transition: translate var(--duration-slow) var(--ease-spring), rotate var(--duration-slow) var(--ease-spring);

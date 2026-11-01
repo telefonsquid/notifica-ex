@@ -28,6 +28,7 @@
     import { safeAction } from '#lib/pocketbase.ts';
     import type { Label, Note, NoteContent, Reminder } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
+    import ConfirmButton from '#lib/ui/ConfirmButton.svelte';
     import Markdown from '#lib/ui/Markdown.svelte';
     import { Archive, ArchiveRestore, Check, Pin, Trash2, X } from '@lucide/svelte';
     import { untrack } from 'svelte';
@@ -75,7 +76,6 @@
     let draft = $state<NoteContent>(initial ? contentOf(initial) : emptyNote())
     let saved = $state(untrack(() => JSON.stringify(draft)))
     let savedAt = initial?.updated ?? ''
-    let confirmDelete = $state(false)
     let deleted = false
     let root = $state<HTMLElement>()
     let card = $state<HTMLElement>()
@@ -178,10 +178,6 @@
     }
 
     async function remove(){
-        if(!confirmDelete){
-            confirmDelete = true
-            return
-        }
         await queue
         if(id && !await safeAction(deleteNote(id))) return
         deleted = true
@@ -276,9 +272,7 @@
     <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
         {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
     </button>
-    <button class={['icon-button', confirmDelete && 'bg-accent text-on-accent hover:text-on-accent']} aria-label={confirmDelete ? 'Confirm delete' : 'Delete'} onclick={remove} onblur={() => confirmDelete = false} {@attach tip(confirmDelete ? 'Click again to delete' : 'Delete note')}>
-        <Trash2 class="size-4" />
-    </button>
+    <ConfirmButton icon={Trash2} label="Delete" confirmLabel="Confirm delete" hint="Delete note" confirmHint="Click again to delete" onconfirm={remove} />
 {/snippet}
 
 <!-- The tabs sit beside the colored card, not on it, so they keep the page ink -->

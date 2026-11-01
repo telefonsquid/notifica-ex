@@ -257,21 +257,6 @@
         color: var(--theme-ink-faint);
     }
 
-    .field {
-        height: 2.25rem;
-        min-width: 0;
-        padding-inline: 0.75rem;
-        border: 1px solid var(--theme-line);
-        border-radius: var(--layout-radius-control);
-        background: var(--theme-card);
-        color: var(--theme-ink);
-        color-scheme: inherit;
-        transition: border-color var(--duration-fast) var(--ease-out);
-    }
-
-    .field:hover { border-color: var(--theme-line-strong); }
-    .field:focus { border-color: var(--theme-accent); outline: none; }
-
     /* CHIPS | included ones take the accent, excluded ones get struck through */
     .chip {
         display: inline-flex;

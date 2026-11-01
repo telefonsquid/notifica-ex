@@ -141,7 +141,7 @@
     <!-- FORM | takes the place of the line -->
     <form class="reminder-form flex flex-col gap-1.5 py-1" onsubmit={(event) => { event.preventDefault(); save() }} in:enter|global>
         <div class="flex flex-wrap items-center gap-1.5">
-            <input type="datetime-local" bind:value={at} aria-label="First time" class="field min-w-0 flex-1 basis-44" />
+            <input type="datetime-local" bind:value={at} aria-label="First time" class="field flex-1 basis-44 bg-raised px-2.5 text-sm" />
 
             <div class="flex items-center gap-1.5">
                 {#if counted}
@@ -150,7 +150,7 @@
                         <NumberField bind:value={every} label="Every" class="w-16" />
                     </div>
                 {/if}
-                <select value={repeat} aria-label="Repeat" class="field" onchange={(event) => pickRepeat(event.currentTarget.value as ReminderRepeat)}>
+                <select value={repeat} aria-label="Repeat" class="field bg-raised px-2.5 text-sm" onchange={(event) => pickRepeat(event.currentTarget.value as ReminderRepeat)}>
                     {#each REPEATS as option (option)}
                         <option value={option}>{optionLabel(option)}</option>
                     {/each}
@@ -174,7 +174,7 @@
             {#if repeat !== 'never'}
                 <label class="flex min-w-0 items-center gap-1.5" in:enter>
                     <span class="type-meta pl-1">until</span>
-                    <input type="date" bind:value={until} min={at.slice(0, 10)} aria-label="Last day" class={['field min-w-0', !until && 'text-ink-faint']} />
+                    <input type="date" bind:value={until} min={at.slice(0, 10)} aria-label="Last day" class={['field bg-raised px-2.5 text-sm', !until && 'text-ink-faint']} />
                 </label>
             {/if}
 
@@ -222,26 +222,6 @@
 {/if}
 
 <style>
-    .field {
-        height: 2.25rem;
-        padding-inline: 0.625rem;
-        border: 1px solid var(--theme-line);
-        border-radius: var(--layout-radius-control);
-        background: var(--theme-raised);
-        color: var(--theme-ink);
-        font-size: 0.875rem;
-        transition: border-color var(--duration-fast) var(--ease-out);
-    }
-
-    .field:hover {
-        border-color: var(--theme-line-strong);
-    }
-
-    .field:focus {
-        border-color: var(--theme-accent);
-        outline: none;
-    }
-
     .day {
         display: grid;
         flex: 1;

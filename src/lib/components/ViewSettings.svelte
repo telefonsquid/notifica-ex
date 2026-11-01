@@ -2,9 +2,12 @@
     import FilterEditor from '#lib/components/FilterEditor.svelte';
     import { safeAction } from '#lib/pocketbase.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
+    import { LIMITS } from '#lib/schema_limits.ts';
     import { VIEW_ICONS, type Label, type ViewFilter, type ViewIcon, type ViewSort } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
+    import ConfirmButton from '#lib/ui/ConfirmButton.svelte';
+    import InlineInput from '#lib/ui/InlineInput.svelte';
     import { VIEW_ICON_COMPONENTS } from '#lib/view_icons.ts';
     import { countActive, defaultSort, emptyFilter } from '#lib/views.ts';
     import { ChevronDown, ChevronUp, Plus, SlidersHorizontal, Trash2 } from '@lucide/svelte';
@@ -19,24 +22,11 @@
 
     $effect(() => onCollectionChange('views', () => getViews().refresh()))
 
-    // ROW STATE | one open filter editor, one open icon picker, one armed delete at a time
+    // ROW STATE | one open filter editor and one open icon picker at a time
     let expanded = $state<string | null>(null)
     let picking = $state<string | null>(null)
-    let confirmDelete = $state<string | null>(null)
 
     // ====================================================================================================
-
-    // NAME | an empty or unchanged name puts the old one back
-    function rename(id: string, input: HTMLInputElement, current: string){
-        const name = input.value.trim()
-        if(!name || name === current){
-            input.value = current
-            return
-        }
-        safeAction(updateView({ id, name })).then((result) => {
-            if(!result) input.value = current
-        })
-    }
 
     function pickIcon(id: string, icon: ViewIcon){
         picking = null
@@ -79,15 +69,6 @@
         if(created) expanded = created.id
         creating = false
     }
-
-    async function remove(id: string){
-        if(confirmDelete !== id){
-            confirmDelete = id
-            return
-        }
-        await safeAction(deleteView(id))
-        confirmDelete = null
-    }
 </script>
 
 <ul class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
@@ -103,7 +84,7 @@
                         <Icon class="size-5" strokeWidth={1.75} />
                     </Popover.Trigger>
                     <Popover.Portal>
-                        <Popover.Content sideOffset={8} collisionPadding={12} class="icons z-[60] grid grid-cols-6 gap-1 rounded-card border border-line-strong bg-raised p-3 text-ink shadow-2xl" aria-label="Icons">
+                        <Popover.Content sideOffset={8} collisionPadding={12} class="popover z-[60] grid grid-cols-6 gap-1 p-3" aria-label="Icons">
                             {#each VIEW_ICONS as name (name)}
                                 {@const Choice = VIEW_ICON_COMPONENTS[name]}
                                 <button
@@ -120,13 +101,7 @@
                 </Popover.Root>
 
                 <!-- NAME -->
-                <input
-                    value={view.name}
-                    aria-label={`Rename ${view.name}`}
-                    class="min-w-0 flex-1 bg-transparent py-1.5 text-ink outline-none"
-                    onchange={(event) => rename(view.id, event.currentTarget, view.name)}
-                    onkeydown={(event) => { if(event.key === 'Enter') event.currentTarget.blur() }}
-                />
+                <InlineInput value={view.name} label={`Rename ${view.name}`} maxlength={LIMITS.VIEW_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateView({ id: view.id, name }))} />
                 {#if index === 0}<span class="type-meta hidden text-ink-faint sm:inline">Home</span>{/if}
 
                 <!-- ORDER -->
@@ -146,16 +121,15 @@
                 </button>
 
                 <!-- DELETE | the last view stays -->
-                <button
-                    class={['icon-button', confirmDelete === view.id && 'bg-accent text-on-accent hover:text-on-accent']}
-                    aria-label={confirmDelete === view.id ? `Confirm deleting ${view.name}` : `Delete ${view.name}`}
-                    {@attach tip(views.length === 1 ? 'Keep at least one view' : confirmDelete === view.id ? 'Click again to delete' : 'Delete view')}
+                <ConfirmButton
+                    icon={Trash2}
+                    label={`Delete ${view.name}`}
+                    confirmLabel={`Confirm deleting ${view.name}`}
+                    hint={views.length === 1 ? 'Keep at least one view' : 'Delete view'}
+                    confirmHint="Click again to delete"
                     disabled={views.length === 1}
-                    onclick={() => remove(view.id)}
-                    onblur={() => (confirmDelete = null)}
-                >
-                    <Trash2 class="size-4" />
-                </button>
+                    onconfirm={() => safeAction(deleteView(view.id))}
+                />
             </div>
 
             {#if expanded === view.id}
@@ -191,20 +165,4 @@
         color: var(--theme-on-accent);
         font-size: 0.6875rem;
         line-height: 1;
-    }
-
-    /* Grows out of the icon that opened it */
-    :global(.icons[data-state='open']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: icons-in var(--duration-base) var(--ease-spring);
-    }
-
-    :global(.icons[data-state='closed']) {
-        transform-origin: var(--bits-popover-content-transform-origin);
-        animation: icons-in var(--duration-fast) var(--ease-in) reverse forwards;
-    }
-
-    @keyframes icons-in {
-        from { opacity: 0; scale: 0.94; }
-    }
-</style>
+    }</style>

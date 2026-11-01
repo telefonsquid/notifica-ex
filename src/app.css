@@ -318,7 +318,7 @@
     transform-origin: var(--bits-dropdown-menu-content-transform-origin, var(--bits-context-menu-content-transform-origin, var(--bits-menu-content-transform-origin)));
 
     &[data-state='open'] {
-        animation: menu-in var(--duration-base) var(--ease-spring);
+        animation: pop-in var(--duration-base) var(--ease-spring);
     }
 }
 
@@ -346,8 +346,48 @@
     background: var(--theme-line);
 }
 
-@keyframes menu-in {
+/* POPOVER | floating panel that grows out of whatever opened it and shrinks back into it */
+@utility popover {
+    border: 1px solid var(--theme-line-strong);
+    border-radius: var(--layout-radius-card);
+    background: var(--theme-raised);
+    color: var(--theme-ink);
+    box-shadow: 0 1.5rem 3rem -0.75rem rgb(0 0 0 / 0.25);
+    transform-origin: var(--bits-popover-content-transform-origin);
+
+    &[data-state='open'] {
+        animation: pop-in var(--duration-base) var(--ease-spring);
+    }
+
+    &[data-state='closed'] {
+        animation: pop-in var(--duration-fast) var(--ease-in) reverse forwards;
+    }
+}
+
+@keyframes pop-in {
     from { opacity: 0; scale: 0.94; }
+}
+
+/* FIELD | text, date and select inputs outside the floating label forms */
+@utility field {
+    height: 2.25rem;
+    min-width: 0;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--theme-line);
+    border-radius: var(--layout-radius-control);
+    background: var(--theme-card);
+    color: var(--theme-ink);
+    color-scheme: inherit;
+    transition: border-color var(--duration-fast) var(--ease-out);
+
+    &:hover {
+        border-color: var(--theme-line-strong);
+    }
+
+    &:focus {
+        border-color: var(--theme-accent);
+        outline: none;
+    }
 }
 
 /* BASE ==================================================================================================== */
