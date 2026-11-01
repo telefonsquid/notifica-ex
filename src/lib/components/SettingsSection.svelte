@@ -20,7 +20,6 @@
 <!-- One stop of the settings scroll | the others stay faintly in view and a click on one moves there -->
 <div id={id} class={['section', current && 'current']} data-section={id} role="tabpanel" aria-label={title}>
     <div class="body" inert={!current}>
-        <h2 class="type-title text-2xl text-ink">{title}</h2>
         {@render children()}
     </div>
     {#if !current}
@@ -53,18 +52,10 @@
         filter: none;
     }
 
-    /* Heading beside the content once there is room */
     .body {
         display: grid;
         gap: 1.5rem;
         align-items: start;
-    }
-
-    @media (width >= 80rem) {
-        .body {
-            grid-template-columns: 14rem minmax(0, 1fr);
-            gap: 3rem;
-        }
     }
 
     .cover {

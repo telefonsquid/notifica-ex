@@ -48,7 +48,8 @@
 {#snippet link(target: { view?: string } | 'settings', label: string, Icon: typeof Settings, active: boolean)}
     <a href={target === 'settings' ? resolve('/(app)/settings') : resolve('/(app)/[[view]]', target)} {@attach tipAnchor} class={['item', active && 'active']} aria-label={label} aria-current={active ? 'page' : undefined}>
         {#if active}<span class="vt-rail-indicator indicator absolute inset-0 rounded-card bg-accent"></span>{/if}
-        <Icon class="vt-rail-icon icon relative size-6" strokeWidth={1.75} />
+        <!-- Hover tilts the icon inside, Firefox drops the new snapshot of a tilted element mid transition -->
+        <span class="vt-rail-icon relative flex size-6"><Icon class="icon size-6" strokeWidth={1.75} /></span>
         <span class="tip type-meta" aria-hidden="true">{label}</span>
     </a>
 {/snippet}

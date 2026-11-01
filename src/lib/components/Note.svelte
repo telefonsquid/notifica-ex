@@ -405,10 +405,19 @@
         scale: 0.985;
     }
 
-    .card.selected {
-        outline: 2px solid var(--theme-accent);
-        outline-offset: 3px;
+    /* SELECTED | a faint accent wash over the whole card */
+    .card::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: var(--theme-signature);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--duration-base) var(--ease-out);
     }
+
+    .card.selected::after { opacity: 0.18; }
 
     /* RESIZING | the card fills the box that glides to its new size, see glide() in #lib/motion.ts */
     .note:global([data-resizing]) .card {

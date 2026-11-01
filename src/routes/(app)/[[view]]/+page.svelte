@@ -3,22 +3,24 @@
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import FilterEditor from '#lib/components/FilterEditor.svelte';
+	import SortEditor from '#lib/components/SortEditor.svelte';
 	import NoteView, { editor } from '#lib/components/Note.svelte';
 	import NoteMenu from '#lib/components/NoteMenu.svelte';
 	import { toggleTask } from '#lib/markdown.ts';
-	import { duration, easing, glide, measure, rise, stagger } from '#lib/motion.ts';
+	import { masonry, pack } from '#lib/masonry.ts';
+	import { cssEasing, duration, easing, glide, measure, rise, stagger, unfold } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts';
-	import { defaultSort, emptyFilter, groupReminders, matchesView, noteText, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
-	import { Check, Ellipsis, ListFilter, Plus, Search, X } from '@lucide/svelte';
+	import { defaultSort, emptyFilter, groupReminders, matchesView, noteText, positionBetween, sameFilter, sortNotes, wordsOf } from '#lib/views.ts';
+	import { ArrowUpDown, Check, Ellipsis, ListFilter, Plus, Search, X } from '@lucide/svelte';
 	import { ContextMenu, DropdownMenu, Popover } from 'bits-ui';
-	import { tick, untrack } from 'svelte';
+	import { flushSync, tick, untrack } from 'svelte';
 	import type { TransitionConfig } from 'svelte/transition';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { getLabels } from '../../api/labels.remote';
-	import { getNotes, updateNote } from '../../api/notes.remote';
+	import { getNotes, moveNote, updateNote } from '../../api/notes.remote';
 	import { getReminders, setReminderDone } from '../../api/reminders.remote';
 	import { createView, getViews, updateView } from '../../api/views.remote';
 
@@ -52,7 +54,9 @@
 
 	let filter = $derived(draft?.filter ?? view?.filter ?? emptyFilter());
 	let sort = $derived(draft?.sort ?? view?.sort ?? defaultSort());
-	let tweaked = $derived(!!draft && !!view && (!sameFilter(draft.filter, view.filter) || JSON.stringify(draft.sort) !== JSON.stringify(view.sort)));
+	let filterTweaked = $derived(!!draft && !!view && !sameFilter(draft.filter, view.filter));
+	let sortTweaked = $derived(!!draft && !!view && JSON.stringify(draft.sort) !== JSON.stringify(view.sort));
+	let tweaked = $derived(filterTweaked || sortTweaked);
 
 	// EDITOR STATE | a key per opening, so every note starts with a fresh draft
 	let editing = $state<{ key: number; id: string | null; fresh: boolean; focus?: string } | null>(null);
@@ -136,7 +140,7 @@
 			editing = { key: ++opened, id: note?.id ?? null, fresh: !note, focus };
 			closing = false;
 			await tick();
-			document.querySelector('.note.open')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+			document.querySelector('.note.open')?.closest('[data-flip]')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); // The cell already sits where the glide ends
 		});
 	}
 
@@ -191,17 +195,19 @@
 	});
 
 	// Waits for the effects of the cells too, the editor fills in its text only then
+	// Not tick(), which waits a frame in async mode and shows the new layout unanimated meanwhile
 	let pending = false;
 
 	$effect(() => {
 		void [visible, editing?.id, editing?.key, editor.loaded];
 		if (!before || pending) return;
 		pending = true;
-		tick().then(() => {
+		queueMicrotask(() => {
+			flushSync();
 			const from = before;
 			before = undefined;
 			pending = false;
-			if (grid && from) glide(grid, from);
+			if (grid && from) glide(grid, from, () => pack(grid!));
 		});
 	});
 
@@ -236,12 +242,12 @@
 		}
 
 		// Starts where it is seen, an open glide still running included
-		const from = node.getBoundingClientRect();
+		const from = body.getBoundingClientRect();
 		[node, body].forEach((part) => part.getAnimations().forEach((animation) => animation.cancel()));
 		const radius = parseFloat(getComputedStyle(card).borderTopLeftRadius);
 
 		// Out of the grid flow so the other cards can glide into its place meanwhile
-		Object.assign(node.style, { position: 'absolute', width: `${from.width}px`, height: '', zIndex: '1' });
+		Object.assign(node.style, { position: 'absolute', height: '', zIndex: '1' });
 		body.dataset.resizing = '';
 
 		// Grid and button both move while the others settle, so both are read every frame
@@ -250,7 +256,7 @@
 			const frame = grid!.getBoundingClientRect();
 			node.style.left = `${target.left + t * (from.left - target.left) - frame.left}px`;
 			node.style.top = `${target.top + t * (from.top - target.top) - frame.top}px`;
-			body.style.width = `${target.width + t * (from.width - target.width)}px`;
+			node.style.width = body.style.width = `${target.width + t * (from.width - target.width)}px`; // A wider cell would overhang the page near the button
 			body.style.height = `${target.height + t * (from.height - target.height)}px`;
 			card.style.borderRadius = `${radius + u * (target.height / 2 - radius)}px`;
 		};
@@ -301,13 +307,93 @@
 	function markDone(reminder: Reminder) {
 		safeAction(setReminderDone({ id: reminder.id, done: true }));
 	}
+
+	// DRAG | the mouse moves cards in a manual sort, each card it passes gives up its place
+	let drag: { id: string; cell: HTMLElement; start: { x: number; y: number }; grab: { x: number; y: number }; from: string[] | null; over: string | null } | null = null;
+	let pointer = { x: 0, y: 0 };
+	let dropped = false;
+
+	function grab(event: PointerEvent, id: string) {
+		if (event.pointerType === 'touch' || event.button !== 0 || sort.by !== 'manual' || editing || selection.length) return;
+		const cell = event.currentTarget as HTMLElement;
+		const rect = cell.getBoundingClientRect();
+		drag = { id, cell, start: { x: event.clientX, y: event.clientY }, grab: { x: event.clientX - rect.left, y: event.clientY - rect.top }, from: null, over: null };
+	}
+
+	function dragMove(event: PointerEvent) {
+		if (!drag) return;
+		pointer = { x: event.clientX, y: event.clientY };
+
+		// A few pixels of slack keep a plain click a click
+		if (!drag.from) {
+			if (Math.hypot(pointer.x - drag.start.x, pointer.y - drag.start.y) < 6) return;
+			drag.from = visible.map((note) => note.id);
+			frozen = drag.from;
+			drag.cell.dataset.dragging = '';
+		}
+		follow();
+
+		// The card under the pointer, the dragged one itself left out
+		const over = document.elementsFromPoint(pointer.x, pointer.y).map((node) => node.closest<HTMLElement>('[data-flip]')).find((cell) => cell && cell !== drag?.cell)?.dataset.flip ?? null;
+		if (over === drag.over) return;
+		drag.over = over;
+		if (!over || !frozen) return;
+
+		// Pinned notes stay among themselves while they sort first
+		const moving = notes.find((note) => note.id === drag?.id);
+		const passed = notes.find((note) => note.id === over);
+		if (!moving || !passed || (sort.pinnedFirst && moving.pinned !== passed.pinned)) return;
+
+		const order = frozen.filter((id) => id !== drag?.id);
+		order.splice(frozen.indexOf(over), 0, drag.id);
+		frozen = order;
+		requestAnimationFrame(follow); // The packer moved the cell's own place meanwhile
+	}
+
+	// Under the pointer wherever the grid placed the cell | offsets ignore the lift's scale
+	function follow() {
+		if (!drag?.from || !grid) return;
+		const frame = grid.getBoundingClientRect();
+		const x = pointer.x - drag.grab.x - frame.left - drag.cell.offsetLeft;
+		const y = pointer.y - drag.grab.y - frame.top - drag.cell.offsetTop;
+		drag.cell.style.translate = `${x}px ${y}px`;
+	}
+
+	// Lands in its new place, between the neighbours it ended up with
+	async function drop() {
+		if (!drag?.from) return void (drag = null);
+		const { id, cell, from } = drag;
+		drag = null;
+		dropped = true;
+		setTimeout(() => (dropped = false));
+
+		const lifted = cell.style.translate;
+		cell.style.translate = '';
+		delete cell.dataset.dragging;
+		cell.animate({ translate: [lifted, '0 0'] }, { duration: duration('base'), easing: cssEasing('emphasized') });
+
+		const index = visible.findIndex((note) => note.id === id);
+		const note = visible[index];
+		if (!note || from.indexOf(id) === index) return void (frozen = null);
+
+		const neighbour = (other: Note | undefined) => (other && (!sort.pinnedFirst || other.pinned === note.pinned) ? other : undefined);
+		await safeAction(moveNote({ id, position: positionBetween(neighbour(visible[index - 1]), neighbour(visible[index + 1]), sort.direction) }));
+		if (!editing) frozen = null;
+	}
+
+	// The release over its own card would open it
+	function swallowDrop(event: MouseEvent) {
+		if (!dropped) return;
+		event.stopPropagation();
+		event.preventDefault();
+	}
 </script>
 
 <svelte:head>
 	<title>{view?.name ?? 'Notes'} · notifica-ex</title>
 </svelte:head>
 
-<svelte:window onkeydown={onKey} />
+<svelte:window onkeydown={onKey} onpointermove={dragMove} onpointerup={drop} onpointercancel={drop} />
 
 <!-- Centered as a whole while few notes are around, the page scrolls once they fill the screen -->
 <div class="my-auto flex flex-col pb-24 sm:pb-20">
@@ -315,7 +401,7 @@
 <!-- NOTES | the open card counts twice, it spans two columns where they fit -->
 {#if visible.length || editing?.fresh}
 	<div class="@container">
-		<div bind:this={grid} class="note-grid relative grid-flow-row-dense items-start" style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
+		<div bind:this={grid} class="note-grid relative items-start" {@attach masonry} style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
 			{#if editing?.fresh}
 				{#key editing.key}
 					<div class="note-cell fresh wide @container/note" data-flip={editing.id ?? 'new'} out:retreat|global>
@@ -336,7 +422,8 @@
 			{#each visible as note, index (note.id)}
 				{@const open = editing?.id === note.id}
 				<!-- A finger opens the menu with a long press, selecting goes through it | the open note keeps the trigger but turns it off -->
-				<div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }} out:leave={note.id}>
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }} out:leave={note.id} onpointerdown={(event) => grab(event, note.id)} onclickcapture={swallowDrop} ondragstart={(event) => event.preventDefault()}>
 					<ContextMenu.Root>
 						<ContextMenu.Trigger class="block" disabled={open}>
 							<NoteView
@@ -441,34 +528,28 @@
 				{/if}
 			</div>
 
-			<!-- FILTER | tweaks the open view, saving writes them into it -->
+			<!-- SORT AND FILTER | tweak the open view, saving writes them into it -->
 			<Popover.Root>
-				<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full hover:text-ink', tweaked ? 'text-accent' : 'text-ink-muted']} aria-label="Filter" {@attach tip(tweaked ? 'Filter, changed from the view' : 'Filter and sort')}>
-					<ListFilter class="size-5" />
-					{#if tweaked}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
+				<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full hover:text-ink', sortTweaked ? 'text-accent' : 'text-ink-muted']} aria-label="Sort" {@attach tip(sortTweaked ? 'Sort, changed from the view' : 'Sort')}>
+					<ArrowUpDown class="size-5" />
+					{#if sortTweaked}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
 				</Popover.Trigger>
 				<Popover.Portal>
-					<Popover.Content side="top" sideOffset={12} collisionPadding={12} class="filters z-40 flex max-h-[min(42rem,var(--bits-popover-content-available-height))] w-[min(30rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl">
-						<div class="min-h-0 overflow-y-auto p-5">
-							<FilterEditor {filter} {sort} {labels} onchange={(changedFilter, changedSort) => (draft = { filter: changedFilter, sort: changedSort })} />
-						</div>
+					<Popover.Content side="top" sideOffset={12} collisionPadding={12} class="filters z-40 flex w-[min(19rem,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-card border border-line-strong bg-raised text-ink shadow-2xl">
+						<SortEditor {sort} onchange={(changed) => (draft = { filter, sort: changed })} />
+						{@render viewActions()}
+					</Popover.Content>
+				</Popover.Portal>
+			</Popover.Root>
 
-						<footer class="flex flex-wrap items-center gap-2 border-t border-line px-5 py-3">
-							{#if naming}
-								<form class="flex min-w-0 flex-1 gap-2" onsubmit={(event) => { event.preventDefault(); saveAsView(); }}>
-									<!-- svelte-ignore a11y_autofocus -->
-									<input bind:value={newName} autofocus placeholder="Name of the new view" aria-label="Name of the new view" class="min-w-0 flex-1 rounded-control border border-line bg-card px-3 py-1.5 outline-none focus:border-accent" />
-									<button class="action primary" disabled={!newName.trim()}><Check class="size-3.5" />Create</button>
-									<button type="button" class="action" aria-label="Cancel" onclick={() => (naming = false)}><X class="size-3.5" /></button>
-								</form>
-							{:else}
-								<button class="action" onclick={() => (naming = true)}>Save as new view</button>
-								{#if tweaked}
-									<button class="action" onclick={() => (draft = null)}>Reset</button>
-									<button class="action primary ml-auto" onclick={saveToView}><Check class="size-3.5" />Save to {view?.name}</button>
-								{/if}
-							{/if}
-						</footer>
+			<Popover.Root>
+				<Popover.Trigger class={['motion-interactive relative grid size-12 shrink-0 place-items-center rounded-full hover:text-ink', filterTweaked ? 'text-accent' : 'text-ink-muted']} aria-label="Filter" {@attach tip(filterTweaked ? 'Filter, changed from the view' : 'Filter')}>
+					<ListFilter class="size-5" />
+					{#if filterTweaked}<span class="absolute top-2.5 right-2.5 size-2 rounded-full bg-accent"></span>{/if}
+				</Popover.Trigger>
+				<Popover.Portal>
+					<Popover.Content side="top" sideOffset={12} collisionPadding={12} class="filters z-40 flex max-h-[min(44rem,var(--bits-popover-content-available-height))] w-[min(30rem,calc(100vw-1.5rem))] flex-col text-ink">
+						<FilterEditor {filter} {labels} onchange={(changed) => (draft = { filter: changed, sort })} footer={viewActions} class="overflow-hidden rounded-card border border-line-strong bg-raised shadow-2xl" />
 					</Popover.Content>
 				</Popover.Portal>
 			</Popover.Root>
@@ -481,6 +562,25 @@
 	</div>
 	{/if}
 </div>
+
+<!-- VIEW ACTIONS | shared by the sort and filter popovers, a shaded band once something differs from the view -->
+{#snippet viewActions()}
+	{#if tweaked}
+		<footer class="flex flex-wrap items-center gap-2 border-t border-line bg-line/50 px-5 py-3" transition:unfold>
+			{#if naming}
+				<form class="flex min-w-0 flex-1 gap-2" onsubmit={(event) => { event.preventDefault(); saveAsView(); }}>
+					<!-- svelte-ignore a11y_autofocus -->
+					<input bind:value={newName} autofocus placeholder="Name of the new view" aria-label="Name of the new view" class="min-w-0 flex-1 rounded-control border border-line bg-raised px-3 py-1.5 outline-none focus:border-accent" />
+					<button class="action primary" disabled={!newName.trim()}><Check class="size-3.5" />Create</button>
+					<button type="button" class="action" aria-label="Cancel" onclick={() => (naming = false)}><X class="size-3.5" /></button>
+				</form>
+			{:else}
+				<button class="action" onclick={() => (naming = true)}>Save as new view</button>
+				<button class="action primary ml-auto" onclick={saveToView}><Check class="size-3.5" />Save to {view?.name}</button>
+			{/if}
+		</footer>
+	{/if}
+{/snippet}
 
 <style>
 	/* TOOLBAR | clears the phone rail, sits low on wider screens */
@@ -593,6 +693,22 @@
 
 	@media (prefers-reduced-motion: reduce) {
 		.create:hover::after { animation: none; }
+	}
+
+	/* DRAG | the held card lifts above the rest */
+	.note-cell:global([data-dragging]) {
+		z-index: 10;
+		cursor: grabbing;
+	}
+
+	.note-cell:global([data-dragging] .card) {
+		scale: 1.03;
+		box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 0.35);
+	}
+
+	:global(body:has([data-dragging])) {
+		cursor: grabbing;
+		user-select: none;
 	}
 
 	/* NEW NOTE | starts in the button's colour and shape, the content follows once there is room */

@@ -158,6 +158,9 @@
     --layout-radius-card: 1.25rem;
     --layout-radius-control: 0.75rem;
 
+    /* SIGNATURE | the theme's accent resolved here, note colours that swap the accent inside a card keep this one */
+    --theme-signature: var(--theme-accent);
+
     /* NOTE SOLIDS | the same strong colors in every theme */
     --theme-note-ochre-solid: var(--color-ochre-600);
     --theme-note-tangerine-solid: var(--color-tangerine-600);
@@ -257,22 +260,43 @@
 }
 
 /* NOTE GRID | a few notes huddle in the middle, many fill the whole width | rows leave room for the label tabs */
+/* Registered so it reads back in px, #lib/masonry.ts adds it up itself */
+@property --note-row-gap {
+    syntax: '<length>';
+    inherits: false;
+    initial-value: 0px;
+}
+
 @utility note-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--layout-note-min)), var(--layout-note-max)));
     justify-content: center;
-    gap: calc(var(--layout-note-gap) + 0.5rem) var(--layout-note-gap);
+    --note-row-gap: calc(var(--layout-note-gap) + 0.5rem);
+    gap: var(--note-row-gap) var(--layout-note-gap);
 
     /* Only as wide as the notes in it, empty columns would push a short row off center */
     width: 100%;
     max-width: calc(var(--notes, 99) * (var(--layout-note-max) + var(--layout-note-gap)) - var(--layout-note-gap));
     margin-inline: auto;
+
+    /* Glides keep the cards steady already, the browser keeping one in place would scroll mid glide */
+    overflow-anchor: none;
 }
 
-/* OPEN CARD | two columns need room for two minimum width notes and the gap */
+/* PACKED | every cell sits on rows of a pixel, hidden until the first pack so the plain grid never shows */
+.note-grid:not([data-packed]) {
+    visibility: hidden;
+}
+
+.note-grid[data-packed] {
+    row-gap: 0;
+    grid-auto-rows: 1px;
+}
+
+/* OPEN CARD | two columns need room for two minimum width notes and the gap | the start is the packer's */
 @container (width >= 31rem) {
     .note-cell.wide {
-        grid-column: span 2;
+        grid-column-end: span 2;
     }
 }
 

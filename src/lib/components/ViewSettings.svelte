@@ -1,5 +1,6 @@
 <script lang="ts">
     import FilterEditor from '#lib/components/FilterEditor.svelte';
+    import SortEditor from '#lib/components/SortEditor.svelte';
     import { safeAction } from '#lib/pocketbase.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
     import { VIEW_ICONS, type Label, type ViewFilter, type ViewIcon, type ViewSort } from '#lib/schemas.ts';
@@ -159,13 +160,15 @@
             </div>
 
             {#if expanded === view.id}
-                <div class="border-t border-line px-card py-5">
-                    <FilterEditor
-                        filter={pending[view.id]?.filter ?? view.filter}
-                        sort={pending[view.id]?.sort ?? view.sort}
-                        {labels}
-                        onchange={(filter, sort) => change(view.id, filter, sort)}
-                    />
+                {@const filter = pending[view.id]?.filter ?? view.filter}
+                {@const sort = pending[view.id]?.sort ?? view.sort}
+                <div class="grid border-t border-line sm:grid-cols-[16rem_minmax(0,1fr)]">
+                    <div class="border-b border-line sm:border-r sm:border-b-0">
+                        <SortEditor {sort} onchange={(changed) => change(view.id, filter, changed)} />
+                    </div>
+                    <div class="pt-3 pr-3">
+                        <FilterEditor {filter} {labels} onchange={(changed) => change(view.id, changed, sort)} />
+                    </div>
                 </div>
             {/if}
         </li>

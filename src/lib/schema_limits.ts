@@ -47,6 +47,7 @@ export const LIMITS = {
     REMINDER_EVERY: 999,                // largest step between two reminders, in the chosen unit
     VIEW_AMOUNT: 999,                   // days, weeks or months a date filter reaches back or ahead
     VIEW_POSITION: 10000,
+    NOTE_POSITION: 1e15,                // a timestamp in ms or between two of them
 
 } as const;
 

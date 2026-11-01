@@ -1,7 +1,8 @@
 import { getRequestEvent } from '$app/server';
+import z from 'zod';
 import { unwrap } from '#lib/pocketbase.ts';
 import { idSchema } from '#lib/schema_limits.ts';
-import { noteContentSchema, type Note } from '#lib/schemas.ts';
+import { noteContentSchema, notePositionSchema, type Note } from '#lib/schemas.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { restrictAccess } from '#lib/user.ts';
@@ -40,6 +41,19 @@ export const updateNote = command(noteContentSchema.partial().extend({ id: idSch
 
     await getNotes().refresh()
     return note
+
+});
+
+// A drag to a new place in a manual sort
+export const moveNote = command(z.object({ id: idSchema, position: notePositionSchema }), async ({ id, position }) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    unwrap(await getOwned('notes', id, locals.user.id), 'Note not found.')
+    unwrap(await updateOnePartial('notes', id, { position }), 'Could not move the note.')
+
+    await getNotes().refresh()
+    return true
 
 });
 

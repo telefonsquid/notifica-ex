@@ -210,10 +210,14 @@ export const noteContentSchema = z.object({
     archived: z.boolean()
 });
 
+// Zero until the note gets dragged, it sorts by its creation time until then
+export const notePositionSchema = z.number().min(0).max(LIMITS.NOTE_POSITION);
+
 export type Note = z.infer<typeof noteSchema>;
 export const noteSchema = recordModelSchema.extend({
     owner: idSchema,
-    ...noteContentSchema.shape
+    ...noteContentSchema.shape,
+    position: notePositionSchema // order in a manual sort
 });
 
 
@@ -311,7 +315,7 @@ export const viewFilterSchema = z.object({
 
 export type ViewSort = z.infer<typeof viewSortSchema>;
 export const viewSortSchema = z.object({
-    by: z.enum(['updated', 'created', 'title', 'reminder']).default('updated'),
+    by: z.enum(['manual', 'updated', 'created', 'title', 'reminder']).default('manual'), // manual starts out newest first
     direction: z.enum(['asc', 'desc']).default('desc'),
     pinnedFirst: z.boolean().default(true)
 });

@@ -43,8 +43,8 @@
             ],
             content: value,
             contentType: 'markdown',
-            autofocus: autofocus ? 'end' : false,
             editorProps: { attributes: { class: 'markdown min-h-32 text-ink-muted outline-none', 'aria-label': 'Text' } },
+            onCreate: ({ editor }) => { if(autofocus) focusEnd(editor) },
             onUpdate: ({ editor }) => value = editor.getMarkdown(),
             onTransaction: () => version++,
         }))
@@ -54,6 +54,12 @@
             instance.destroy()
             editor = undefined
         }
+    }
+
+    // The page scrolls the card in itself | Tiptap's focus command scrolls to the growing note first and cuts that short
+    function focusEnd(instance: Editor){
+        instance.commands.setTextSelection(instance.state.doc.content.size)
+        instance.view.focus()
     }
 
     function active(name: string, attributes?: Record<string, unknown>): boolean {

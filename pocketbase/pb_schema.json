@@ -642,6 +642,18 @@
                 "hidden": false,
                 "presentable": false,
                 "system": false,
+                "id": "number1700096113",
+                "max": null,
+                "min": 0,
+                "name": "position",
+                "onlyInt": false,
+                "required": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
                 "id": "autodate2990389176",
                 "name": "created",
                 "onCreate": true,

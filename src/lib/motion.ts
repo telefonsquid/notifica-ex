@@ -186,21 +186,22 @@ export function morph(timing: () => { duration: number, easing: string } | null)
         let running: Animation | undefined
 
         const observer = new ResizeObserver(() => {
-            const style = getComputedStyle(node)
-            const frame = node.offsetHeight - node.clientHeight + parseFloat(style.paddingTop) + parseFloat(style.paddingBottom)
-            const to = content.offsetHeight + frame
-
             // A running morph starts over from wherever it is now and still ends when it would have
             const from = running ? node.getBoundingClientRect().height : last
             const left = running ? Number(running.effect?.getComputedTiming().endTime) - Number(running.currentTime) : Infinity
-            last = to
             running?.cancel()
             running = undefined
+
+            // The height the layout grants, a capped scroll area stops short of its content
+            const to = node.getBoundingClientRect().height
+            last = to
             const options = timing()
             if(!from || Math.abs(from - to) < 1 || !options?.duration) return
 
+            // Scroll areas keep scrolling, clipping one resets its position and toggles the scrollbar
+            const clip = getComputedStyle(node).overflowY === 'visible' ? { overflow: ['clip', 'clip'] } : {}
             const time = Math.max(Math.min(options.duration, Number.isNaN(left) ? Infinity : left), duration('fast'))
-            running = node.animate({ height: [`${from}px`, `${to}px`], overflow: ['clip', 'clip'] }, { ...options, duration: time })
+            running = node.animate({ height: [`${from}px`, `${to}px`], ...clip }, { ...options, duration: time })
             const own = running
             own.finished.then(() => { if(running === own) running = undefined }, () => {})
         })
@@ -229,7 +230,7 @@ export function measure(root: ParentNode): Map<string, DOMRect> {
 }
 
 // Svelte makes leaving elements inert until their outro ends, so their space counts as gone already
-function withoutLeaving<T>(root: ParentNode, read: () => T): T {
+export function withoutLeaving<T>(root: ParentNode, read: () => T): T {
     const leaving = [...root.querySelectorAll<HTMLElement>('[data-flip] [inert]')]
     leaving.forEach((node) => node.style.display = 'none')
     const result = read()
@@ -238,13 +239,15 @@ function withoutLeaving<T>(root: ParentNode, read: () => T): T {
 }
 
 // GLIDE | cells move from where they were to where the update put them | data-flip-body marks the part inside that resizes
-export function glide(root: ParentNode, before: Map<string, DOMRect>){
+// Layout runs once the cells hold their natural size, before the new rects are read
+export function glide(root: ParentNode, before: Map<string, DOMRect>, layout?: () => void){
     const time = duration('slow')
     const timing = { duration: time, easing: cssEasing('emphasized') }
 
-    // Glides still running would skew the new rects
-    const cells = [...root.querySelectorAll<HTMLElement>('[data-flip]')]
+    // Glides still running would skew the new rects | a dragged cell follows the pointer instead
+    const cells = [...root.querySelectorAll<HTMLElement>('[data-flip]:not([data-dragging])')]
     cells.forEach(settle)
+    layout?.()
     if(!time) return
     const after = measure(root)
     const heights = withoutLeaving(root, () => new Map(cells.map((cell) => [cell, cell.getBoundingClientRect().height])))
@@ -258,16 +261,19 @@ export function glide(root: ParentNode, before: Map<string, DOMRect>){
         const resized = Math.abs(from.width - to.width) > 1 || Math.abs(from.height - to.height) > 1
         if(Math.abs(dx) < 1 && Math.abs(dy) < 1 && !resized) continue
 
-        const animations = [cell.animate({ translate: [`${dx}px ${dy}px`, '0 0'] }, timing)]
+        const translate = [`${dx}px ${dy}px`, '0 0']
+        const animations: Animation[] = []
 
         // The cell keeps its final size for the grid while its content grows or shrinks inside, so text reflows instead of stretching
+        // Only the body travels then, the full size cell far from its spot would stretch the page and add scrollbars
         if(resized){
             const body = bodyOf(cell)
             cell.style.height = `${heights.get(cell)}px`
             cell.style.zIndex = '1'
             body.dataset.resizing = ''
-            animations.push(body.animate({ width: [`${from.width}px`, `${to.width}px`], height: [`${from.height}px`, `${to.height}px`] }, timing))
+            animations.push(body.animate({ translate, width: [`${from.width}px`, `${to.width}px`], height: [`${from.height}px`, `${to.height}px`] }, timing))
         }
+        else animations.push(cell.animate({ translate }, timing))
 
         running.set(cell, animations)
         Promise.all(animations.map((animation) => animation.finished)).then(() => settle(cell), () => {})

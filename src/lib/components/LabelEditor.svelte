@@ -46,7 +46,7 @@
 
 <!-- The tab's name opens it, changes apply to the label on every note -->
 <Popover.Root onOpenChange={(open) => { if(!open) confirmDelete = false }}>
-    <Popover.Trigger class={['truncate text-left hover:underline', className]} aria-label={`Edit label ${label.name}`}>
+    <Popover.Trigger class={['truncate text-left uppercase hover:underline', className]} aria-label={`Edit label ${label.name}`}>
         {label.name}
     </Popover.Trigger>
     <Popover.Portal>
