@@ -42,21 +42,23 @@ export function pack(grid: HTMLElement){
     grid.dataset.packed = ''
 }
 
-// MASONRY | packs again whenever a card changes size or the cards change
-// The grid counts only by its width, every pack changes its height
+// MASONRY | packs again whenever a card changes size, the cards change or the window does
+// Only the cards get observed: every pack changes the grid's height, and an observed grid would trip the observer's loop guard
 export const masonry: Attachment<HTMLElement> = (grid) => {
-    let width = grid.clientWidth
-    const resizes = new ResizeObserver((entries) => {
-        const cellsChanged = entries.some((entry) => entry.target !== grid)
-        const widened = grid.clientWidth !== width
-        width = grid.clientWidth
-        if(cellsChanged || widened) pack(grid)
-    })
+    const resizes = new ResizeObserver(() => pack(grid))
     const watch = () => {
         resizes.disconnect()
-        resizes.observe(grid)
         for(const cell of grid.children) resizes.observe(cell)
     }
+
+    // The column count follows the grid's width, which only the window changes
+    let width = grid.clientWidth
+    const resized = () => {
+        if(grid.clientWidth === width) return
+        width = grid.clientWidth
+        pack(grid)
+    }
+    addEventListener('resize', resized)
 
     // A late image grows its card, catch it even when the resize got lost to a running glide
     const loaded = () => requestAnimationFrame(() => pack(grid))
@@ -75,5 +77,6 @@ export const masonry: Attachment<HTMLElement> = (grid) => {
         resizes.disconnect()
         changes.disconnect()
         grid.removeEventListener('load', loaded, true)
+        removeEventListener('resize', resized)
     }
 }
