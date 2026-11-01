@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
-	import { resolve } from '$app/paths';
+	import { page } from '$app/state';
 	import { cssEasing, duration, rise, stagger } from '#lib/motion.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
+	import { returnPath } from '#lib/return_path.ts';
 	import Backdrop from '#lib/ui/Backdrop.svelte';
 	import Button from '#lib/ui/Button.svelte';
 	import Input from '#lib/ui/Input.svelte';
@@ -27,7 +27,7 @@
 
 		const user = await safeAction(loginUser({ email, password }));
 		if (user) {
-			await goto(resolve('/(app)/[[view]]', {}), { refreshAll: true });
+			location.assign(returnPath(page.url)); // A full load, the way back may be an endpoint rather than a page
 		} else {
 			shake();
 			submitting = false;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { afterNavigate, goto, onNavigate, replaceState } from '$app/navigation';
+	import { afterNavigate, goto, onNavigate } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { page } from '$app/state';
 	import FilterEditor from '#lib/components/FilterEditor.svelte';
@@ -280,13 +280,14 @@
 		};
 	}
 
-	// Notification taps land on /?note=id
+	// Notification taps land on /?note=id | the address drops it first, that navigation would close the note again
 	$effect(() => {
 		const id = page.url.searchParams.get('note');
 		if (!id) return;
-		const note = notes.find((item) => item.id === id);
-		if (note) edit(note);
-		replaceState(resolve('/(app)/[[view]]', { view: page.params.view }), {});
+		const note = untrack(() => notes.find((item) => item.id === id));
+		goto(resolve('/(app)/[[view]]', { view: page.params.view }), { shallow: true, replace: true }).then(() => {
+			if (note) edit(note);
+		});
 	});
 
 	// SELECTION | a card click toggles while anything is selected, notes that vanished drop out on their own
