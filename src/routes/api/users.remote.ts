@@ -2,7 +2,7 @@ import { getRequestEvent } from '$app/server';
 import { unwrap } from '#lib/pocketbase.ts';
 import { idSchema } from '#lib/schema_limits.ts';
 import { setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type Person, type User, type UserSummary } from '#lib/schemas.ts';
-import { confirmPasswordReset, getAll, getOne, insertOnePartial, requestPasswordReset, updateOnePartial } from '#lib/server/queries.ts';
+import { confirmPasswordReset, findOne, getAll, getOne, insertOnePartial, requestPasswordReset, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { hasPermission, restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
@@ -68,6 +68,22 @@ export const updateUser = command(userEditSchema, async ({ id, ...changes }) => 
     const user = unwrap(await updateOnePartial('users', id, changes), 'Could not update the user.')
 
     await getUsers().refresh()
+    return summary(user)
+
+});
+
+// Everyone changes their own name and mail, the role stays with the admins
+export const updateProfile = command(userInputSchema.pick({ name: true, email: true }), async (changes) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+
+    const taken = await findOne('users', `email = "${changes.email}" && id != "${locals.user.id}"`)
+    if(taken.success) error(400, 'Another account already uses this address.')
+
+    const user = unwrap(await updateOnePartial('users', locals.user.id, changes), 'Could not update your account.')
+
+    await getPeople().refresh()
     return summary(user)
 
 });

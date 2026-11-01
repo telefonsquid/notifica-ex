@@ -18,9 +18,11 @@
 	import Button from '#lib/ui/Button.svelte';
 	import { Check, CircleUserRound, Dices, KeyRound, Palette, PanelsTopLeft, Send, SlidersHorizontal, Trash2, Users } from '@lucide/svelte';
 	import { untrack } from 'svelte';
+	import { slide } from 'svelte/transition';
+	import { duration, easing } from '#lib/motion.ts';
 	import { getLabels, updateLabel } from '../../api/labels.remote';
 	import { sendTestReminder, setNtfyTopic } from '../../api/reminders.remote';
-	import { sendPasswordLink } from '../../api/users.remote';
+	import { sendPasswordLink, updateProfile } from '../../api/users.remote';
 	import type { PageProps } from './$types';
 
 	// PROPS
@@ -164,7 +166,19 @@
 		tablist?.querySelector<HTMLElement>(`[data-tab="${next.id}"]`)?.focus();
 	}
 
-	// ACCOUNT | the same mail an invite sends, valid for 7 days
+	// ACCOUNT
+	let name = $state(untrack(() => data.user.name ?? ''));
+	let email = $state(untrack(() => data.user.email));
+	let savingProfile = $state(false);
+	let profileChanged = $derived(name.trim() !== (data.user.name ?? '') || email.trim().toLowerCase() !== data.user.email);
+
+	async function saveProfile() {
+		savingProfile = true;
+		if (await safeAction(updateProfile({ name, email }))) await invalidateAll();
+		savingProfile = false;
+	}
+
+	// The same mail an invite sends, valid for 7 days
 	let sendingLink = $state(false);
 
 	async function sendLink() {
@@ -283,15 +297,15 @@
 
 	<!-- ACCOUNT -->
 	<SettingsSection id="account" title="Account" current={tab === 'account'} onselect={() => go('account')}>
-		<div class="max-w-xl">
+		<form class="grid max-w-xl gap-4" onsubmit={(event) => { event.preventDefault(); saveProfile(); }}>
 			<dl class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
-				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
-					<dt class="text-ink-muted">Name</dt>
-					<dd class="type-title text-ink">{data.user.name || '–'}</dd>
+				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-2.5">
+					<dt><label for="profile-name" class="text-ink-muted">Name</label></dt>
+					<dd class="min-w-0 flex-1"><input id="profile-name" bind:value={name} autocomplete="name" required class="type-title w-full bg-transparent py-1.5 text-right text-ink outline-none" /></dd>
 				</div>
-				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
-					<dt class="text-ink-muted">Email</dt>
-					<dd class="truncate text-ink">{data.user.email}</dd>
+				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-2.5">
+					<dt><label for="profile-email" class="text-ink-muted">Email</label></dt>
+					<dd class="min-w-0 flex-1"><input id="profile-email" bind:value={email} type="email" autocomplete="email" required class="w-full bg-transparent py-1.5 text-right text-ink outline-none" /></dd>
 				</div>
 				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
 					<dt class="text-ink-muted">Role</dt>
@@ -299,10 +313,16 @@
 				</div>
 				<div class="flex items-center justify-between gap-4 bg-card py-3 pr-3 pl-card">
 					<span class="text-ink-muted">Password</span>
-					<Button style="ghost" icon={KeyRound} loading={sendingLink} onclick={sendLink}>Mail me a new link</Button>
+					<Button type="button" style="ghost" icon={KeyRound} loading={sendingLink} onclick={sendLink}>Mail me a new link</Button>
 				</div>
 			</dl>
-		</div>
+			{#if profileChanged}
+				<div class="flex justify-end gap-2" transition:slide={{ duration: duration('fast'), easing: easing('out') }}>
+					<Button type="button" style="ghost" onclick={() => { name = data.user.name ?? ''; email = data.user.email; }}>Undo</Button>
+					<Button type="submit" icon={Check} loading={savingProfile}>Save</Button>
+				</div>
+			{/if}
+		</form>
 	</SettingsSection>
 
 	<!-- USERS -->
