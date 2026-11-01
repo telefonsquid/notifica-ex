@@ -45,6 +45,7 @@ Most docs and examples online, and fsd-flight-check, are still SvelteKit 2. In t
 - **Hook types** (`Handle`, `HandleServerError`, `sequence`) come from `@sveltejs/kit/hooks`. Remote function validation errors arrive in `handleError` with `kind: 'validation'`.
 - **`resolve()`** from `$app/paths` takes route ids including groups: `resolve('/(app)/settings')`. The eslint rule requires it for every `href` and `goto`.
 - **tsconfig** extends `$app/tsconfig`.
+- **Origin** is build time config (`paths.origin` in `vite.config.ts`, fed by `ORIGIN`), adapter-node no longer reads it at runtime and otherwise assumes https from the `Host` header.
 
 ## Conventions carried over from fsd-flight-check
 
