@@ -128,7 +128,7 @@
             if(!id && isEmpty(draft) && !force) return null
 
             const content = $state.snapshot(draft)
-            const result = await safeAction(id ? updateNote({ id, ...content }) : createNote(content))
+            const result = await safeAction(id ? updateNote({ id, ...content }).catch(gone) : createNote(content))
             if(result){
                 if(!id) oncreate?.(result.id)
                 id = result.id
@@ -139,6 +139,14 @@
         })
         queue = run
         return run
+    }
+
+    // Deleted elsewhere, or no longer shared with this user | nothing left to save, the rest of the errors go on
+    function gone(err: { status?: number }): null {
+        if(err?.status !== 404) throw err
+        deleted = true
+        notify('This note was deleted or is no longer shared with you.', { type: 'info' })
+        return null
     }
 
     // For the page, which waits on a new note before it hands the card over

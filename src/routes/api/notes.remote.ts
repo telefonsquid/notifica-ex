@@ -61,7 +61,9 @@ export const updateNote = command(noteContentSchema.partial().extend({ id: idSch
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    const stored = unwrap(await getNoteFor(id, locals.user.id), 'Note not found.')
+    const found = await getNoteFor(id, locals.user.id)
+    if(!found.success) error(404, 'Note not found.') // deleted or unshared meanwhile, the open note tells its writer
+    const stored = found.data
 
     // Pin, archive and labels stay the owner's, the others edit only what the note says
     const update: Partial<Note> = { ...changes }
