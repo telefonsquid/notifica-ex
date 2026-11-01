@@ -56,6 +56,7 @@
     /* Heading beside the content once there is room */
     .body {
         display: grid;
+        grid-template-columns: minmax(0, 1fr);
         gap: 1.5rem;
         align-items: start;
     }

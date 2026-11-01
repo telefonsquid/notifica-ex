@@ -231,7 +231,7 @@
 				<h3 class="type-meta mb-4 text-ink-faint">Labels</h3>
 
 				{#if labels.length}
-					<ul class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
+					<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
 						{#each labels as label (label.id)}
 							<li class="flex items-center gap-3 bg-card py-2 pr-2 pl-card">
 								<ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} />
@@ -257,7 +257,7 @@
 	<!-- ACCOUNT -->
 	<SettingsSection id="account" title="Account" current={tab === 'account'} onselect={() => go('account')}>
 		<div class="max-w-xl">
-			<dl class="grid gap-px overflow-hidden rounded-card border border-line bg-line">
+			<dl class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
 				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-4">
 					<dt class="text-ink-muted">Name</dt>
 					<dd class="type-title text-ink">{data.user.name || '–'}</dd>
@@ -416,8 +416,10 @@
 		mask-image: linear-gradient(transparent, #000 var(--peek), #000 calc(100% - var(--peek)), transparent);
 	}
 
+	/* One column no wider than the stage, a wide row inside must not stretch every section past the screen */
 	.track {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 1.5rem;
 		padding-top: var(--peek);
 	}
