@@ -1,7 +1,10 @@
 <script lang="ts">
-    import { colorName } from '#lib/notes.ts';
+    import { duration } from '#lib/motion.ts';
+    import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
+    import { LIMITS } from '#lib/schema_limits.ts';
+    import type { DateRange, Label, ViewFilter, ViewSort } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
-    import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type DateRange, type Label, type NoteColor, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
+    import NumberField from '#lib/ui/NumberField.svelte';
     import { ArrowDownWideNarrow, ArrowUpNarrowWide, Check, ChevronDown, Minus } from '@lucide/svelte';
     import { slide } from 'svelte/transition';
 
@@ -32,7 +35,7 @@
         ['any', 'Any'], ['with', 'Has one'], ['without', 'None'], ['upcoming', 'Upcoming'],
         ['repeating', 'Repeating'], ['tasks', 'Tasks'], ['waiting', 'Unchecked'], ['finished', 'Finished']
     ]
-    const COLORS: NoteColor[] = ['', ...NOTE_TINTS, ...NOTE_SOLIDS, ...NOTE_STICKIES, ...NOTE_TEXTURES]
+    const COLORS = COLOR_GROUPS.flatMap((group) => group.colors)
     const DATES: { key: 'created' | 'updated' | 'due', name: string, within: string, beyond: string }[] = [
         { key: 'created', name: 'Created', within: 'In the last', beyond: 'Longer ago than' },
         { key: 'updated', name: 'Edited', within: 'In the last', beyond: 'Longer ago than' },
@@ -163,7 +166,7 @@
             <ChevronDown class={['size-3 transition-transform', showColors && 'rotate-180']} />
         </button>
         {#if showColors}
-            <div class="mt-3 flex flex-wrap gap-1.5" transition:slide={{ duration: 200 }}>
+            <div class="mt-3 flex flex-wrap gap-1.5" transition:slide={{ duration: duration('base') }}>
                 {#each COLORS as color (color)}
                     {@const on = filter.colors.includes(color)}
                     <button
@@ -200,15 +203,8 @@
                         <option value="between">Between</option>
                     </select>
                     {#if range.mode === 'within' || range.mode === 'beyond'}
-                        <input
-                            class="field w-16"
-                            type="number"
-                            min="1"
-                            max="999"
-                            value={range.amount}
-                            aria-label="Amount"
-                            onchange={(event) => updateRange(date.key, { amount: Math.min(999, Math.max(1, Math.round(event.currentTarget.valueAsNumber) || 1)) })}
-                        />
+                        <!-- A cleared field keeps the last amount until it gets a new one -->
+                        <NumberField bind:value={() => range.amount, (amount) => { if(amount >= 1) updateRange(date.key, { amount }) }} max={LIMITS.VIEW_AMOUNT} label="Amount" class="w-18" />
                         <select class="field" value={range.unit} aria-label="Unit" onchange={(event) => updateRange(date.key, { unit: event.currentTarget.value as DateRange['unit'] })}>
                             <option value="days">days</option>
                             <option value="weeks">weeks</option>

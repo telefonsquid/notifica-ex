@@ -7,6 +7,7 @@
     import { rise, unfold } from '#lib/motion.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import NumberField from '#lib/ui/NumberField.svelte';
+    import { LIMITS } from '#lib/schema_limits.ts';
     import { Bell, BellPlus, Check, ListChecks, Trash2, X } from '@lucide/svelte';
     import { untrack, type Snippet } from 'svelte';
     import { addReminder, removeReminder, updateReminder } from '../../routes/api/reminders.remote';
@@ -147,7 +148,7 @@
                 {#if counted}
                     <div class="flex items-center gap-1.5" in:widen out:widen>
                         <span class="type-meta pl-1">every</span>
-                        <NumberField bind:value={every} label="Every" class="w-16" />
+                        <NumberField bind:value={every} max={LIMITS.REMINDER_EVERY} label="Every" class="w-16" />
                     </div>
                 {/if}
                 <select value={repeat} aria-label="Repeat" class="field bg-raised px-2.5 text-sm" onchange={(event) => pickRepeat(event.currentTarget.value as ReminderRepeat)}>
