@@ -504,6 +504,17 @@
         scale: 0.985;
     }
 
+    /* Scrolled into view clear of the floating toolbar, and of the bottom rail on phones */
+    .note.open {
+        scroll-margin-block: 1.5rem calc(11rem + env(safe-area-inset-bottom));
+    }
+
+    @media (width >= 40rem) {
+        .note.open {
+            scroll-margin-block-end: 7.5rem;
+        }
+    }
+
     .card.selected {
         outline: 2px solid var(--theme-accent);
         outline-offset: 3px;
