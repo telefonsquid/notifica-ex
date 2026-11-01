@@ -114,3 +114,38 @@ describe('describeRule', () => {
         expect(describeRule({ repeat: 'weekdays', every: 1, weekdays: ['fr', 'mo'] })).toBe('Mon, Fri')
     })
 })
+
+
+
+// LIMITS ====================================================================================================
+describe('only and except rules', () => {
+    // Every 2 hours from 8:00 UTC on Tuesday October 20 2026
+    const every2h = (rules: Parameters<typeof occurrenceAfter>[0]['rules']) => rule({ repeat: 'hours', every: 2, at: '2026-10-20T08:00:00.000Z', timezone: 'UTC', rules })
+
+    test('only a stretch of the day', () => {
+        const limited = every2h([{ mode: 'only', kind: 'times', from: '13:00', to: '17:00' }])
+        expect(iso(occurrenceAfter(limited, after('2026-10-20T08:30:00Z')))).toBe('2026-10-20T14:00:00.000Z')
+        expect(iso(occurrenceAfter(limited, after('2026-10-20T16:30:00Z')))).toBe('2026-10-21T14:00:00.000Z')
+    })
+
+    test('except a stretch across midnight', () => {
+        const quiet = every2h([{ mode: 'except', kind: 'times', from: '22:00', to: '07:00' }])
+        expect(iso(occurrenceAfter(quiet, after('2026-10-20T20:30:00Z')))).toBe('2026-10-21T08:00:00.000Z')
+    })
+
+    test('except weekends', () => {
+        const weekdaysOnly = rule({ at: '2026-10-23T09:00:00.000Z', timezone: 'UTC', rules: [{ mode: 'except', kind: 'days', days: ['sa', 'su'] }] })
+        expect(iso(occurrenceAfter(weekdaysOnly, after('2026-10-23T10:00:00Z')))).toBe('2026-10-26T09:00:00.000Z')
+    })
+
+    test('only dates that already passed never go off again', () => {
+        const over = rule({ timezone: 'UTC', at: '2026-10-20T09:00:00.000Z', rules: [{ mode: 'only', kind: 'dates', from: '2026-10-01', to: '2026-10-21' }] })
+        expect(iso(occurrenceAfter(over, after('2026-10-20T10:00:00Z')))).toBe('2026-10-21T09:00:00.000Z')
+        expect(occurrenceAfter(over, after('2026-10-21T10:00:00Z'))).toBeNull()
+    })
+
+    test('a once reminder ignores the rules', () => {
+        const once = rule({ repeat: 'never', timezone: 'UTC', at: '2026-10-24T09:00:00.000Z', rules: [{ mode: 'except', kind: 'days', days: ['sa'] }] })
+        expect(iso(occurrenceAfter(once, after('2026-10-20T00:00:00Z')))).toBe('2026-10-24T09:00:00.000Z')
+    })
+})
