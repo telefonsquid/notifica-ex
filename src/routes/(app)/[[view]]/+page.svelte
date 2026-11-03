@@ -565,7 +565,7 @@
 <div class="toolbar vt-toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-end px-gutter sm:left-rail sm:justify-center">
 	{#if selection.length}
 		<!-- SELECTION BAR | stands in for the toolbar while notes are selected -->
-		<div class="pointer-events-auto flex min-w-0 items-center gap-0.5 rounded-full border border-line bg-raised/85 p-1 pl-4 shadow-xl backdrop-blur-xl sm:gap-1 sm:pl-5" in:rise={{ y: 8, duration: 'base' }}>
+		<div class="pointer-events-auto flex min-w-0 items-center gap-0.5 rounded-full border border-line bg-raised p-1 pl-4 shadow-xl sm:gap-1 sm:pl-5" in:rise={{ y: 8, duration: 'base' }}>
 			<span class="type-meta mr-1 text-ink sm:mr-2">{selection.length}<span class="max-sm:hidden"> selected</span></span>
 			<NoteMenu bar notes={selection} {labels} {me} reminders={remindersByNote} onfinish={() => selected.clear()} />
 			<span class="mx-1 h-6 w-px bg-line"></span>
@@ -573,7 +573,7 @@
 		</div>
 	{:else}
 	<div class="pointer-events-auto flex min-w-0 items-center gap-3" in:rise={{ y: 8, duration: 'base' }}>
-		<div class="flex min-w-0 items-center gap-1 rounded-full border border-line bg-raised/85 p-0 shadow-xl backdrop-blur-xl">
+		<div class="flex min-w-0 items-center gap-1 rounded-full border border-line bg-raised p-0 shadow-xl">
 			<div class={['search motion-interactive flex h-12 items-center rounded-full text-ink-muted', searchOpen && 'open']}>
 				<button class="grid size-12 shrink-0 place-items-center rounded-full hover:text-ink" aria-label="Search notes" aria-expanded={searchOpen} onclick={() => (searchOpen ? searchInput?.focus() : openSearch())} {@attach tip('Search')}>
 					<Search class="size-5" />
@@ -708,7 +708,7 @@
 		z-index: -1;
 		border-radius: inherit;
 		background: var(--theme-accent);
-		filter: blur(1rem);
+		box-shadow: 0 0 1rem 0.5rem var(--theme-accent);
 		opacity: 0.3;
 		scale: 0.8;
 		transition: opacity var(--duration-slow) var(--ease-out), scale var(--duration-slow) var(--ease-spring);

@@ -175,7 +175,6 @@
 <style>
     .scrim {
         background: rgb(0 0 0 / 0.86);
-        backdrop-filter: blur(6px);
     }
 
     /* Sized from the ratio alone, so the zoom knows where it lands before the image loads */

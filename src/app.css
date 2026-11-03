@@ -548,22 +548,11 @@
 }
 
 @keyframes vt-page-out {
-    to { opacity: 0; transform: translateY(-0.375rem) scale(0.995); filter: blur(2px); }
+    to { opacity: 0; transform: translateY(-0.375rem) scale(0.995); }
 }
 
 @keyframes vt-page-in {
-    from { opacity: 0; transform: translateY(0.75rem); filter: blur(6px); }
-}
-
-/* Touch screens skip the blur, a full screen blur per frame costs a phone GPU too much */
-@media (pointer: coarse) {
-    @keyframes vt-page-out {
-        to { opacity: 0; transform: translateY(-0.375rem) scale(0.995); }
-    }
-
-    @keyframes vt-page-in {
-        from { opacity: 0; transform: translateY(0.75rem); }
-    }
+    from { opacity: 0; transform: translateY(0.75rem); }
 }
 
 @keyframes vt-fade-out {

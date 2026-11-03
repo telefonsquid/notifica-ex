@@ -126,7 +126,7 @@
 
     // Rows past the first page come in without waiting for the ones above
     function enter(node: Element, { index = 0 } = {}){
-        return rise(node, { delay: 120 + stagger(index % HISTORY_PAGE), y: 4, blur: 2, duration: 'base' })
+        return rise(node, { delay: 120 + stagger(index % HISTORY_PAGE), y: 4, duration: 'base' })
     }
 
     // The pill folds into its tick on a check and blooms back on an undo
@@ -134,11 +134,10 @@
         return {
             duration: duration(leaving ? 'base' : 'slow'),
             easing: easing(leaving ? 'in' : 'spring'),
-            css: (t, u) => `
+            css: (t) => `
                 transform-origin: right center;
                 opacity: ${Math.min(1, t * 1.5)};
                 transform: scale(${0.55 + 0.45 * t});
-                filter: blur(${u * 4}px);
             `
         }
     }
@@ -152,7 +151,6 @@
             css: (t, u) => `
                 opacity: ${t};
                 transform: translateX(${u * 12}px);
-                filter: blur(${u * 3}px);
             `
         }
     }
@@ -301,7 +299,6 @@
 <style>
     .scrim {
         background: rgb(0 0 0 / 0.4);
-        backdrop-filter: blur(3px);
     }
 
     /* The same darker strip the reminders sit on in the card */

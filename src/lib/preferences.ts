@@ -11,7 +11,7 @@ export const LABEL_POSITION_COOKIE = 'labels';
 
 export function isLabelPosition(value: unknown): value is LabelPosition { return labelPositionSchema.safeParse(value).success }
 
-// IMAGE FIT | cropped to fill the card, or whole with a blurred copy filling the rest, rendered into <html data-images>
+// IMAGE FIT | cropped to fill the card, or whole with plain ground around it, rendered into <html data-images>
 export const IMAGE_FITS = ['cropped', 'whole'] as const;
 
 export type ImageFit = typeof IMAGE_FITS[number];

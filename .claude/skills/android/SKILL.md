@@ -41,7 +41,7 @@ description: The Android app, a Tauri 2 mobile shell in src-tauri that opens the
 
 ## Performance on phones
 
-- Blur is what hurts: `filter` or `backdrop-filter` on something that animates or covers the screen. Under `(pointer: coarse)` page view transitions and `rise`, `sink` and `emerge` in `motion.ts` drop their blur, the login backdrop stays still, the phone menu has no backdrop blur. Small blurred pills over a scrolling grid are fine.
+- Blur was what hurt, so the whole app has none (decision in AGENTS.md).
 - `glide()` skips cells that stay off screen, else every reorder animates the whole grid.
 - Overlays over the grid skip bits-ui's scroll lock (`preventScroll={false}`, `overscroll-contain` on the overlay): restyling the body lays out every card on the first frame.
 - A touch outside an open note closes it only on lift, a drag that turns into a scroll cancels it (`pointercancel`).

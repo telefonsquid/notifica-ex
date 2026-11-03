@@ -105,7 +105,7 @@
     {/if}
 
     <!-- TOOLBAR | formatting only exists in rich mode, the source toggle sits quietly at the end | drifts in with the other controls of an opening note -->
-    <div class="editor-toolbar -mx-2 flex min-h-8 items-center gap-0.5" in:rise|global={{ y: 4, scale: 1, blur: 2, duration: 'base', delay: 120 }}>
+    <div class="editor-toolbar -mx-2 flex min-h-8 items-center gap-0.5" in:rise|global={{ y: 4, scale: 1, duration: 'base', delay: 120 }}>
         {#if linking}
             <form class="flex flex-1 items-center gap-1" onsubmit={(event) => { event.preventDefault(); applyLink() }}>
                 <Link class="mx-1.5 size-3.5 shrink-0 text-ink-faint" />

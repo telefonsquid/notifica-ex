@@ -444,8 +444,7 @@
         padding-inline: 0.75rem;
         border: 1px solid var(--theme-line);
         border-radius: 999px;
-        background: color-mix(in oklab, var(--theme-raised) 85%, transparent);
-        backdrop-filter: blur(16px);
+        background: var(--theme-raised);
         color: var(--theme-ink-muted);
         box-shadow: 0 4px 12px -4px color-mix(in oklab, var(--theme-ink) 18%, transparent);
         transition: color var(--duration-fast) var(--ease-out), scale var(--duration-base) var(--ease-spring);

@@ -55,7 +55,7 @@
 
     // TRANSITIONS | the band and its add button drift in with the other open only controls
     function appear(node: Element){
-        return settled ? rise(node, { y: 0, scale: 0.6, duration: 'fast' }) : rise(node, { y: 4, scale: 1, blur: 2, duration: 'base', delay: 120 })
+        return settled ? rise(node, { y: 0, scale: 0.6, duration: 'fast' }) : rise(node, { y: 4, scale: 1, duration: 'base', delay: 120 })
     }
 
     // A closing card folds the button away with its own shrinking

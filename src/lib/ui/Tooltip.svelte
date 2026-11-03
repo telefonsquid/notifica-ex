@@ -27,7 +27,7 @@
             class="type-meta pointer-events-none fixed top-0 left-0 z-[80] max-w-64 rounded-control bg-raised px-2.5 py-1.5 text-ink shadow-[0_8px_24px_-12px_rgb(0_0_0/0.5)]"
             role="tooltip"
             {@attach place}
-            in:rise|global={{ y: 4, scale: 0.95, blur: 2, duration: 'base' }}
+            in:rise|global={{ y: 4, scale: 0.95, duration: 'base' }}
         >
             {tooltip.text}
         </div>

@@ -32,7 +32,6 @@
             <!-- MINIATURE | a card topped by a tall picture, cut or whole -->
             <div class={['mini relative my-2 flex h-16 w-20 shrink-0 flex-col overflow-hidden rounded-control border border-line-strong', fit]} aria-hidden="true">
                 <div class="picture relative h-9 shrink-0 overflow-hidden">
-                    <span class="ambient absolute inset-0"></span>
                     <span class="subject absolute left-1/2 -translate-x-1/2"></span>
                 </div>
                 <div class="flex flex-col gap-1 p-2">
@@ -68,16 +67,8 @@
         transition: width var(--duration-base) var(--ease-spring);
     }
 
-    .ambient {
-        display: none;
-        background: linear-gradient(var(--theme-secondary) 0 45%, var(--theme-accent) 45% 100%);
-        filter: blur(4px);
-        opacity: 0.55;
-        scale: 1.3;
-    }
-
-    .whole .ambient {
-        display: block;
+    .whole .picture {
+        background: var(--theme-line);
     }
 
     .check {

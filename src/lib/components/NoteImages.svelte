@@ -75,9 +75,6 @@
         {#each images as name, index (name)}
             {@const src = note ? imageUrl(note, name) : undefined}
             <figure bind:this={cells[index]} class={['cell relative overflow-hidden', columns > 1 && 'aspect-square']}>
-                <!-- A blurred copy fills the room around an image shown whole -->
-                <img {src} alt="" aria-hidden="true" loading="lazy" decoding="async" class="ambient absolute inset-0 size-full object-cover" />
-
                 <!-- Opens the viewer, only while open since the closed card is one big button -->
                 <button class="block size-full cursor-zoom-in" tabindex={editable ? 0 : -1} aria-label="View image" onclick={() => view(index)}>
                     <img {src} alt="" loading="lazy" decoding="async" class="shown relative size-full object-cover" />
@@ -108,7 +105,6 @@
         {/each}
         {#each uploads as upload (upload.key)}
             <figure class={['cell uploading relative overflow-hidden', columns > 1 && 'aspect-square']}>
-                <img src={upload.url} alt="" aria-hidden="true" class="ambient absolute inset-0 size-full object-cover" />
                 <img src={upload.url} alt="" class="shown relative size-full object-cover" />
             </figure>
         {/each}
@@ -134,18 +130,7 @@
         max-height: 24rem;
     }
 
-    /* WHOLE | the device setting shows every image uncropped, its blurred copy fills the sides */
-    .ambient {
-        display: none;
-        filter: blur(18px) saturate(1.3);
-        scale: 1.25;
-        opacity: 0.85;
-    }
-
-    :global(html[data-images='whole']) .ambient {
-        display: block;
-    }
-
+    /* WHOLE | the device setting shows every image uncropped */
     :global(html[data-images='whole']) .shown {
         object-fit: contain;
     }
@@ -167,8 +152,7 @@
         height: 1.75rem;
         border-radius: 9999px;
         color: white;
-        background: rgb(0 0 0 / 0.45);
-        backdrop-filter: blur(4px);
+        background: rgb(0 0 0 / 0.55);
         opacity: 0;
         transition: opacity var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
     }

@@ -134,7 +134,7 @@
 
     // TRANSITIONS | the band morphs its height around a swap, so the new part only fades in
     function enter(node: Element){
-        return animate ? rise(node, { y: 0, scale: 1, blur: 0, duration: 'base', delay: 60 }) : {}
+        return animate ? rise(node, { y: 0, scale: 1, duration: 'base', delay: 60 }) : {}
     }
 
     function widen(node: Element){

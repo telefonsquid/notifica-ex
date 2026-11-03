@@ -387,7 +387,7 @@
 
     // Controls that only the open note has drift in once the card made room for them
     function appear(node: Element){
-        return rise(node, { y: 4, scale: 1, blur: 2, duration: 'base', delay: 120 })
+        return rise(node, { y: 4, scale: 1, duration: 'base', delay: 120 })
     }
 </script>
 

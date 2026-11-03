@@ -6,7 +6,6 @@
 
 <style>
 	.blob {
-		filter: blur(90px);
 		opacity: 0.55;
 		animation: wander 26s var(--ease-in-out) infinite alternate;
 	}
@@ -26,8 +25,7 @@
 		to { translate: 12vmax 8vmax; scale: 1.15; }
 	}
 
-	/* Phones keep the fields still, moving a 90px blur repaints the whole screen every frame */
-	@media (prefers-reduced-motion: reduce), (pointer: coarse) {
+	@media (prefers-reduced-motion: reduce) {
 		.blob { animation: none; }
 	}
 </style>

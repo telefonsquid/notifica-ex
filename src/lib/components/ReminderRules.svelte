@@ -50,7 +50,7 @@
 
     // Sections follow the panel in one after another
     function follow(node: Element, { index = 0 } = {}){
-        return rise(node, { delay: 120 + index * 50, y: 8, blur: 4, duration: 'base' })
+        return rise(node, { delay: 120 + index * 50, y: 8, duration: 'base' })
     }
 
     function fold(node: Element){
@@ -117,7 +117,7 @@
                                                         <button type="button" class="icon-button -my-0.5 -mr-1 self-start" aria-label="Remove rule" onclick={() => limits.splice(index, 1)}><X class="size-3.5" /></button>
 
                                                         {#key limit.kind}
-                                                            <div class="col-span-2 flex items-center gap-1.5" in:rise={{ y: 4, blur: 3, duration: 'base' }}>
+                                                            <div class="col-span-2 flex items-center gap-1.5" in:rise={{ y: 4, duration: 'base' }}>
                                                                 {#if limit.kind === 'times'}
                                                                     <input type="time" bind:value={limit.from} aria-label="From" required class="field min-w-0 flex-1" />
                                                                     <span class="type-meta">to</span>
@@ -157,7 +157,6 @@
 <style>
     .scrim {
         background: rgb(0 0 0 / 0.4);
-        backdrop-filter: blur(3px);
     }
 
     .rule {

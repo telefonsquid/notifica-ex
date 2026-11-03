@@ -1,7 +1,6 @@
 import { browser } from '$app/env';
 import { cubicOut } from 'svelte/easing';
 import { prefersReducedMotion } from 'svelte/motion';
-import { MediaQuery } from 'svelte/reactivity';
 import type { Attachment } from 'svelte/attachments';
 import type { TransitionConfig } from 'svelte/transition';
 
@@ -101,20 +100,11 @@ type RiseOptions = {
     easing?: EasingToken
     y?: number                          // px the element travels
     scale?: number                      // starting scale
-    blur?: number                       // px of starting blur
 }
 
-// Touch screens skip blur, a phone redraws every blurred frame on its own
-const touch = new MediaQuery('pointer: coarse')
-
-function soften(px: number){
-    return touch.current ? 0 : px
-}
-
-// RISE | fades in from slightly below, comes into focus while it settles
+// RISE | fades in from slightly below
 export function rise(_node: Element, options: RiseOptions = {}): TransitionConfig {
     const { delay = 0, y = 12, scale = 0.98 } = options
-    const blur = soften(options.blur ?? 6)
 
     return {
         delay: prefersReducedMotion.current ? 0 : delay,
@@ -123,7 +113,6 @@ export function rise(_node: Element, options: RiseOptions = {}): TransitionConfi
         css: (t, u) => `
             opacity: ${t};
             transform: translateY(${u * y}px) scale(${scale + (1 - scale) * t});
-            filter: blur(${u * blur}px);
         `
     }
 }
@@ -131,7 +120,6 @@ export function rise(_node: Element, options: RiseOptions = {}): TransitionConfi
 // SINK | the faster counterpart for leaving, so exits never hold up what comes next
 export function sink(_node: Element, options: RiseOptions = {}): TransitionConfig {
     const { delay = 0, y = 6, scale = 0.96 } = options
-    const blur = soften(options.blur ?? 4)
 
     return {
         delay: prefersReducedMotion.current ? 0 : delay,
@@ -140,7 +128,6 @@ export function sink(_node: Element, options: RiseOptions = {}): TransitionConfi
         css: (t, u) => `
             opacity: ${t};
             transform: translateY(${u * y}px) scale(${scale + (1 - scale) * t});
-            filter: blur(${u * blur}px);
         `
     }
 }
@@ -197,7 +184,6 @@ export function emerge(node: Element, { anchor, leaving = false }: { anchor?: HT
         css: (t, u) => `
             opacity: ${Math.min(1, t * 2)};
             transform: translate(${u * dx}px, ${u * dy}px) scale(${0.3 + 0.7 * t});
-            filter: blur(${u * soften(8)}px);
         `
     }
 }
