@@ -37,6 +37,8 @@ Motion is deliberate: everything that changes place or size glides, nothing pops
 
 `#lib/masonry.ts` places every cell explicitly on 1px grid rows, each in the column (or column pair for a wide card) that ends highest, in sort order. CSS only sets the column count, the vertical gap is `--note-row-gap`. It repacks on cell resize and child changes, `glide()` takes it as its layout step so cards glide straight to the packed spot. Absolutely positioned leaving cells are skipped.
 
+An open card (`.wide`) keeps `--note-open-gap` from its neighbour on the side its label tabs show, above it only when a note sits there. `pack()` clears all placements to count the columns, so it holds the grid's height with `min-height` meanwhile: the collapsed page would clamp the scroll position to the top.
+
 ## Page changes
 
 - View transitions from the root layout. `.vt-rail`, `.vt-page`, `.vt-rail-indicator` and `.vt-toolbar` name the moving parts. The indicator glides with in-out.

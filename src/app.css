@@ -267,11 +267,18 @@
     initial-value: 0px;
 }
 
+@property --note-open-gap {
+    syntax: '<length>';
+    inherits: false;
+    initial-value: 0px;
+}
+
 @utility note-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--layout-note-min)), var(--layout-note-max)));
     justify-content: center;
     --note-row-gap: calc(var(--layout-note-gap) + 0.5rem);
+    --note-open-gap: calc(1.375rem + 0.5rem); /* An open card's tab and some air */
     gap: var(--note-row-gap) var(--layout-note-gap);
 
     /* Only as wide as the notes in it, empty columns would push a short row off center */

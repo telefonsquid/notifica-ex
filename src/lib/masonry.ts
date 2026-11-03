@@ -12,11 +12,19 @@ import type { Attachment } from 'svelte/attachments';
 export function pack(grid: HTMLElement){
     const cells = [...grid.children].filter((cell): cell is HTMLElement => cell instanceof HTMLElement)
 
+    // Holds the page's height meanwhile, without placements it collapses and the browser scrolls to the top
+    grid.style.minHeight = `${grid.offsetHeight}px`
+
     // Count the columns without the old placements | a card left past the last column keeps an extra one alive, squeezed to its narrowest
     cells.forEach((cell) => Object.assign(cell.style, { gridRow: '', gridColumnStart: '' }))
     const style = getComputedStyle(grid)
     const columns = style.gridTemplateColumns.split(' ').length
     const gap = Math.round(parseFloat(style.getPropertyValue('--note-row-gap')) || 0)
+
+    // An open card shows its full label tabs, on the edge the settings picked
+    const openGap = Math.round(parseFloat(style.getPropertyValue('--note-open-gap')) || 0)
+    const room = Math.max(0, openGap - gap)
+    const roomBelow = document.documentElement.dataset.labels === 'bottom'
 
     // Leaving cards float above the grid and keep no spot | a placed one would measure from its old spot
     const floating = cells.filter((cell) => cell.style.position === 'absolute')
@@ -34,11 +42,15 @@ export function pack(grid: HTMLElement){
             if(free < top) [column, top] = [start, free]
         }
 
+        const open = cell.classList.contains('wide')
+        if(open && !roomBelow && top > 0) top += room
+
         cell.style.gridColumnStart = `${column + 1}`
         cell.style.gridRow = `${top + 1} / span ${Math.max(1, heights[index])}`
-        bottoms.fill(top + heights[index] + gap, column, column + span)
+        bottoms.fill(top + heights[index] + gap + (open && roomBelow ? room : 0), column, column + span)
     })
 
+    grid.style.minHeight = ''
     grid.dataset.packed = ''
 }
 
