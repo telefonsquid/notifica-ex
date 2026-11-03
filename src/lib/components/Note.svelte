@@ -305,10 +305,19 @@
     // CLOSE | a press anywhere else or Escape folds the card back, its tabs and the popovers opened from it count as inside
     const FLOATING = '[data-bits-floating-content-wrapper], [data-popover-content], [data-dialog-content]'
 
+    // A touch only closes once it lifts, a drag turns into a scroll and cancels it
+    let touchOutside = false
+
     function pressOutside(event: PointerEvent){
         const target = event.target as Element
         if(!open || root?.contains(target) || target.closest(FLOATING)) return
-        onclose?.()
+        if(event.pointerType === 'mouse') onclose?.()
+        else touchOutside = true
+    }
+
+    function liftOutside(){
+        if(touchOutside && open) onclose?.()
+        touchOutside = false
     }
 
     // The editor claims every Escape for itself, so only others that handled it keep the card open
@@ -383,7 +392,7 @@
     }
 </script>
 
-<svelte:window onpointerdown={pressOutside} onkeydown={escape} />
+<svelte:window onpointerdown={pressOutside} onpointerup={liftOutside} onpointercancel={() => touchOutside = false} onkeydown={escape} />
 
 {#snippet actions()}
     <button class="icon-button" aria-label="Add images" onclick={() => picker?.click()} {@attach tip('Add images')}>
