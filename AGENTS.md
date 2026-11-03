@@ -23,7 +23,7 @@ Live in `.claude/skills/<name>/SKILL.md`. Status `planned` means the file doesn'
 | `motion` | Easing/duration tokens, transition patterns, view transitions, reduced motion | available |
 | `data-model` | PocketBase collections, access rules, sharing, migrations | available |
 | `reminders` | Recurrence model, scheduler, ntfy delivery and actions | available |
-| `android` | Android client, share target, notification actions | planned |
+| `android` | Tauri shell, connect page, toolchain, running on a phone | available |
 
 ## Stack
 
@@ -73,7 +73,7 @@ Tokens, themes, note colours and device preferences: `theming` skill. Everything
 - **No encryption** beyond TLS for now. E2E was considered and dropped (2026-10-31): too costly for search, sharing and reminder text.
 - **Groups are labels**: a note can carry several, groups act as filters. Each label has a colour from the note palette and shows as a folder tab on the card's edge, named only on hover.
 - **Accounts by admin invite** with a set-password link, as in fsd-flight-check. No open signup.
-- **Android via Tauri 2 mobile**, reusing the Svelte UI; Kotlin plugin for share target and notification actions.
+- **Android via Tauri 2 mobile**: a shell whose webview opens the server, asked once on a bundled connect page. Share target and notification actions come later through a Kotlin plugin. Details in the `android` skill.
 - **UI language**: English.
 - **Deactivated users** lose running sessions: `hooks.server.ts` rejects them on every request.
 - **Reminders via bundled ntfy**, each with its own timezone, Done buttons signed. Details in the `reminders` skill.

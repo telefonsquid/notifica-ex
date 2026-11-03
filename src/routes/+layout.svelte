@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
+	import { syncStatusBar } from '#lib/android.ts';
 	import { prefetchRoute } from '#lib/prefetch.ts';
 	import type { User } from '#lib/schemas.ts';
 	import ConfirmDialog from '#lib/ui/ConfirmDialog.svelte';
@@ -8,11 +9,15 @@
 	import NavigationProgress from '#lib/ui/NavigationProgress.svelte';
 	import Toaster from '#lib/ui/Toaster.svelte';
 	import Tooltip from '#lib/ui/Tooltip.svelte';
+	import { onMount } from 'svelte';
 	import '../app.css';
 	import type { LayoutProps } from './$types';
 
 	// PROPS
 	let { children }: LayoutProps = $props();
+
+	// ANDROID STATUS BAR | matches the theme the server rendered
+	onMount(syncStatusBar);
 
 	// VIEW TRANSITION | the animation itself lives in app.css
 	onNavigate(async (navigation) => {
@@ -43,6 +48,9 @@
 
 <!-- CONTENT -->
 {@render children()}
+
+<!-- STATUS BAR | content scrolls under it in the Android app, zero high in a browser -->
+<div class="pointer-events-none fixed inset-x-0 top-0 z-[35] h-[env(safe-area-inset-top)] bg-canvas"></div>
 
 <!-- NAVIGATION PROGRESS -->
 <NavigationProgress />

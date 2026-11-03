@@ -6,6 +6,13 @@
       "runtimeExecutable": "bun",
       "runtimeArgs": ["run", "dev"],
       "port": 55560
+    },
+    {
+      "name": "web-build",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["--env-file=.env", "build/index.js"],
+      "env": { "HOST": "127.0.0.1", "PORT": "55560" },
+      "port": 55560
     }
   ]
 }

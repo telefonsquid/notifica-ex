@@ -332,13 +332,13 @@
 		display: grid;
 		grid-template-rows: auto minmax(0, 1fr);
 		gap: 1rem;
-		height: calc(100dvh - 9.5rem);
+		height: calc(100dvh - 9.5rem - env(safe-area-inset-top));
 	}
 
 	@media (width >= 40rem) {
 		.settings {
 			--peek: 4rem;
-			height: calc(100dvh - 6rem);
+			height: calc(100dvh - 6rem - env(safe-area-inset-top));
 		}
 	}
 

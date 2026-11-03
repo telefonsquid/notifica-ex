@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "connect",
+  "description": "The bundled connect page picks and opens the server. Remote pages get nothing.",
+  "local": true,
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "allow-saved-server",
+    "allow-connect"
+  ]
+}

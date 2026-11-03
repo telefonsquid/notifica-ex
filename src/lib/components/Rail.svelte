@@ -89,7 +89,7 @@
 {/snippet}
 
 <!-- A menu button in the bottom bar on phones, side rail from sm up -->
-<nav class="vt-rail fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-gutter z-40 flex items-center gap-2 sm:inset-y-0 sm:left-0 sm:w-rail sm:flex-col sm:py-6">
+<nav class="vt-rail fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-gutter z-40 flex items-center gap-2 sm:inset-y-0 sm:left-0 sm:w-rail sm:flex-col sm:pt-[calc(1.5rem+env(safe-area-inset-top))] sm:pb-6">
 
     <!-- MENU | everything the rail holds, spread over the screen on phones -->
     <Dialog.Root bind:open={menuOpen}>
@@ -100,7 +100,7 @@
             <Dialog.Content forceMount>
                 {#snippet child({ props, open })}
                     {#if open}
-                        <div {...props} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto bg-canvas/95 px-gutter pt-10 pb-[calc(6.5rem+env(safe-area-inset-bottom))] outline-none backdrop-blur-xl sm:hidden" transition:spread>
+                        <div {...props} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto bg-canvas/95 px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(6.5rem+env(safe-area-inset-bottom))] outline-none backdrop-blur-xl sm:hidden" transition:spread>
                             <Dialog.Title class="sr-only">Menu</Dialog.Title>
 
                             <nav class="flex flex-col gap-1">

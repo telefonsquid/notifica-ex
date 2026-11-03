@@ -1,4 +1,5 @@
 <script lang="ts">
+    import { syncStatusBar } from '#lib/android.ts';
     import { duration, easing } from '#lib/motion.ts';
     import { viewer } from '#lib/singletons/image_viewer.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
@@ -22,6 +23,9 @@
         void viewer.open
         stepping = false
     })
+
+    // Light status bar icons over the dark backdrop in the Android app
+    $effect(() => syncStatusBar(viewer.open ? 'dark' : undefined))
 
     // NAVIGATION
     function go(step: number){
@@ -138,7 +142,7 @@
                         {/key}
 
                         <!-- CONTROLS -->
-                        <div class="bar absolute inset-x-0 top-0 flex items-center gap-1 p-3" transition:fade={{ duration: duration('base') }}>
+                        <div class="bar absolute inset-x-0 top-0 flex items-center gap-1 p-3 pt-[calc(0.75rem+env(safe-area-inset-top))]" transition:fade={{ duration: duration('base') }}>
                             {#if several}<span class="type-meta px-2 text-white/70">{viewer.index + 1} / {viewer.images.length}</span>{/if}
                             <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the image url is resolved already -->
                             <a class="control ml-auto" href={image.src} target="_blank" rel="noopener" aria-label="Open original" {@attach tip('Open original')}>

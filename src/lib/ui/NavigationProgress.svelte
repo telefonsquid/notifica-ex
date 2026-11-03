@@ -29,7 +29,7 @@
 <style>
     .progress {
         position: fixed;
-        inset: 0 0 auto;
+        inset: env(safe-area-inset-top) 0 auto;
         z-index: 95;
         height: 3px;
         overflow: hidden;
