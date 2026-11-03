@@ -26,7 +26,8 @@
 		to { translate: 12vmax 8vmax; scale: 1.15; }
 	}
 
-	@media (prefers-reduced-motion: reduce) {
+	/* Phones keep the fields still, moving a 90px blur repaints the whole screen every frame */
+	@media (prefers-reduced-motion: reduce), (pointer: coarse) {
 		.blob { animation: none; }
 	}
 </style>

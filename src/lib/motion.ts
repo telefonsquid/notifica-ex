@@ -1,6 +1,7 @@
 import { browser } from '$app/env';
 import { cubicOut } from 'svelte/easing';
 import { prefersReducedMotion } from 'svelte/motion';
+import { MediaQuery } from 'svelte/reactivity';
 import type { Attachment } from 'svelte/attachments';
 import type { TransitionConfig } from 'svelte/transition';
 
@@ -103,9 +104,17 @@ type RiseOptions = {
     blur?: number                       // px of starting blur
 }
 
+// Touch screens skip blur, a phone redraws every blurred frame on its own
+const touch = new MediaQuery('pointer: coarse')
+
+function soften(px: number){
+    return touch.current ? 0 : px
+}
+
 // RISE | fades in from slightly below, comes into focus while it settles
 export function rise(_node: Element, options: RiseOptions = {}): TransitionConfig {
-    const { delay = 0, y = 12, scale = 0.98, blur = 6 } = options
+    const { delay = 0, y = 12, scale = 0.98 } = options
+    const blur = soften(options.blur ?? 6)
 
     return {
         delay: prefersReducedMotion.current ? 0 : delay,
@@ -121,7 +130,8 @@ export function rise(_node: Element, options: RiseOptions = {}): TransitionConfi
 
 // SINK | the faster counterpart for leaving, so exits never hold up what comes next
 export function sink(_node: Element, options: RiseOptions = {}): TransitionConfig {
-    const { delay = 0, y = 6, scale = 0.96, blur = 4 } = options
+    const { delay = 0, y = 6, scale = 0.96 } = options
+    const blur = soften(options.blur ?? 4)
 
     return {
         delay: prefersReducedMotion.current ? 0 : delay,
@@ -187,7 +197,7 @@ export function emerge(node: Element, { anchor, leaving = false }: { anchor?: HT
         css: (t, u) => `
             opacity: ${Math.min(1, t * 2)};
             transform: translate(${u * dx}px, ${u * dy}px) scale(${0.3 + 0.7 * t});
-            filter: blur(${u * 8}px);
+            filter: blur(${u * soften(8)}px);
         `
     }
 }
@@ -278,6 +288,7 @@ export function glide(root: ParentNode, before: Map<string, DOMRect>, layout?: (
         const dx = from.left - to.left, dy = from.top - to.top
         const resized = Math.abs(from.width - to.width) > 1 || Math.abs(from.height - to.height) > 1
         if(Math.abs(dx) < 1 && Math.abs(dy) < 1 && !resized) continue
+        if(!resized && offscreen(from) && offscreen(to)) continue           // Unseen glides only cost frames on phones
 
         const translate = [`${dx}px ${dy}px`, '0 0']
         const animations: Animation[] = []
@@ -299,6 +310,10 @@ export function glide(root: ParentNode, before: Map<string, DOMRect>, layout?: (
 }
 
 const running = new WeakMap<HTMLElement, Animation[]>()
+
+function offscreen(rect: DOMRect){
+    return rect.bottom < 0 || rect.top > innerHeight
+}
 
 function settle(cell: HTMLElement){
     running.get(cell)?.forEach((animation) => animation.cancel())

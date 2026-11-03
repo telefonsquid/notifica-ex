@@ -97,10 +97,11 @@
             <Menu class="size-7" strokeWidth={2.25} />
         </Dialog.Trigger>
         <Dialog.Portal>
-            <Dialog.Content forceMount>
+            <!-- No scroll lock, restyling the body lays out the whole grid on the first frame | the menu contains its own overscroll -->
+            <Dialog.Content forceMount preventScroll={false}>
                 {#snippet child({ props, open })}
                     {#if open}
-                        <div {...props} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto bg-canvas/95 px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(6.5rem+env(safe-area-inset-bottom))] outline-none backdrop-blur-xl sm:hidden" transition:spread>
+                        <div {...props} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto overscroll-contain bg-canvas/95 px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(6.5rem+env(safe-area-inset-bottom))] outline-none sm:hidden" transition:spread>
                             <Dialog.Title class="sr-only">Menu</Dialog.Title>
 
                             <nav class="flex flex-col gap-1">
