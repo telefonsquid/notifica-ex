@@ -333,7 +333,10 @@
 
 	function onKey(event: KeyboardEvent) {
 		const menuOpen = event.defaultPrevented || document.querySelector('[role=menu]'); // Escape closes the menu first, the selection stays
-		if (event.key === 'Escape' && selection.length && !editing && !menuOpen) selected.clear();
+		if (event.key === 'Escape' && selection.length && !editing && !menuOpen) {
+			event.preventDefault();
+			selected.clear();
+		}
 		else if (event.key === 'Delete' && selection.length && !editing && !menuOpen && !typing(event)) removeSelection();
 		else focusSearch(event);
 	}
@@ -583,7 +586,7 @@
 						aria-label="Search notes"
 						class="min-w-0 flex-1 bg-transparent pr-2 pl-1 text-ink outline-none placeholder:text-ink-faint"
 						onblur={() => { if (!search) searchOpen = false; }}
-						onkeydown={(event) => { if (event.key === 'Escape') closeSearch(); }}
+						onkeydown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeSearch(); } }}
 					/>
 					<button class="icon-button mr-1.5 rounded-full p-1.5" aria-label="Close search" onclick={closeSearch}><X class="size-4" /></button>
 				{/if}

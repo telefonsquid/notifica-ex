@@ -256,10 +256,9 @@
         if(open && event.dataTransfer?.types.includes('Files')) event.preventDefault()
     }
 
-    // NAVIGATION | waits for unsaved changes, then goes where it was headed
-    beforeNavigate((navigation) => {
-        const { cancel, to, type, willUnload } = navigation
-        if(!open || JSON.stringify(draft) === saved) return
+    // NAVIGATION | waits for unsaved changes, then goes where it was headed | back only closes the card, the root layout asks for that
+    beforeNavigate(({ cancel, to, type, willUnload }) => {
+        if(!open || type === 'popstate' || JSON.stringify(draft) === saved) return
         cancel()
         if(type === 'leave') {
             save()
@@ -268,8 +267,7 @@
 
         save().then(() => {
             if(JSON.stringify(draft) !== saved || !to) return
-            if(navigation.type === 'popstate') history.go(navigation.delta)
-            else if(willUnload) location.href = to.url.href
+            if(willUnload) location.href = to.url.href
             // eslint-disable-next-line svelte/no-navigation-without-resolve -- the router resolved it already
             else goto(to.url)
         })
@@ -324,6 +322,7 @@
     function escape(event: KeyboardEvent){
         const handled = event.defaultPrevented && !(event.target as Element).closest('.ProseMirror')
         if(!open || event.key !== 'Escape' || handled || document.querySelector(`${FLOATING}[data-state='open']`)) return
+        event.preventDefault()
         onclose?.()
     }
 

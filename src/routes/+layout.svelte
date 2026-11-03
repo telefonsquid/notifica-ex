@@ -1,7 +1,8 @@
 <script lang="ts">
-	import { onNavigate } from '$app/navigation';
+	import { beforeNavigate, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import { syncStatusBar } from '#lib/android.ts';
+	import { closeOverlay } from '#lib/back.ts';
 	import { prefetchRoute } from '#lib/prefetch.ts';
 	import type { User } from '#lib/schemas.ts';
 	import ConfirmDialog from '#lib/ui/ConfirmDialog.svelte';
@@ -18,6 +19,13 @@
 
 	// ANDROID STATUS BAR | matches the theme the server rendered
 	onMount(syncStatusBar);
+
+	// BACK | an open overlay closes instead of the page behind it changing
+	onMount(() => { window.closeOverlay = closeOverlay; });
+
+	beforeNavigate(({ type, cancel }) => {
+		if (type === 'popstate' && closeOverlay()) cancel();
+	});
 
 	// VIEW TRANSITION | the animation itself lives in app.css
 	onNavigate(async (navigation) => {

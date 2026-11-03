@@ -114,7 +114,7 @@
                     placeholder="Paste a link"
                     aria-label="Link address"
                     class="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-ink-faint"
-                    onkeydown={(event) => { if(event.key === 'Escape'){ event.stopPropagation(); linking = false } }}
+                    onkeydown={(event) => { if(event.key === 'Escape'){ event.preventDefault(); event.stopPropagation(); linking = false } }}
                     {@attach (node) => node.focus()}
                 />
                 <button type="button" class="tool" aria-label="Cancel" onclick={() => linking = false}><X class="size-3.5" /></button>

@@ -30,14 +30,18 @@ class MainActivity : TauriActivity() {
       }
     }, "NotificaAndroid")
 
-    // BACK | walks the server's pages, then hides the app
+    // BACK | closes an open overlay, else walks the server's pages, then hides the app
     // Never back onto the connect page, Tauri still files it under the server's URL and refuses its calls
     onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
       override fun handleOnBackPressed() {
-        val history = webView.copyBackForwardList()
-        val previous = history.getItemAtIndex(history.currentIndex - 1)?.url
-        if (previous != null && !previous.startsWith(LOCAL)) webView.goBack()
-        else moveTaskToBack(true)
+        webView.evaluateJavascript("window.closeOverlay?.() === true") { closed ->
+          if (closed == "true") return@evaluateJavascript
+
+          val history = webView.copyBackForwardList()
+          val previous = history.getItemAtIndex(history.currentIndex - 1)?.url
+          if (previous != null && !previous.startsWith(LOCAL)) webView.goBack()
+          else moveTaskToBack(true)
+        }
       }
     })
   }
