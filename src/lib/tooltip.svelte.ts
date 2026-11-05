@@ -59,7 +59,7 @@ export function tip(text: string): Attachment<HTMLElement> {
         node.addEventListener('focusin', focus)
         node.addEventListener('focusout', hide)
 
-        // A new text while hovered, like a delete that asks for a second click, shows right away
+        // A new text while hovered, like Pin turning into Unpin, shows right away
         if((matchMedia('(hover: hover)').matches && node.matches(':hover')) || node.matches(':focus-visible')) show()
 
         return () => {

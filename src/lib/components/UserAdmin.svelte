@@ -4,6 +4,7 @@
 	import { onCollectionChange } from '#lib/realtime.ts';
 	import { LIMITS } from '#lib/schema_limits.ts';
 	import type { AuthorizationLevel, UserSummary } from '#lib/schemas.ts';
+	import { confirmAction } from '#lib/singletons/confirm.svelte.ts';
 	import { tip } from '#lib/tooltip.svelte.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import InlineInput from '#lib/ui/InlineInput.svelte';
@@ -60,16 +61,13 @@
 		if (await safeAction(sendPasswordLink(user.id))) notify(`Password link sent to ${user.email}.`);
 	}
 
-	// DEACTIVATE | first click arms the button, the second one goes through
-	let confirmDeactivate = $state<string | null>(null);
-
 	async function deactivate(user: UserSummary) {
-		if (confirmDeactivate !== user.id) {
-			confirmDeactivate = user.id;
-			return;
-		}
-		await safeAction(setUserState({ id: user.id, state: 'inactive' }));
-		confirmDeactivate = null;
+		const confirmed = await confirmAction({
+			title: `Deactivate ${user.name}?`,
+			message: 'They are signed out everywhere and get no more reminders. Their notes stay.',
+			action: 'Deactivate'
+		});
+		if (confirmed) await safeAction(setUserState({ id: user.id, state: 'inactive' }));
 	}
 </script>
 
@@ -125,13 +123,7 @@
 						{#if self}
 							<span class="type-meta w-9 text-center text-ink-faint">You</span>
 						{:else}
-							<button
-								class={['icon-button', confirmDeactivate === user.id && 'bg-accent text-on-accent hover:text-on-accent']}
-								aria-label={confirmDeactivate === user.id ? `Confirm deactivating ${user.name}` : `Deactivate ${user.name}`}
-								{@attach tip(confirmDeactivate === user.id ? 'Click again to deactivate' : 'Deactivate, signs them out everywhere')}
-								onclick={() => deactivate(user)}
-								onblur={() => (confirmDeactivate = null)}
-							>
+							<button class="icon-button" aria-label={`Deactivate ${user.name}`} {@attach tip('Deactivate')} onclick={() => deactivate(user)}>
 								<UserX class="size-4" />
 							</button>
 						{/if}
