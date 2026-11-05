@@ -4,7 +4,7 @@ import { idSchema, LIMITS } from '#lib/schema_limits.ts';
 import { ntfyTopicSchema, pushSubscriptionSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
 import { streamSubject } from '#lib/server/app_stream.ts';
 import { deliver } from '#lib/server/delivery.ts';
-import { countOpenOccurrences, deleteOne, findOne, getAllOwned, getNoteFor, getOccurrences, getOne, getOpenOccurrences, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { countOpenOccurrences, deleteOne, findOne, getAllOwned, getNoteFor, getOccurrences, getOpenOccurrences, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { sign } from '#lib/server/server_auth.ts';
 import { restrictAccess } from '#lib/user.ts';

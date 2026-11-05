@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { PUBLIC_NTFY_URL } from '$app/env/public';
 	import { invalidateAll } from '$app/navigation';
 	import { page } from '$app/state';
 	import ColorPicker from '#lib/components/ColorPicker.svelte';
 	import ImageFitPicker from '#lib/components/ImageFitPicker.svelte';
 	import LabelPositionPicker from '#lib/components/LabelPositionPicker.svelte';
+	import NotificationSettings from '#lib/components/NotificationSettings.svelte';
 	import SettingsSection from '#lib/components/SettingsSection.svelte';
 	import ThemePicker from '#lib/components/ThemePicker.svelte';
 	import UserAdmin from '#lib/components/UserAdmin.svelte';
@@ -18,44 +18,16 @@
 	import { hasPermission } from '#lib/user.ts';
 	import Button from '#lib/ui/Button.svelte';
 	import InlineInput from '#lib/ui/InlineInput.svelte';
-	import { Check, CircleUserRound, Dices, KeyRound, Palette, PanelsTopLeft, Send, SlidersHorizontal, Trash2, Users } from '@lucide/svelte';
+	import { Bell, Check, CircleUserRound, KeyRound, Palette, PanelsTopLeft, Tag, Trash2, Users } from '@lucide/svelte';
 	import { untrack } from 'svelte';
 	import { slide } from 'svelte/transition';
 	import { duration, easing } from '#lib/motion.ts';
 	import { getLabels, updateLabel } from '../../api/labels.remote';
-	import { sendTestReminder, setNtfyTopic } from '../../api/reminders.remote';
 	import { sendPasswordLink, updateProfile } from '../../api/users.remote';
 	import type { PageProps } from './$types';
 
 	// PROPS
 	let { data }: PageProps = $props();
-
-	// REMINDERS
-	let topic = $state(untrack(() => data.user.ntfyTopic ?? ''));
-	let savingTopic = $state(false);
-	let testing = $state(false);
-	let tested = $state(false);
-
-	let stored = $derived(data.user.ntfyTopic ?? '');
-	let subscribeUrl = $derived(PUBLIC_NTFY_URL && stored ? `${PUBLIC_NTFY_URL.replace(/\/$/, '')}/${stored}` : null);
-
-	// Long and random, the topic name is the only thing that keeps strangers out on an open ntfy server
-	function randomTopic() {
-		const bytes = crypto.getRandomValues(new Uint8Array(12));
-		topic = 'notifica-' + Array.from(bytes, (byte) => byte.toString(36).padStart(2, '0')).join('').slice(0, 20);
-	}
-
-	async function saveTopic() {
-		savingTopic = true;
-		if (await safeAction(setNtfyTopic(topic.trim()))) await invalidateAll();
-		savingTopic = false;
-	}
-
-	async function test() {
-		testing = true;
-		tested = !!(await safeAction(sendTestReminder()));
-		testing = false;
-	}
 
 	// LABELS
 	let labels = $derived(await getLabels());
@@ -66,7 +38,8 @@
 	const SECTIONS = [
 		{ id: 'appearance', label: 'Appearance', icon: Palette },
 		{ id: 'views', label: 'Views', icon: PanelsTopLeft },
-		{ id: 'behaviour', label: 'Behaviour', icon: SlidersHorizontal },
+		{ id: 'labels', label: 'Labels', icon: Tag },
+		{ id: 'notifications', label: 'Notifications', icon: Bell },
 		{ id: 'account', label: 'Account', icon: CircleUserRound },
 		{ id: 'users', label: 'Users', icon: Users, admin: true }
 	] as const;
@@ -233,50 +206,31 @@
 		</div>
 	</SettingsSection>
 
-	<!-- BEHAVIOUR -->
-	<SettingsSection id="behaviour" title="Behaviour" current={tab === 'behaviour'} onselect={() => go('behaviour')}>
-		<div class="grid max-w-xl gap-12">
-			<!-- REMINDERS -->
-			<div>
-				<h3 class="type-meta mb-4 text-ink-faint">Reminders</h3>
+	<!-- LABELS -->
+	<SettingsSection id="labels" title="Labels" current={tab === 'labels'} onselect={() => go('labels')}>
+		<div class="max-w-xl">
+			{#if labels.length}
+				<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
+					{#each labels as label (label.id)}
+						<li class="flex items-center gap-3 bg-card py-2 pr-2 pl-card">
+							<ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} />
+							<InlineInput value={label.name} label={`Rename ${label.name}`} maxlength={LIMITS.LABEL_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateLabel({ id: label.id, name }))} />
+							<button class="icon-button" aria-label={`Delete ${label.name}`} onclick={() => deleteLabelEverywhere(label)} {@attach tip('Delete label')}>
+								<Trash2 class="size-4" />
+							</button>
+						</li>
+					{/each}
+				</ul>
+			{:else}
+				<p class="text-ink-faint">No labels yet. Add them right in a note.</p>
+			{/if}
+		</div>
+	</SettingsSection>
 
-				<form class="flex flex-wrap gap-2" onsubmit={(event) => { event.preventDefault(); saveTopic(); }}>
-					<input bind:value={topic} placeholder="Topic" aria-label="ntfy topic" class="field min-w-0 flex-1" />
-					<Button type="button" style="ghost" icon={Dices} onclick={randomTopic}>Random</Button>
-					<Button type="submit" icon={Check} loading={savingTopic} disabled={topic.trim() === stored}>Save</Button>
-				</form>
-
-				{#if stored}
-					<div class="mt-4 flex flex-wrap items-center gap-3">
-						<Button style="secondary" icon={Send} loading={testing} onclick={test}>Send a test</Button>
-						{#if tested}<span class="text-secondary">Sent, check your phone.</span>{/if}
-					</div>
-					{#if subscribeUrl}
-						<p class="mt-4 text-ink-muted">Subscribe address <code class="rounded bg-line px-1.5 py-0.5 text-ink break-all">{subscribeUrl}</code></p>
-					{/if}
-				{/if}
-			</div>
-
-			<!-- LABELS -->
-			<div>
-				<h3 class="type-meta mb-4 text-ink-faint">Labels</h3>
-
-				{#if labels.length}
-					<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
-						{#each labels as label (label.id)}
-							<li class="flex items-center gap-3 bg-card py-2 pr-2 pl-card">
-								<ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} />
-								<InlineInput value={label.name} label={`Rename ${label.name}`} maxlength={LIMITS.LABEL_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateLabel({ id: label.id, name }))} />
-								<button class="icon-button" aria-label={`Delete ${label.name}`} onclick={() => deleteLabelEverywhere(label)} {@attach tip('Delete label')}>
-									<Trash2 class="size-4" />
-								</button>
-							</li>
-						{/each}
-					</ul>
-				{:else}
-					<p class="text-ink-faint">No labels yet. Add them right in a note.</p>
-				{/if}
-			</div>
+	<!-- NOTIFICATIONS -->
+	<SettingsSection id="notifications" title="Notifications" current={tab === 'notifications'} onselect={() => go('notifications')}>
+		<div class="max-w-xl">
+			<NotificationSettings user={data.user} />
 		</div>
 	</SettingsSection>
 
@@ -456,22 +410,4 @@
 		padding-top: var(--peek);
 	}
 
-	.field {
-		height: 2.75rem;
-		padding-inline: 0.875rem;
-		border: 1px solid var(--theme-line);
-		border-radius: var(--layout-radius-control);
-		background: var(--theme-card);
-		color: var(--theme-ink);
-		transition: border-color var(--duration-fast) var(--ease-out);
-	}
-
-	.field:hover {
-		border-color: var(--theme-line-strong);
-	}
-
-	.field:focus {
-		border-color: var(--theme-accent);
-		outline: none;
-	}
 </style>

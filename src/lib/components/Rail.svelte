@@ -5,6 +5,7 @@
     import ViewMenu from '#lib/components/ViewMenu.svelte';
     import { duration, easing, rise, stagger } from '#lib/motion.ts';
     import { safeAction } from '#lib/pocketbase.ts';
+    import { stopDeviceNotifications } from '#lib/device_notifications.ts';
     import { disconnectRealtime, onCollectionChange } from '#lib/realtime.ts';
     import { viewIcon } from '#lib/view_icons.ts';
     import { LogOut, Menu, Settings, X } from '@lucide/svelte';
@@ -34,10 +35,12 @@
         }
     }
 
-    // LOGOUT | realtime goes first, the next account on this device must not get these events
+    // LOGOUT | the next account on this device must not get these events or reminders
+    // Notifications stop before the session ends, unsubscribing needs it
     let loggingOut = $state(false)
     async function logout(){
         loggingOut = true
+        await safeAction(stopDeviceNotifications())
         const done = await safeAction(logoutUser())
         if(done){
             disconnectRealtime()

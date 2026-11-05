@@ -13,7 +13,6 @@
 		"moduleResolution": "bundler",
 		"noImplicitAny": false
 	},
-	"include": ["src", "test", "*"],
-	"exclude": ["src/service-worker"]
+	"include": ["src", "test", "*"]
 	// #lib is a subpath import in package.json, other aliases go in the SvelteKit config
 }

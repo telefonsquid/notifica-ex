@@ -27,7 +27,7 @@ Live in `.claude/skills/<name>/SKILL.md`. Status `planned` means the file doesn'
 
 ## Stack
 
-Bun, SvelteKit 3 + adapter-node, Svelte 5 (runes, experimental remote functions and async), TypeScript 6, PocketBase, Tailwind 4, lucide, zod. bits-ui for dialogs and menus, marked renders notes (`#lib/markdown.ts` escapes raw HTML and filters link schemes), Tiptap edits them. Docker compose for deployment.
+Bun, SvelteKit 3 + adapter-node, Svelte 5 (runes, experimental remote functions and async), TypeScript 6, PocketBase, Tailwind 4, lucide, zod. bits-ui for dialogs and menus, marked renders notes (`#lib/markdown.ts` escapes raw HTML and filters link schemes), Tiptap edits them, web-push sends browser notifications. Docker compose for deployment.
 
 Ports: dev server 55560, PocketBase 8091, ntfy 8092. Server side URLs use `127.0.0.1`, Node tries IPv6 first for `localhost` and loses about 250 ms on every new connection. `.claude/launch.json` starts the dev server for the preview pane.
 
@@ -62,7 +62,7 @@ Most docs and examples online, and fsd-flight-check, are still SvelteKit 2. In t
 
 Tokens, themes, note colours and device preferences: `theming` skill. Everything that moves: `motion` skill. On top of those:
 
-- **Settings page** has five sections: Appearance (device preferences), Views, Behaviour, Account, Users (admin only). The stage scrolls with `scroll-snap` so a section settles below a peek of its predecessor, the tab follows the scroll. Sections other than the current one stay faint and grey, a click on one scrolls there. No descriptions under titles.
+- **Settings page** has six sections: Appearance (device preferences), Views, Labels, Notifications, Account, Users (admin only). The stage scrolls with `scroll-snap` so a section settles below a peek of its predecessor, the tab follows the scroll. Sections other than the current one stay faint and grey, a click on one scrolls there. No descriptions under titles.
 - **Tooltips**: icon only buttons get `{@attach tip('Text')}` (`#lib/tooltip.svelte.ts`), the one `Tooltip` in the root layout shows it. Mouse and keyboard only, no `title` attributes. Skip it only where the icon is obvious (close X).
 - **Inputs beside an icon** need inline padding of their own, else the caret at the start hides under the icon or the field edge (happened five times). Pill searches use the `search-field` utility in `app.css`, which pads its input. No icon tooltips inside pickers.
 - **Number inputs** use `#lib/ui/NumberField.svelte` with its own stepper, not the browser spinner. Floating panels take the `popover` utility from `app.css` for their open and close animation. Rename in place goes through `#lib/ui/InlineInput.svelte` (Enter or blur saves, empty or rejected snaps back).
@@ -76,7 +76,7 @@ Tokens, themes, note colours and device preferences: `theming` skill. Everything
 - **Android via Tauri 2 mobile**: a shell whose webview opens the server, asked once on a bundled connect page. Share target and notification actions come later through a Kotlin plugin. Details in the `android` skill.
 - **UI language**: English.
 - **Deactivated users** lose running sessions: `hooks.server.ts` rejects them on every request.
-- **Reminders via bundled ntfy**, each with its own timezone, Done buttons signed. Details in the `reminders` skill.
+- **Reminders reach three channels**, each with its own switch: the Android app's background service, browser Web Push and the bundled ntfy. Each reminder has its own timezone, Done buttons are signed. Details in the `reminders` and `android` skills.
 - **Data**: collections, access rules, sharing, images, realtime and schema changes in the `data-model` skill.
 - **Light by default**: Platinum first, Charcoal second, see the `theming` skill.
 - **Manual order like Keep**: sort `manual` is the default, new notes land first. Drag works with mouse and pen only, in a manual sort, with nothing open or selected.

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { beforeNavigate, onNavigate } from '$app/navigation';
 	import { page } from '$app/state';
-	import { syncStatusBar } from '#lib/android.ts';
+	import { followPendingLink, syncStatusBar } from '#lib/android.ts';
 	import { closeOverlay } from '#lib/back.ts';
 	import { prefetchRoute } from '#lib/prefetch.ts';
 	import type { User } from '#lib/schemas.ts';
@@ -19,6 +19,7 @@
 
 	// ANDROID STATUS BAR | matches the theme the server rendered
 	onMount(syncStatusBar);
+	onMount(followPendingLink);
 
 	// BACK | an open overlay closes instead of the page behind it changing
 	onMount(() => { window.closeOverlay = closeOverlay; });

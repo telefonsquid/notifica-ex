@@ -3,8 +3,10 @@
 	import { invalidateAll } from '$app/navigation';
 	import ReminderHistory from '#lib/components/ReminderHistory.svelte';
 	import Rail from '#lib/components/Rail.svelte';
+	import { startDeviceNotifications } from '#lib/device_notifications.ts';
+	import { safeAction } from '#lib/pocketbase.ts';
 	import { connectRealtime, onRecordChange } from '#lib/realtime.ts';
-	import { onDestroy } from 'svelte';
+	import { onDestroy, onMount } from 'svelte';
 	import type { LayoutProps } from './$types';
 
 	// PROPS
@@ -12,6 +14,9 @@
 
 	// REALTIME CONNECTION | set up during init, child pages subscribe as soon as they mount
 	if (browser && data.realtimeToken) onDestroy(connectRealtime(data.realtimeToken));
+
+	// DEVICE NOTIFICATIONS | the Android app gets its stream address, a renewed browser subscription gets told
+	onMount(() => { safeAction(startDeviceNotifications(data.user.id)); });
 
 	// OWN ACCOUNT | name, role or deactivation changed elsewhere shows up here at once
 	$effect(() => {
