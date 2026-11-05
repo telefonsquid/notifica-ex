@@ -3,13 +3,14 @@ import type { CollectionMap, FetchOptions, Occurrence, Reminder } from '#lib/sch
 import { isOutage, outage } from '#lib/server/outage.ts';
 import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
 import { error } from '@sveltejs/kit';
+import type PocketBase from 'pocketbase';
 import type { CollectionModel, ListResult } from 'pocketbase';
 
 // ERROR HANDLING
 export type Result<T> =
     | { success: true; data: T; error: null }
     | { success: false; data: null; error: string };
-export async function pbErrorHandler<T>(promise: Promise<T>): Promise<Result<T>> {
+async function pbErrorHandler<T>(promise: Promise<T>): Promise<Result<T>> {
     return promise
         .then(data => ({ success: true as const, data, error: null }))
 
@@ -38,7 +39,10 @@ export async function pbErrorHandler<T>(promise: Promise<T>): Promise<Result<T>>
         });
 }
 
-
+// One query as superuser
+async function run<T>(query: (pb: PocketBase) => Promise<T>): Promise<Result<T>> {
+    return pbErrorHandler(query(await getPbAdminConnection()))
+}
 
 
 
@@ -56,69 +60,58 @@ export function unwrap<T>(result: Result<T>, fallbackMessage?: string): NonNulla
 
 
 
-
 // GENERIC FUNCTIONS =====================================================================
 
 // GET
 export async function getOne<K extends keyof CollectionMap>(collectionName: K, id: string, options?: FetchOptions) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).getOne(id, options) as Promise<CollectionMap[K]>)
+    return run((pb) => pb.collection(collectionName).getOne(id, options) as Promise<CollectionMap[K]>)
 }
 
 export async function getAll<K extends keyof CollectionMap>(collectionName: K, options?: FetchOptions) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).getFullList(options) as Promise<CollectionMap[K][]>)
+    return run((pb) => pb.collection(collectionName).getFullList(options) as Promise<CollectionMap[K][]>)
 }
 
 // INSERT
 export async function insertOnePartial<K extends keyof CollectionMap>(collectionName: K, item: Partial<CollectionMap[K]>) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).create(item) as Promise<CollectionMap[K]>)
+    return run((pb) => pb.collection(collectionName).create(item) as Promise<CollectionMap[K]>)
 }
 
 // DELETE
 export async function deleteOne<K extends keyof CollectionMap>(collectionName: K, id: string) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).delete(id) as Promise<boolean>)
+    return run((pb) => pb.collection(collectionName).delete(id) as Promise<boolean>)
 }
 
 // UPDATE
 export async function updateOnePartial<K extends keyof CollectionMap>(collectionName: K, id: string, item: Partial<CollectionMap[K]>) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).update(id, item) as Promise<CollectionMap[K]>)
+    return run((pb) => pb.collection(collectionName).update(id, item) as Promise<CollectionMap[K]>)
 }
 
 // FIND
 // Values go in as {:name} placeholders through params, pocketbase escapes them
 export async function findOne<K extends keyof CollectionMap>(collectionName: K, query: string, options?: FetchOptions, params?: Record<string, unknown>) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection(collectionName).getFirstListItem(params ? pb.filter(query, params) : query, options) as Promise<CollectionMap[K]>)
+    return run((pb) => pb.collection(collectionName).getFirstListItem(params ? pb.filter(query, params) : query, options) as Promise<CollectionMap[K]>)
 }
 
 
 
 // GENERIC COLLECTION FUNCTIONS
 export async function getCollection<K extends keyof CollectionMap>(collectionName: K) {
-    const pb = await getPbAdminConnection();
-    return await pbErrorHandler(pb.collections.getOne(collectionName));
+    return run((pb) => pb.collections.getOne(collectionName))
 }
 
 export async function importCollections(collections: CollectionModel[]) {
-    const pb = await getPbAdminConnection();
-    return await pbErrorHandler(pb.collections.import(collections, false))
+    return run((pb) => pb.collections.import(collections, false))
 }
 
 export async function updateCollection(collectionName: string, data: Partial<CollectionModel>) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collections.update(collectionName, data))
+    return run((pb) => pb.collections.update(collectionName, data))
 }
 
 
 
 // SETTINGS
 export async function updateSettings(settings: Record<string, unknown>) {
-    const pb = await getPbAdminConnection();
-    return await pbErrorHandler(pb.settings.update(settings))
+    return run((pb) => pb.settings.update(settings))
 }
 
 
@@ -128,89 +121,93 @@ type OwnedCollection = 'labels' | 'notes' | 'occurrences' | 'push_subscriptions'
 
 // Everything one user owns in a collection
 export async function getAllOwned<K extends OwnedCollection>(collectionName: K, owner: string, options?: Omit<FetchOptions, 'filter'>) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('owner = {:owner}', { owner })
-    return await pbErrorHandler(pb.collection(collectionName).getFullList({ ...options, filter }) as Promise<CollectionMap[K][]>)
+    return run((pb) => {
+        const filter = pb.filter('owner = {:owner}', { owner })
+        return pb.collection(collectionName).getFullList({ ...options, filter }) as Promise<CollectionMap[K][]>
+    })
 }
 
 // Fails like a missing record when someone else owns it, so foreign ids reveal nothing
 export async function getOwned<K extends OwnedCollection>(collectionName: K, id: string, owner: string) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('id = {:id} && owner = {:owner}', { id, owner })
-    return await pbErrorHandler(pb.collection(collectionName).getFirstListItem(filter) as Promise<CollectionMap[K]>)
+    return run((pb) => {
+        const filter = pb.filter('id = {:id} && owner = {:owner}', { id, owner })
+        return pb.collection(collectionName).getFirstListItem(filter) as Promise<CollectionMap[K]>
+    })
 }
 
 
 
 // SHARED NOTES | the owner's notes plus the ones others shared with them
 export async function getAllNotesFor(user: string, options?: Omit<FetchOptions, 'filter'>) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('owner = {:user} || shared.id ?= {:user}', { user })
-    return await pbErrorHandler(pb.collection('notes').getFullList({ ...options, filter }) as Promise<CollectionMap['notes'][]>)
+    return run((pb) => {
+        const filter = pb.filter('owner = {:user} || shared.id ?= {:user}', { user })
+        return pb.collection('notes').getFullList({ ...options, filter }) as Promise<CollectionMap['notes'][]>
+    })
 }
 
 export async function getNoteFor(id: string, user: string) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('id = {:id} && (owner = {:user} || shared.id ?= {:user})', { id, user })
-    return await pbErrorHandler(pb.collection('notes').getFirstListItem(filter) as Promise<CollectionMap['notes']>)
+    return run((pb) => {
+        const filter = pb.filter('id = {:id} && (owner = {:user} || shared.id ?= {:user})', { id, user })
+        return pb.collection('notes').getFirstListItem(filter) as Promise<CollectionMap['notes']>
+    })
 }
 
 // Reminders people set on a note they no longer see | their history stays theirs
 export async function deleteRemindersOn(note: string, owners: string[]) {
-    const pb = await getPbAdminConnection()
-    if(!owners.length) return { success: true as const, data: 0, error: null }
-    const people = owners.map((owner, index) => pb.filter(`owner = {:owner${index}}`, { [`owner${index}`]: owner })).join(' || ')
-    const found = await pbErrorHandler(pb.collection('reminders').getFullList({ filter: `${pb.filter('note = {:note}', { note })} && (${people})`, fields: 'id' }))
-    if(!found.success) return found
-    for(const reminder of found.data){
-        const deleted = await deleteOne('reminders', reminder.id)
-        if(!deleted.success) return deleted
-    }
-    return { success: true as const, data: found.data.length, error: null }
+    return run(async (pb) => {
+        if(!owners.length) return true
+        const people = owners.map((owner, index) => pb.filter(`owner = {:owner${index}}`, { [`owner${index}`]: owner })).join(' || ')
+        const found = await pb.collection('reminders').getFullList({ filter: `${pb.filter('note = {:note}', { note })} && (${people})`, fields: 'id' })
+        for(const reminder of found){ await pb.collection('reminders').delete(reminder.id) }
+        return true
+    })
 }
 
 export async function leaveNote(id: string, user: string) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection('notes').update(id, { 'shared-': [user] }) as Promise<CollectionMap['notes']>)
+    return run((pb) => pb.collection('notes').update(id, { 'shared-': [user] }) as Promise<CollectionMap['notes']>)
 }
 
 
 
 // SPECIFIC FUNCTIONS =====================================================================
 export async function getDueReminders(now: Date) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('next != "" && next <= {:now}', { now })
-    return await pbErrorHandler(pb.collection('reminders').getFullList({ filter, expand: 'note,owner' }) as Promise<Reminder[]>)
+    return run((pb) => {
+        const filter = pb.filter('next != "" && next <= {:now}', { now })
+        return pb.collection('reminders').getFullList({ filter, expand: 'note,owner' }) as Promise<Reminder[]>
+    })
 }
 
 // What a device missed while it had no connection, newest first
 export async function getOccurrencesSince(owner: string, after: string, limit: number) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('owner = {:owner} && created > {:after}', { owner, after })
-    return await pbErrorHandler(pb.collection('occurrences').getList(1, limit, { filter, sort: '-created', expand: 'note', skipTotal: true }) as Promise<ListResult<Occurrence>>)
+    return run((pb) => {
+        const filter = pb.filter('owner = {:owner} && created > {:after}', { owner, after })
+        return pb.collection('occurrences').getList(1, limit, { filter, sort: '-created', expand: 'note', skipTotal: true }) as Promise<ListResult<Occurrence>>
+    })
 }
 
 // HISTORY | newest first, one page at a time since a minute reminder logs a lot
 export async function getOccurrences(note: string, owner: string, perPage: number) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('note = {:note} && owner = {:owner}', { note, owner })
-    return await pbErrorHandler(pb.collection('occurrences').getList(1, perPage, { filter, sort: '-at,-created' }) as Promise<ListResult<Occurrence>>)
+    return run((pb) => {
+        const filter = pb.filter('note = {:note} && owner = {:owner}', { note, owner })
+        return pb.collection('occurrences').getList(1, perPage, { filter, sort: '-at,-created' }) as Promise<ListResult<Occurrence>>
+    })
 }
 
 // Times on a note still waiting for their Done button, oldest first
 export async function getOpenOccurrences(note: string, owner: string) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('note = {:note} && owner = {:owner} && task = true && done = ""', { note, owner })
-    return await pbErrorHandler(pb.collection('occurrences').getFullList({ filter, sort: 'at', fields: 'id,reminder' }) as Promise<Pick<Occurrence, 'id' | 'reminder'>[]>)
+    return run((pb) => {
+        const filter = pb.filter('note = {:note} && owner = {:owner} && task = true && done = ""', { note, owner })
+        return pb.collection('occurrences').getFullList({ filter, sort: 'at', fields: 'id,reminder' }) as Promise<Pick<Occurrence, 'id' | 'reminder'>[]>
+    })
 }
 
 // Keeps the count on the reminder in step with its log, the card badge and filters read it from there
 export async function countOpenOccurrences(reminder: string) {
-    const pb = await getPbAdminConnection()
-    const filter = pb.filter('reminder = {:reminder} && task = true && done = ""', { reminder })
-    const page = await pbErrorHandler(pb.collection('occurrences').getList(1, 1, { filter, fields: 'id' }))
-    if(!page.success) return page
-    return await updateOnePartial('reminders', reminder, { open: page.data.totalItems })
+    return run(async (pb) => {
+        const filter = pb.filter('reminder = {:reminder} && task = true && done = ""', { reminder })
+        const page = await pb.collection('occurrences').getList(1, 1, { filter, fields: 'id' })
+        return await pb.collection('reminders').update(reminder, { open: page.totalItems }) as Reminder
+    })
 }
 
 // IMAGES | the files are protected, so every fetch needs a short lived token
@@ -230,29 +227,25 @@ export async function fetchNoteImage(id: string, name: string, thumb?: string) {
 
 // Appends to what the note already holds
 export async function addNoteImages(id: string, files: File[]) {
-    const pb = await getPbAdminConnection()
     const form = new FormData()
     files.forEach((file) => form.append('images+', file))
-    return await pbErrorHandler(pb.collection('notes').update(id, form) as Promise<CollectionMap['notes']>)
+    return run((pb) => pb.collection('notes').update(id, form) as Promise<CollectionMap['notes']>)
 }
 
 export async function removeNoteImage(id: string, name: string) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection('notes').update(id, { 'images-': [name] }) as Promise<CollectionMap['notes']>)
+    return run((pb) => pb.collection('notes').update(id, { 'images-': [name] }) as Promise<CollectionMap['notes']>)
 }
 
 // Sends the set password mail, the same one invites use
 export async function requestPasswordReset(email: string) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection('users').requestPasswordReset(email))
+    return run((pb) => pb.collection('users').requestPasswordReset(email))
 }
 
 export async function confirmPasswordReset(token: string, password: string, passwordConfirm: string) {
-    const pb = await getPbAdminConnection()
-    return await pbErrorHandler(pb.collection('users').confirmPasswordReset(token, password, passwordConfirm))
+    return run((pb) => pb.collection('users').confirmPasswordReset(token, password, passwordConfirm))
 }
 
 export async function login(email: string, password: string) {
     const pb = getRequestEvent().locals.pb // the request's own connection, so the hook can export its auth as a cookie
-    return await pbErrorHandler(pb.collection('users').authWithPassword(email, password))
+    return pbErrorHandler(pb.collection('users').authWithPassword(email, password))
 }
