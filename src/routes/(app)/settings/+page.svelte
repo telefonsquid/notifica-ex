@@ -75,6 +75,11 @@
 		return () => observer.disconnect();
 	});
 
+	// Where a settled section's top sits on screen
+	function snapLine(stage: HTMLElement) {
+		return stage.getBoundingClientRect().top + (parseFloat(getComputedStyle(stage).scrollPaddingTop) || 0);
+	}
+
 	function go(id: Tab) {
 		const section = stage?.querySelector<HTMLElement>(`[data-section="${id}"]`);
 		if (!stage || !section) return;
@@ -84,8 +89,7 @@
 		clearTimeout(landing);
 		landing = setTimeout(() => (jumping = false), 1000); // In case scrollend never fires
 
-		const peek = parseFloat(getComputedStyle(stage).scrollPaddingTop) || 0;
-		const top = stage.scrollTop + section.getBoundingClientRect().top - stage.getBoundingClientRect().top - peek;
+		const top = stage.scrollTop + section.getBoundingClientRect().top - snapLine(stage);
 		stage.scrollTo({ top, behavior: 'smooth' });
 	}
 
@@ -103,7 +107,7 @@
 	function follow() {
 		if (jumping || !stage) return;
 
-		const line = stage.getBoundingClientRect().top + (parseFloat(getComputedStyle(stage).scrollPaddingTop) || 0) + 48;
+		const line = snapLine(stage) + 48;
 		let current = sections[0].id as Tab;
 		for (const item of sections) {
 			const section = stage.querySelector<HTMLElement>(`[data-section="${item.id}"]`);
@@ -389,10 +393,7 @@
 		transition: scale var(--duration-base) var(--ease-spring);
 	}
 
-	.tab:hover :global(.icon) {
-		scale: 1.08;
-	}
-
+	.tab:hover :global(.icon),
 	.tab.active :global(.icon) {
 		scale: 1.08;
 	}
