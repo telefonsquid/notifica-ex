@@ -1,14 +1,14 @@
 <script lang="ts">
     import { browser } from '$app/env';
-    import { isThemeName, THEMES, type ThemeName } from '#lib/themes/index.ts';
+    import { THEMES, type ThemeName } from '#lib/themes/index.ts';
     import { switchTheme } from '#lib/themes/switch.ts';
-    import { Check } from '@lucide/svelte';
+    import CheckMark from '#lib/ui/CheckMark.svelte';
 
     // PROPS
     let { current }: { current: ThemeName } = $props()
 
     // The page attribute holds the latest choice, the load data keeps the value of the first page load
-    let selected = $derived(browser && isThemeName(document.documentElement.dataset.theme) ? document.documentElement.dataset.theme : current)
+    let selected = $derived(browser ? document.documentElement.dataset.theme as ThemeName : current)
 
     // REVEAL FROM THE POINTER | keyboard clicks report no position, those reveal from the center
     function choose(theme: ThemeName, event: MouseEvent){
@@ -54,9 +54,7 @@
                     <p class="type-title text-lg">{theme.label}</p>
                     <p class="type-meta text-ink-faint">{theme.scheme}</p>
                 </div>
-                <span class={['check grid size-7 place-items-center rounded-full bg-accent text-on-accent', !active && 'hidden-check']}>
-                    <Check class="size-4" strokeWidth={3} />
-                </span>
+                <CheckMark {active} />
             </div>
         </button>
     {/each}
@@ -71,14 +69,5 @@
 
     .preview:hover .mini-note {
         translate: 0 -4px;
-    }
-
-    .check {
-        transition: scale var(--duration-base) var(--ease-spring), opacity var(--duration-fast) var(--ease-out);
-    }
-
-    .hidden-check {
-        scale: 0.4;
-        opacity: 0;
     }
 </style>
