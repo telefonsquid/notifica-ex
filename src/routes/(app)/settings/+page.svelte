@@ -60,7 +60,6 @@
 		if (!button) return;
 
 		indicator = { x: button.offsetLeft, y: button.offsetTop, width: button.offsetWidth, height: button.offsetHeight };
-		button.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: ready ? 'smooth' : 'instant' });
 	}
 
 	$effect(() => {
@@ -158,8 +157,8 @@
 
 <div class="settings mx-auto w-full max-w-content">
 
-<!-- TABS | a column on wide screens, a scrolling row on phones -->
-<div bind:this={tablist} class={['tabs', ready && 'ready']} role="tablist" aria-label="Settings sections" aria-orientation="vertical" tabindex="-1" onkeydown={step}>
+<!-- TABS | a column on wide screens, an even row on tablets, an icon bar in the bottom row on phones -->
+<div bind:this={tablist} class={['tabs', ready && 'ready']} role="tablist" aria-label="Settings sections" tabindex="-1" onkeydown={step}>
 	<span class="indicator" style:--x="{indicator.x}px" style:--y="{indicator.y}px" style:--width="{indicator.width}px" style:--height="{indicator.height}px"></span>
 	{#each sections as item (item.id)}
 		<button
@@ -172,7 +171,7 @@
 			onclick={() => go(item.id)}
 		>
 			<item.icon class="icon size-5 shrink-0" strokeWidth={1.75} />
-			{item.label}
+			<span class="max-sm:sr-only">{item.label}</span>
 		</button>
 	{/each}
 </div>
@@ -201,42 +200,36 @@
 
 	<!-- VIEWS -->
 	<SettingsSection id="views" title="Views" current={tab === 'views'} onselect={() => go('views')}>
-		<div class="max-w-3xl">
-			<ViewSettings {labels} bind:expanded={editing} />
-		</div>
+		<ViewSettings {labels} bind:expanded={editing} />
 	</SettingsSection>
 
 	<!-- LABELS -->
 	<SettingsSection id="labels" title="Labels" current={tab === 'labels'} onselect={() => go('labels')}>
-		<div class="max-w-xl">
-			{#if labels.length}
-				<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
-					{#each labels as label (label.id)}
-						<li class="flex items-center gap-3 bg-card py-2 pr-2 pl-card">
-							<ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} />
-							<InlineInput value={label.name} label={`Rename ${label.name}`} maxlength={LIMITS.LABEL_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateLabel({ id: label.id, name }))} />
-							<button class="icon-button" aria-label={`Delete ${label.name}`} onclick={() => deleteLabelEverywhere(label)} {@attach tip('Delete label')}>
-								<Trash2 class="size-4" />
-							</button>
-						</li>
-					{/each}
-				</ul>
-			{:else}
-				<p class="text-ink-faint">No labels yet. Add them right in a note.</p>
-			{/if}
-		</div>
+		{#if labels.length}
+			<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
+				{#each labels as label (label.id)}
+					<li class="flex items-center gap-3 bg-card py-2 pr-2 pl-card">
+						<ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} />
+						<InlineInput value={label.name} label={`Rename ${label.name}`} maxlength={LIMITS.LABEL_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateLabel({ id: label.id, name }))} />
+						<button class="icon-button" aria-label={`Delete ${label.name}`} onclick={() => deleteLabelEverywhere(label)} {@attach tip('Delete label')}>
+							<Trash2 class="size-4" />
+						</button>
+					</li>
+				{/each}
+			</ul>
+		{:else}
+			<p class="text-ink-faint">No labels yet. Add them right in a note.</p>
+		{/if}
 	</SettingsSection>
 
 	<!-- NOTIFICATIONS -->
 	<SettingsSection id="notifications" title="Notifications" current={tab === 'notifications'} onselect={() => go('notifications')}>
-		<div class="max-w-xl">
-			<NotificationSettings user={data.user} />
-		</div>
+		<NotificationSettings user={data.user} />
 	</SettingsSection>
 
 	<!-- ACCOUNT -->
 	<SettingsSection id="account" title="Account" current={tab === 'account'} onselect={() => go('account')}>
-		<form class="grid max-w-xl gap-4" onsubmit={(event) => { event.preventDefault(); saveProfile(); }}>
+		<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); saveProfile(); }}>
 			<dl class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
 				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-2.5">
 					<dt><label for="profile-name" class="text-ink-muted">Name</label></dt>
@@ -267,9 +260,7 @@
 	<!-- USERS -->
 	{#if hasPermission(data.user, 'admin')}
 	<SettingsSection id="users" title="Users" current={tab === 'users'} onselect={() => go('users')}>
-		<div class="max-w-3xl">
-			<UserAdmin userId={data.user.id} />
-		</div>
+		<UserAdmin userId={data.user.id} />
 	</SettingsSection>
 	{/if}
 
@@ -284,14 +275,15 @@
 	.settings {
 		--peek: 2.5rem;
 		display: grid;
-		grid-template-rows: auto minmax(0, 1fr);
-		gap: 1rem;
-		height: calc(100dvh - 9.5rem - env(safe-area-inset-top));
+		grid-template-rows: minmax(0, 1fr);
+		height: calc(100dvh - 8.5rem - env(safe-area-inset-top));
 	}
 
 	@media (width >= 40rem) {
 		.settings {
 			--peek: 4rem;
+			grid-template-rows: auto minmax(0, 1fr);
+			gap: 1rem;
 			height: calc(100dvh - 6rem - env(safe-area-inset-top));
 		}
 	}
@@ -304,40 +296,76 @@
 		}
 	}
 
-	/* TABS */
+	/* TABS | on phones they share the bottom row with the rail's menu button, at its height */
 	.tabs {
-		position: relative;
+		position: fixed;
+		right: var(--layout-content-gutter);
+		bottom: calc(1rem + env(safe-area-inset-bottom));
+		left: calc(var(--layout-content-gutter) + 4.5rem);
+		z-index: 30;
 		display: flex;
-		gap: 0.25rem;
-		margin-inline: calc(var(--layout-content-gutter) * -1);
-		padding-inline: var(--layout-content-gutter);
-		overflow-x: auto;
-		scrollbar-width: none;
+		height: 4rem;
+		padding: 0.375rem;
+		border: 1px solid var(--theme-line-strong);
+		border-radius: 999px;
+		background: var(--theme-raised);
 		outline: none;
+	}
+
+	@media (width >= 40rem) {
+		.tabs {
+			position: relative;
+			inset: auto;
+			z-index: auto;
+			gap: 0.25rem;
+			height: auto;
+			padding: 0;
+			border: 0;
+			border-radius: 0;
+			background: none;
+		}
 	}
 
 	@media (width >= 64rem) {
 		.tabs {
 			flex-direction: column;
 			align-self: start;
-			margin-inline: 0;
-			padding: var(--peek) 0 0;
-			overflow: visible;
+			padding-top: var(--peek);
 		}
 	}
 
 	.tab {
 		position: relative;
 		display: flex;
-		flex-shrink: 0;
-		gap: 0.75rem;
+		flex: 1 1 0;
+		flex-direction: column;
+		gap: 0.25rem;
 		align-items: center;
-		padding: 0.625rem 0.875rem;
-		border-radius: var(--layout-radius-control);
+		justify-content: center;
+		min-width: 0;
+		border-radius: 999px;
 		color: var(--theme-ink-muted);
-		text-align: left;
-		white-space: nowrap;
 		transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+	}
+
+	@media (width >= 40rem) {
+		.tab {
+			padding: 0.5rem 0.25rem;
+			border-radius: var(--layout-radius-control);
+			font-size: 0.75rem;
+		}
+	}
+
+	@media (width >= 64rem) {
+		.tab {
+			flex: none;
+			flex-direction: row;
+			gap: 0.75rem;
+			justify-content: start;
+			padding: 0.625rem 0.875rem;
+			font-size: inherit;
+			text-align: left;
+		}
 	}
 
 	.tab:hover {
@@ -379,10 +407,16 @@
 		left: 0;
 		width: var(--width);
 		height: var(--height);
-		border-radius: var(--layout-radius-control);
+		border-radius: 999px;
 		background: var(--theme-accent);
 		translate: var(--x) var(--y);
 		opacity: 0;
+	}
+
+	@media (width >= 40rem) {
+		.indicator {
+			border-radius: var(--layout-radius-control);
+		}
 	}
 
 	.tabs.ready .indicator {
@@ -402,12 +436,12 @@
 		mask-image: linear-gradient(transparent, #000 var(--peek), #000 calc(100% - var(--peek)), transparent);
 	}
 
-	/* One column no wider than the stage, a wide row inside must not stretch every section past the screen */
+	/* One column for every section, a wide row inside must not stretch them past the screen */
 	.track {
 		display: grid;
 		grid-template-columns: minmax(0, 1fr);
 		gap: 1.5rem;
+		max-width: 48rem;
 		padding-top: var(--peek);
 	}
-
 </style>

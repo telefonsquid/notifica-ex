@@ -93,10 +93,8 @@
 <div class="grid gap-10">
 
 	<!-- INVITE -->
-	<div class="max-w-xl">
-		<h3 class="type-meta mb-1 text-ink-faint">Invite</h3>
-		<p class="mb-6 text-ink-muted">New users get a mail with a link to set their password. It stays valid for 7 days, and you can send a new one any time.</p>
-
+	<div>
+		<h3 class="type-meta mb-4 text-ink-faint">Invite</h3>
 		<form class="grid gap-3" onsubmit={(event) => { event.preventDefault(); invite(); }}>
 			<Input id="invite-name" label="Name" autocomplete="off" required bind:value={name} />
 			<Input id="invite-email" label="Email" type="email" autocomplete="off" required bind:value={email} />
@@ -109,8 +107,6 @@
 
 	<!-- ACTIVE USERS -->
 	<div>
-		<p class="mb-4 text-ink-muted">Edit a name or email right in place. Deactivated users get logged out everywhere and keep their notes.</p>
-
 		<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
 			{#each active as user (user.id)}
 				{@const self = user.id === userId}
