@@ -1,7 +1,7 @@
 import { dev } from '$app/env';
 import * as env from '$app/env/private';
-import type { CollectionMap, Note } from '#lib/schemas.ts';
-import { findOne, getAll, getCollection, importCollections, insertOnePartial, unwrap, updateCollection, updateOnePartial, updateSettings } from '#lib/server/queries.ts';
+import type { CollectionMap } from '#lib/schemas.ts';
+import { findOne, getCollection, importCollections, insertOnePartial, unwrap, updateCollection, updateSettings } from '#lib/server/queries.ts';
 import type { CollectionModel } from 'pocketbase';
 import pbSchema from '../../../pocketbase/pb_schema.json';
 
@@ -16,8 +16,6 @@ export async function bootstrap(){ // setup for a fresh pocketbase install
         await markSnapshotMigrations() // a fresh install always has the latest schema
     }
     else if(dev){
-        await foldListNotes()
-        await retypeViewIcons()
         await createSchema() // no versioned migrations before the first release, local dev follows pb_schema.json
         await dropRetiredFields()
     }
@@ -37,30 +35,6 @@ async function isFreshInstall(){
 
 async function createSchema(){
     unwrap(await importCollections(pbSchema as unknown as CollectionModel[]))
-}
-
-// One off for dev databases from before notes were markdown only, drop once they all ran it
-async function foldListNotes(){
-    const result = await getAll('notes', { filter: "kind = 'list'" })
-    if(!result.success){ return } // fields already gone
-
-    for(const note of result.data as (Note & { items: { text: string, done: boolean }[] | null })[]){
-        const tasks = (note.items ?? []).filter((item) => item.text.trim()).map((item) => `- [${item.done ? 'x' : ' '}] ${item.text}`)
-        unwrap(await updateOnePartial('notes', note.id, { body: [note.body, tasks.join('\n')].filter(Boolean).join('\n\n') }))
-    }
-}
-
-// One off for dev databases from before any lucide icon could be picked | a field never changes type, so it gets swapped and refilled
-async function retypeViewIcons(){
-    const collection = unwrap(await getCollection('views'))
-    const old = collection.fields.find((field) => field.name === 'icon')
-    const field = (pbSchema as unknown as CollectionModel[]).find((item) => item.name === 'views')?.fields.find((item) => item.name === 'icon')
-    if(old?.type !== 'select' || !field){ return }
-
-    const icons = unwrap(await getAll('views'))
-    unwrap(await updateCollection('views', { fields: collection.fields.filter((item) => item !== old) }))
-    unwrap(await updateCollection('views', { fields: [...collection.fields.filter((item) => item !== old), field] }))
-    for(const view of icons){ unwrap(await updateOnePartial('views', view.id, { icon: view.icon })) }
 }
 
 // The import only adds and changes fields | ones gone from pb_schema.json would linger and may still be required

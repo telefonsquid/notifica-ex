@@ -60,5 +60,5 @@ Sort `manual` is the default. `position` stays 0 until a note is dragged, `posit
 
 - No versioned migrations before the first release. Edit `pb_schema.json`, then `POST /api/migration` with `SERVER_AUTH_SECRET`: `bootstrap.ts` imports the schema and drops fields it no longer lists (the import alone keeps them).
 - A new field touches `pb_schema.json`, `schemas.ts`, the queries that write it, and any remote function schema that accepts it.
-- PocketBase refuses to change a field's type. Give the field a new id in `pb_schema.json` and add a dev one off in `bootstrap.ts` that drops the old field, adds the new one and refills it (`retypeViewIcons` is the pattern).
+- PocketBase refuses to change a field's type. Give the field a new id in `pb_schema.json` and add a dev one off in `bootstrap.ts` that reads the values, drops the old field, adds the new one and refills them. Delete it once every dev database ran it.
 - After the first release, data changes become versioned migrations run from the same endpoint.
