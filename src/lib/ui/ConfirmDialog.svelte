@@ -42,9 +42,3 @@
         </Dialog.Content>
     </Dialog.Portal>
 </Dialog.Root>
-
-<style>
-    .scrim {
-        background: rgb(0 0 0 / 0.4);
-    }
-</style>

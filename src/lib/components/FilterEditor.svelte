@@ -36,11 +36,11 @@
     // OPTIONS
     type Icon = typeof Tag
 
-    const PINNED: GliderOption[] = [{ value: 'any', text: 'Any' }, { value: 'only', text: 'Only' }, { value: 'hide', text: 'Hide' }]
-    const ARCHIVED: GliderOption[] = [{ value: 'hide', text: 'Active' }, { value: 'only', text: 'Archived' }, { value: 'any', text: 'Both' }]
-    const CHECKLIST: GliderOption[] = [{ value: 'any', text: 'Any' }, { value: 'open', text: 'Open' }, { value: 'complete', text: 'Done' }]
-    const LABELLED: GliderOption[] = [{ value: 'any', text: 'Any' }, { value: 'with', text: 'Labelled' }, { value: 'without', text: 'Unlabelled' }]
-    const MATCH: GliderOption[] = [{ value: 'any', text: 'Any of them' }, { value: 'all', text: 'All of them' }]
+    const PINNED: GliderOption<ViewFilter['pinned']>[] = [{ value: 'any', text: 'Any' }, { value: 'only', text: 'Only' }, { value: 'hide', text: 'Hide' }]
+    const ARCHIVED: GliderOption<ViewFilter['archived']>[] = [{ value: 'hide', text: 'Active' }, { value: 'only', text: 'Archived' }, { value: 'any', text: 'Both' }]
+    const CHECKLIST: GliderOption<ViewFilter['list']>[] = [{ value: 'any', text: 'Any' }, { value: 'open', text: 'Open' }, { value: 'complete', text: 'Done' }]
+    const LABELLED: GliderOption<ViewFilter['labelled']>[] = [{ value: 'any', text: 'Any' }, { value: 'with', text: 'Labelled' }, { value: 'without', text: 'Unlabelled' }]
+    const MATCH: GliderOption<ViewFilter['labelMatch']>[] = [{ value: 'any', text: 'Any of them' }, { value: 'all', text: 'All of them' }]
     const REMINDER: [ViewFilter['reminder'], string][] = [
         ['any', 'Any'], ['with', 'Has one'], ['without', 'None'], ['upcoming', 'Upcoming'],
         ['repeating', 'Repeating'], ['tasks', 'Tasks'], ['waiting', 'Unchecked'], ['finished', 'Finished']
@@ -241,21 +241,21 @@
     {/if}
     <div class="row">
         <span>Notes</span>
-        <Glider name="Labelled" options={LABELLED} value={filter.labelled} onpick={(value) => update({ labelled: value as ViewFilter['labelled'] })} />
+        <Glider name="Labelled" options={LABELLED} value={filter.labelled} onpick={(labelled) => update({ labelled })} />
     </div>
     {#if filter.include.length > 1}
         <div class="row" transition:unfold>
             <span>Need</span>
-            <Glider name="Included labels" options={MATCH} value={filter.labelMatch} onpick={(value) => update({ labelMatch: value as ViewFilter['labelMatch'] })} />
+            <Glider name="Included labels" options={MATCH} value={filter.labelMatch} onpick={(labelMatch) => update({ labelMatch })} />
         </div>
     {/if}
 {/snippet}
 
 {#snippet states()}
     <div>
-        <div class="row"><span>Pinned</span><Glider name="Pinned" options={PINNED} value={filter.pinned} onpick={(value) => update({ pinned: value as ViewFilter['pinned'] })} /></div>
-        <div class="row"><span>Archive</span><Glider name="Archived" options={ARCHIVED} value={filter.archived} onpick={(value) => update({ archived: value as ViewFilter['archived'] })} /></div>
-        <div class="row"><span>Checklist</span><Glider name="Checklist" options={CHECKLIST} value={filter.list} onpick={(value) => update({ list: value as ViewFilter['list'] })} /></div>
+        <div class="row"><span>Pinned</span><Glider name="Pinned" options={PINNED} value={filter.pinned} onpick={(pinned) => update({ pinned })} /></div>
+        <div class="row"><span>Archive</span><Glider name="Archived" options={ARCHIVED} value={filter.archived} onpick={(archived) => update({ archived })} /></div>
+        <div class="row"><span>Checklist</span><Glider name="Checklist" options={CHECKLIST} value={filter.list} onpick={(list) => update({ list })} /></div>
     </div>
 {/snippet}
 

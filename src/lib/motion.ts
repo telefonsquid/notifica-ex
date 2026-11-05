@@ -110,14 +110,11 @@ type RiseOptions = {
     scale?: number                      // starting scale
 }
 
-// RISE | fades in from slightly below
-export function rise(_node: Element, options: RiseOptions = {}): TransitionConfig {
-    const { delay = 0, y = 12, scale = 0.98 } = options
-
+function drift({ delay = 0, y = 12, scale = 0.98, duration: time = 'slow', easing: curve = 'out' }: RiseOptions): TransitionConfig {
     return {
         delay: prefersReducedMotion.current ? 0 : delay,
-        duration: duration(options.duration ?? 'slow'),
-        easing: easing(options.easing ?? 'out'),
+        duration: duration(time),
+        easing: easing(curve),
         css: (t, u) => `
             opacity: ${t};
             transform: translateY(${u * y}px) scale(${scale + (1 - scale) * t});
@@ -125,19 +122,14 @@ export function rise(_node: Element, options: RiseOptions = {}): TransitionConfi
     }
 }
 
+// RISE | fades in from slightly below
+export function rise(_node: Element, options: RiseOptions = {}): TransitionConfig {
+    return drift(options)
+}
+
 // SINK | the faster counterpart for leaving, so exits never hold up what comes next
 export function sink(_node: Element, options: RiseOptions = {}): TransitionConfig {
-    const { delay = 0, y = 6, scale = 0.96 } = options
-
-    return {
-        delay: prefersReducedMotion.current ? 0 : delay,
-        duration: duration(options.duration ?? 'fast'),
-        easing: easing(options.easing ?? 'in'),
-        css: (t, u) => `
-            opacity: ${t};
-            transform: translateY(${u * y}px) scale(${scale + (1 - scale) * t});
-        `
-    }
+    return drift({ y: 6, scale: 0.96, duration: 'fast', easing: 'in', ...options })
 }
 
 type UnfoldOptions = {
@@ -235,7 +227,6 @@ export function morph(timing: () => { duration: number, easing: string } | null)
         }
     }
 }
-
 
 // STAGGER | delay for the nth item of a group entering together, capped so long lists don't drag
 export function stagger(index: number, step = 45, max = 8): number {

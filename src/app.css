@@ -146,7 +146,6 @@
 
     /* LAYOUT */
     --layout-rail-width: 5.5rem;
-    --layout-topbar-height: 4.25rem;
     --layout-content-max: 82rem;
     --layout-content-gutter: clamp(1rem, 4vw, 3rem);
     --layout-note-min: 15rem;
@@ -225,7 +224,6 @@
 
     /* LAYOUT */
     --spacing-rail: var(--layout-rail-width);
-    --spacing-topbar: var(--layout-topbar-height);
     --spacing-gutter: var(--layout-content-gutter);
     --spacing-note-gap: var(--layout-note-gap);
     --spacing-card: var(--layout-card-padding);
@@ -342,7 +340,10 @@
     }
 }
 
-
+/* SCRIM | dims the page behind a dialog */
+@utility scrim {
+    background: rgb(0 0 0 / 0.4);
+}
 
 /* FIELD | plain input in the look of the dropdowns beside it */
 @utility field {

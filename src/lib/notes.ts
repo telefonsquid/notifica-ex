@@ -82,10 +82,10 @@ export function formatDay(value: string, timezone: string, now: number): string 
     if(!date) return ''
 
     const key = inZone(date, timezone, 'key')
-    if(key === inZone(new Date(now), timezone, 'key')) return 'Today'
+    const today = inZone(new Date(now), timezone, 'key')
+    if(key === today) return 'Today'
     if(key === inZone(new Date(now - 86_400_000), timezone, 'key')) return 'Yesterday'
-    if(key.slice(0, 4) !== inZone(new Date(now), timezone, 'key').slice(0, 4)) return inZone(date, timezone, 'date')
-    return inZone(date, timezone, 'day')
+    return inZone(date, timezone, key.slice(0, 4) === today.slice(0, 4) ? 'day' : 'date')
 }
 
 const relative = new Intl.RelativeTimeFormat('en', { numeric: 'always' })

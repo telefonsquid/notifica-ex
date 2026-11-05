@@ -297,10 +297,6 @@
 </Dialog.Root>
 
 <style>
-    .scrim {
-        background: rgb(0 0 0 / 0.4);
-    }
-
     /* The same darker strip the reminders sit on in the card */
     .band {
         background-color: var(--theme-note-shade);

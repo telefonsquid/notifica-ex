@@ -24,7 +24,7 @@
     ]
 
     const index = $derived(Math.max(0, SORT_BY.findIndex((option) => option.value === sort.by)))
-    const directions = $derived(SORT_BY[index].directions.map((text, i) => ({ value: i ? 'desc' : 'asc', text })))
+    const directions = $derived(SORT_BY[index].directions.map((text, i) => ({ value: i ? 'desc' as const : 'asc' as const, text })))
 </script>
 
 <div class="grid gap-4 p-4">
@@ -42,7 +42,7 @@
 
     <!-- DIRECTION AND PINS -->
     <div class="grid gap-3 border-t border-line pt-4">
-        <Glider name="Direction" options={directions} value={sort.direction} onpick={(value) => update({ direction: value as ViewSort['direction'] })} />
+        <Glider name="Direction" options={directions} value={sort.direction} onpick={(direction) => update({ direction })} />
         <label class="flex cursor-pointer items-center gap-2.5 px-1 text-sm text-ink-muted">
             <Pin class="size-4 text-ink-faint" />
             <span class="mr-auto">Pinned first</span>

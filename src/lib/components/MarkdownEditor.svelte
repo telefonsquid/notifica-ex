@@ -27,6 +27,23 @@
     let linking = $state(false)
     let href = $state('')
 
+    // TOOLBAR | groups get a line between them
+    type Chain = ReturnType<Editor['chain']>
+    type Format = { label: string, icon: typeof Bold, name: string, attributes?: Record<string, unknown>, run: (chain: Chain) => Chain }
+
+    const FORMATS: Format[][] = [
+        [
+            { label: 'Bold', icon: Bold, name: 'bold', run: (chain) => chain.toggleBold() },
+            { label: 'Italic', icon: Italic, name: 'italic', run: (chain) => chain.toggleItalic() },
+            { label: 'Heading', icon: Heading, name: 'heading', attributes: { level: 2 }, run: (chain) => chain.toggleHeading({ level: 2 }) }
+        ],
+        [
+            { label: 'Bullet list', icon: List, name: 'bulletList', run: (chain) => chain.toggleBulletList() },
+            { label: 'Numbered list', icon: ListOrdered, name: 'orderedList', run: (chain) => chain.toggleOrderedList() },
+            { label: 'Checklist', icon: ListTodo, name: 'taskList', run: (chain) => chain.toggleTaskList() }
+        ]
+    ]
+
     // EDITOR | built from the current text whenever rich mode comes back
     function mount(element: HTMLElement){
         const instance = untrack(() => new Editor({
@@ -122,15 +139,13 @@
             </form>
         {:else}
             {#if !raw && editor}
-                {@const chain = () => editor!.chain().focus()}
-                <button class={['tool', active('bold') && 'on']} aria-label="Bold" {@attach tip('Bold')} aria-pressed={active('bold')} onclick={() => chain().toggleBold().run()}><Bold class="size-3.5" /></button>
-                <button class={['tool', active('italic') && 'on']} aria-label="Italic" {@attach tip('Italic')} aria-pressed={active('italic')} onclick={() => chain().toggleItalic().run()}><Italic class="size-3.5" /></button>
-                <button class={['tool', active('heading', { level: 2 }) && 'on']} aria-label="Heading" {@attach tip('Heading')} aria-pressed={active('heading', { level: 2 })} onclick={() => chain().toggleHeading({ level: 2 }).run()}><Heading class="size-3.5" /></button>
-                <span class="mx-1 h-4 w-px bg-line"></span>
-                <button class={['tool', active('bulletList') && 'on']} aria-label="Bullet list" {@attach tip('Bullet list')} aria-pressed={active('bulletList')} onclick={() => chain().toggleBulletList().run()}><List class="size-3.5" /></button>
-                <button class={['tool', active('orderedList') && 'on']} aria-label="Numbered list" {@attach tip('Numbered list')} aria-pressed={active('orderedList')} onclick={() => chain().toggleOrderedList().run()}><ListOrdered class="size-3.5" /></button>
-                <button class={['tool', active('taskList') && 'on']} aria-label="Checklist" {@attach tip('Checklist')} aria-pressed={active('taskList')} onclick={() => chain().toggleTaskList().run()}><ListTodo class="size-3.5" /></button>
-                <span class="mx-1 h-4 w-px bg-line"></span>
+                {#each FORMATS as group, index (index)}
+                    {#each group as format (format.name)}
+                        {@const on = active(format.name, format.attributes)}
+                        <button class={['tool', on && 'on']} aria-label={format.label} {@attach tip(format.label)} aria-pressed={on} onclick={() => format.run(editor!.chain().focus()).run()}><format.icon class="size-3.5" /></button>
+                    {/each}
+                    <span class="mx-1 h-4 w-px bg-line"></span>
+                {/each}
                 <button class={['tool', active('link') && 'on']} aria-label={active('link') ? 'Remove link' : 'Link'} onclick={toggleLink} {@attach tip(active('link') ? 'Remove link' : 'Link')}>
                     {#if active('link')}<Unlink class="size-3.5" />{:else}<Link class="size-3.5" />{/if}
                 </button>

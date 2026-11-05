@@ -132,7 +132,7 @@
                         <Dialog.Title class="sr-only">Image {viewer.index + 1} of {viewer.images.length}</Dialog.Title>
 
                         <!-- BACKDROP | a click anywhere off the image closes -->
-                        <button class="scrim absolute inset-0 cursor-default" tabindex="-1" aria-hidden="true" onclick={() => viewer.open = false} transition:fade={{ duration: duration('slow'), easing: easing('emphasized') }}></button>
+                        <button class="veil absolute inset-0 cursor-default" tabindex="-1" aria-hidden="true" onclick={() => viewer.open = false} transition:fade={{ duration: duration('slow'), easing: easing('emphasized') }}></button>
 
                         {#key viewer.index}
                             <figure class="frame relative" style:--ratio={image.ratio} transition:zoom|global>
@@ -173,7 +173,7 @@
 </Dialog.Root>
 
 <style>
-    .scrim {
+    .veil {
         background: rgb(0 0 0 / 0.86);
     }
 

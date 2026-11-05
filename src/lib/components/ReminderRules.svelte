@@ -3,7 +3,7 @@
     import type { ReminderLimit } from '#lib/schemas.ts';
     import { WEEKDAYS } from '#lib/reminders.ts';
     import Button from '#lib/ui/Button.svelte';
-    import Glider from '#lib/ui/Glider.svelte';
+    import Glider, { type GliderOption } from '#lib/ui/Glider.svelte';
     import DayPicker from '#lib/components/DayPicker.svelte';
     import { CalendarDays, CalendarRange, Clock, Plus, SlidersHorizontal, X } from '@lucide/svelte';
     import { Dialog } from 'bits-ui';
@@ -31,8 +31,8 @@
         schedule: Snippet               // start and repeat fields, bound to the form behind
     } = $props()
 
-    const MODES = [{ value: 'only', text: 'Only' }, { value: 'except', text: 'Except' }]
-    const KINDS = [{ value: 'times', text: 'Times', icon: Clock }, { value: 'days', text: 'Days', icon: CalendarDays }, { value: 'dates', text: 'Dates', icon: CalendarRange }]
+    const MODES: GliderOption<ReminderLimit['mode']>[] = [{ value: 'only', text: 'Only' }, { value: 'except', text: 'Except' }]
+    const KINDS: GliderOption<ReminderLimit['kind']>[] = [{ value: 'times', text: 'Times', icon: Clock }, { value: 'days', text: 'Days', icon: CalendarDays }, { value: 'dates', text: 'Dates', icon: CalendarRange }]
 
     // RULES | a new one or a switched kind starts from something sensible around the first time
     function add(){
@@ -51,10 +51,6 @@
     // Sections follow the panel in one after another
     function follow(node: Element, { index = 0 } = {}){
         return rise(node, { delay: 120 + index * 50, y: 8, duration: 'base' })
-    }
-
-    function fold(node: Element){
-        return unfold(node)
     }
 </script>
 
@@ -89,7 +85,7 @@
 
                                 {#if recurring}
                                     <!-- Folding and the stagger need separate elements -->
-                                    <div class="grid" transition:fold>
+                                    <div class="grid" transition:unfold>
                                         <div class="grid gap-5" in:follow={{ index: 1 }}>
                                             <!-- END -->
                                             <section class="grid gap-2">
@@ -106,13 +102,13 @@
                                             <section class="grid gap-2">
                                                 <h3 class="type-meta">Rules</h3>
                                                 {#if !limits.length}
-                                                    <p class="empty text-sm text-ink-faint" transition:fold>Ring only at certain times, days or dates, or never at them.</p>
+                                                    <p class="empty text-sm text-ink-faint" transition:unfold>Ring only at certain times, days or dates, or never at them.</p>
                                                 {/if}
                                                 {#each limits as limit, index (limit)}
-                                                    <div class="rule grid grid-cols-[minmax(0,1fr)_auto] gap-x-1 gap-y-2.5 rounded-control border border-line p-2.5" transition:fold>
+                                                    <div class="rule grid grid-cols-[minmax(0,1fr)_auto] gap-x-1 gap-y-2.5 rounded-control border border-line p-2.5" transition:unfold>
                                                         <div class="flex flex-wrap items-center gap-2">
-                                                            <Glider name="Only or except" options={MODES} value={limit.mode} onpick={(mode) => limit.mode = mode as ReminderLimit['mode']} class="w-32" />
-                                                            <Glider name="Limit by" options={KINDS} value={limit.kind} onpick={(kind) => switchKind(index, kind as ReminderLimit['kind'])} class="min-w-48 flex-1" />
+                                                            <Glider name="Only or except" options={MODES} value={limit.mode} onpick={(mode) => limit.mode = mode} class="w-32" />
+                                                            <Glider name="Limit by" options={KINDS} value={limit.kind} onpick={(kind) => switchKind(index, kind)} class="min-w-48 flex-1" />
                                                         </div>
                                                         <button type="button" class="icon-button -my-0.5 -mr-1 self-start" aria-label="Remove rule" onclick={() => limits.splice(index, 1)}><X class="size-3.5" /></button>
 
@@ -155,10 +151,6 @@
 </Dialog.Root>
 
 <style>
-    .scrim {
-        background: rgb(0 0 0 / 0.4);
-    }
-
     .rule {
         background: color-mix(in oklab, var(--theme-line) 35%, transparent);
     }
