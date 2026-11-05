@@ -1,6 +1,7 @@
 import { PUBLIC_POCKETBASE_URL } from '$app/env/public';
 import { notify } from '#lib/notifications.svelte.ts';
 import { track } from '#lib/singletons/busy.svelte.ts';
+import { checkServer } from '#lib/singletons/server_status.svelte.ts';
 import PocketBase from 'pocketbase';
 
 /*
@@ -17,6 +18,9 @@ export async function safeAction<T>(promise: Promise<T>): Promise<T | null> {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
+
+        // SERVER GONE | the banner says so, a toast per failed call would only pile up
+        if((err?.status === undefined || err.status >= 500) && !(await checkServer())) return null;
 
         // CUSTOM DETAILS OBJECT ATTACHED TO ERROR
         if(err?.body?.message && err?.body?.details){

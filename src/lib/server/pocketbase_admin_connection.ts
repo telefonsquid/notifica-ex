@@ -1,4 +1,5 @@
 import { INTERNAL_POCKETBASE_URL, POCKETBASE_SUPERUSER_EMAIL, POCKETBASE_SUPERUSER_PASSWORD } from '$app/env/private';
+import { isOutage, outage } from '#lib/server/outage.ts';
 import PocketBase from 'pocketbase';
 
 let adminPb: PocketBase | null = null;
@@ -30,5 +31,6 @@ export async function getPbAdminConnection(): Promise<PocketBase> {
     })();
 
     try { return await authPromise; }
+    catch(err) { if(isOutage(err)) outage(); throw err; }
     finally { authPromise = null; }
 }

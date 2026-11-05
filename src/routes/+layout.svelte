@@ -8,6 +8,7 @@
 	import ConfirmDialog from '#lib/ui/ConfirmDialog.svelte';
 	import ImageViewer from '#lib/ui/ImageViewer.svelte';
 	import NavigationProgress from '#lib/ui/NavigationProgress.svelte';
+	import ServerBanner from '#lib/ui/ServerBanner.svelte';
 	import Toaster from '#lib/ui/Toaster.svelte';
 	import Tooltip from '#lib/ui/Tooltip.svelte';
 	import { onMount } from 'svelte';
@@ -60,6 +61,9 @@
 
 <!-- STATUS BAR | content scrolls under it in the Android app, zero high in a browser -->
 <div class="pointer-events-none fixed inset-x-0 top-0 z-[35] h-[env(safe-area-inset-top)] bg-canvas"></div>
+
+<!-- SERVER DOWN -->
+<ServerBanner />
 
 <!-- NAVIGATION PROGRESS -->
 <NavigationProgress />

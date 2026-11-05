@@ -1,5 +1,6 @@
 import { getRequestEvent } from '$app/server';
 import type { CollectionMap, FetchOptions, Occurrence, Reminder } from '#lib/schemas.ts';
+import { isOutage, outage } from '#lib/server/outage.ts';
 import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
 import { error } from '@sveltejs/kit';
 import type { CollectionModel, ListResult } from 'pocketbase';
@@ -14,6 +15,8 @@ export async function pbErrorHandler<T>(promise: Promise<T>): Promise<Result<T>>
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .catch((err: any) => {
+            if(isOutage(err)) outage() // No result to report, every caller would only misread it as a wrong input
+
             let errorMessage = err.message || 'An unexpected database error occurred.';
 
             // Field level details, formatted as "[name: Missing value, email: Invalid]"

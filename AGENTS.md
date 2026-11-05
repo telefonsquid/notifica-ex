@@ -76,6 +76,7 @@ Tokens, themes, note colours and device preferences: `theming` skill. Everything
 - **Android via Tauri 2 mobile**: a shell whose webview opens the server, asked once on a bundled connect page. Share target and notification actions come later through a Kotlin plugin. Details in the `android` skill.
 - **UI language**: English.
 - **Deactivated users** lose running sessions: `hooks.server.ts` rejects them on every request.
+- **An outage is not a logout**: `#lib/server/outage.ts` turns a connection failure into a 503 and the session cookie stays. Pages in `(app)` show it on `+error.svelte`, the browser polls `/api/health` and shows `ServerBanner`, then reloads the data by itself. `safeAction()` asks the health check before it toasts, so failed calls don't pile up.
 - **Reminders reach three channels**, each with its own switch: the Android app's background service, browser Web Push and the bundled ntfy. Each reminder has its own timezone, Done buttons are signed. Details in the `reminders` and `android` skills.
 - **Data**: collections, access rules, sharing, images, realtime and schema changes in the `data-model` skill.
 - **Light by default**: Platinum first, Charcoal second, see the `theming` skill.

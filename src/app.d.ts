@@ -13,6 +13,7 @@ declare global {
 			// AUTHENTICATION & DB ACCESS
 			pb: PocketBase
 			user: undefined | User
+			serverDown?: boolean
 
 			// APPEARANCE
 			theme: ThemeName

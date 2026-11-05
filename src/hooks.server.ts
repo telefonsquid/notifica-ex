@@ -2,6 +2,7 @@
 import { INTERNAL_POCKETBASE_URL } from '$app/env/private'
 import { DEFAULT_IMAGE_FIT, DEFAULT_LABEL_POSITION, IMAGE_FIT_COOKIE, LABEL_POSITION_COOKIE, isImageFit, isLabelPosition } from '#lib/preferences.ts'
 import type { User } from '#lib/schemas.ts'
+import { isOutage, outage } from '#lib/server/outage.ts'
 import { DEFAULT_THEME, THEME_COOKIE, isThemeName } from '#lib/themes/index.ts'
 import { sequence, type Handle, type HandleServerError } from '@sveltejs/kit/hooks'
 import PocketBase, { getTokenPayload, isTokenExpired } from 'pocketbase'
@@ -30,13 +31,17 @@ const authenticate = (async ({ event, resolve }) => {
                 : await event.locals.pb.collection('users').getOne(getTokenPayload(authStore.token).id)
             if(record.state === 'inactive') throw new Error('Deactivated') // deactivation must end running sessions too
             authStore.save(authStore.token, record)
-        } catch {
-            authStore.clear()
+        } catch(err) {
+            if(!isOutage(err)) authStore.clear()
+
+            // AN OUTAGE KEEPS THE SESSION | pages show it, everything else answers 503
+            else if(event.isRemoteRequest || event.url.pathname.startsWith('/api/')) outage()
+            else event.locals.serverDown = true
         }
     }
 
     // GRAB USER FROM COOKIE AND MAKE IT AVAILABLE AS POJO
-    if(event.locals.pb.authStore.isValid){
+    if(event.locals.pb.authStore.isValid && !event.locals.serverDown){
         const user: User = structuredClone(event.locals.pb.authStore.record) as User // structured clone strips the record class down to plain data
         event.locals.user = user
     } else {
