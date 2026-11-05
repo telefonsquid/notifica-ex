@@ -4,7 +4,7 @@
     import { tip } from '#lib/tooltip.svelte.ts';
     import Glider, { type GliderOption } from '#lib/ui/Glider.svelte';
     import NumberField from '#lib/ui/NumberField.svelte';
-    import { emptyFilter } from '#lib/views.ts';
+    import { emptyFilter, sameFilter } from '#lib/views.ts';
     import type { DateRange, Label, ViewFilter } from '#lib/schemas.ts';
     import { Archive, Bell, CalendarRange, CaseSensitive, Check, ChevronDown, ListChecks, Minus, Palette, Pin, RotateCcw, SlidersHorizontal, Tag, TextSearch, X } from '@lucide/svelte';
     import { untrack, type Snippet } from 'svelte';
@@ -35,13 +35,12 @@
 
     // OPTIONS
     type Icon = typeof Tag
-    type Option = GliderOption
 
-    const PINNED: Option[] = [{ value: 'any', text: 'Any' }, { value: 'only', text: 'Only' }, { value: 'hide', text: 'Hide' }]
-    const ARCHIVED: Option[] = [{ value: 'hide', text: 'Active' }, { value: 'only', text: 'Archived' }, { value: 'any', text: 'Both' }]
-    const CHECKLIST: Option[] = [{ value: 'any', text: 'Any' }, { value: 'open', text: 'Open' }, { value: 'complete', text: 'Done' }]
-    const LABELLED: Option[] = [{ value: 'any', text: 'Any' }, { value: 'with', text: 'Labelled' }, { value: 'without', text: 'Unlabelled' }]
-    const MATCH: Option[] = [{ value: 'any', text: 'Any of them' }, { value: 'all', text: 'All of them' }]
+    const PINNED: GliderOption[] = [{ value: 'any', text: 'Any' }, { value: 'only', text: 'Only' }, { value: 'hide', text: 'Hide' }]
+    const ARCHIVED: GliderOption[] = [{ value: 'hide', text: 'Active' }, { value: 'only', text: 'Archived' }, { value: 'any', text: 'Both' }]
+    const CHECKLIST: GliderOption[] = [{ value: 'any', text: 'Any' }, { value: 'open', text: 'Open' }, { value: 'complete', text: 'Done' }]
+    const LABELLED: GliderOption[] = [{ value: 'any', text: 'Any' }, { value: 'with', text: 'Labelled' }, { value: 'without', text: 'Unlabelled' }]
+    const MATCH: GliderOption[] = [{ value: 'any', text: 'Any of them' }, { value: 'all', text: 'All of them' }]
     const REMINDER: [ViewFilter['reminder'], string][] = [
         ['any', 'Any'], ['with', 'Has one'], ['without', 'None'], ['upcoming', 'Upcoming'],
         ['repeating', 'Repeating'], ['tasks', 'Tasks'], ['waiting', 'Unchecked'], ['finished', 'Finished']
@@ -63,7 +62,7 @@
 
     let tab = $state(untrack(() => hidden) ? 'advanced' : 'simple')
 
-    const filtered = $derived(JSON.stringify(filter) !== JSON.stringify(emptyFilter()))
+    const filtered = $derived(!sameFilter(filter, emptyFilter()))
     const active = $derived({
         words: !!filter.words || !!filter.without || filter.titleOnly,
         labels: filter.include.length > 0 || filter.exclude.length > 0 || filter.labelled !== 'any',
@@ -146,7 +145,6 @@
     </section>
 {/snippet}
 
-
 <!-- EDITOR ==================================================================================================== -->
 <div class="flex min-h-0 flex-1 flex-col gap-2">
 
@@ -176,7 +174,6 @@
         {@render footer?.()}
     </div>
 </div>
-
 
 <!-- SIMPLE ==================================================================================================== -->
 {#snippet simple()}
@@ -213,7 +210,6 @@
     </div>
 {/snippet}
 
-
 <!-- ADVANCED ==================================================================================================== -->
 {#snippet advanced()}
     <div class="grid">
@@ -228,8 +224,8 @@
 
 {#snippet words()}
     <div class="grid gap-2 min-[28rem]:grid-cols-2">
-        <input class="field" value={filter.words} placeholder="Contains all of" aria-label="Words the note contains" oninput={(event) => update({ words: event.currentTarget.value })} />
-        <input class="field" value={filter.without} placeholder="Leaves out" aria-label="Words the note leaves out" oninput={(event) => update({ without: event.currentTarget.value })} />
+        <input class="field min-w-0" value={filter.words} placeholder="Contains all of" aria-label="Words the note contains" oninput={(event) => update({ words: event.currentTarget.value })} />
+        <input class="field min-w-0" value={filter.without} placeholder="Leaves out" aria-label="Words the note leaves out" oninput={(event) => update({ without: event.currentTarget.value })} />
     </div>
     <div class="mt-2">
         {@render toggleChip(CaseSensitive, 'Title only', filter.titleOnly, () => update({ titleOnly: !filter.titleOnly }))}
@@ -319,7 +315,7 @@
             {@const range = filter[date.key]}
             <div class="flex flex-wrap items-center gap-2">
                 <span class="w-24 shrink-0 text-sm text-ink-muted">{date.name}</span>
-                <select class="field" value={range.mode} aria-label={`${date.name} filter`} onchange={(event) => updateRange(date.key, { mode: event.currentTarget.value as DateRange['mode'] })}>
+                <select class="field min-w-0" value={range.mode} aria-label={`${date.name} filter`} onchange={(event) => updateRange(date.key, { mode: event.currentTarget.value as DateRange['mode'] })}>
                     <option value="any">Any time</option>
                     <option value="within">{date.within}</option>
                     <option value="beyond">{date.beyond}</option>
@@ -327,15 +323,15 @@
                 </select>
                 {#if range.mode === 'within' || range.mode === 'beyond'}
                     <NumberField bind:value={() => range.amount, (amount) => updateRange(date.key, { amount })} label="Amount" class="w-20" />
-                    <select class="field" value={range.unit} aria-label="Unit" onchange={(event) => updateRange(date.key, { unit: event.currentTarget.value as DateRange['unit'] })}>
+                    <select class="field min-w-0" value={range.unit} aria-label="Unit" onchange={(event) => updateRange(date.key, { unit: event.currentTarget.value as DateRange['unit'] })}>
                         <option value="days">days</option>
                         <option value="weeks">weeks</option>
                         <option value="months">months</option>
                     </select>
                 {:else if range.mode === 'between'}
-                    <input class="field" type="date" value={range.from} aria-label="From" onchange={(event) => updateRange(date.key, { from: event.currentTarget.value })} />
+                    <input class="field min-w-0" type="date" value={range.from} aria-label="From" onchange={(event) => updateRange(date.key, { from: event.currentTarget.value })} />
                     <span class="text-ink-faint">and</span>
-                    <input class="field" type="date" value={range.to} aria-label="To" onchange={(event) => updateRange(date.key, { to: event.currentTarget.value })} />
+                    <input class="field min-w-0" type="date" value={range.to} aria-label="To" onchange={(event) => updateRange(date.key, { to: event.currentTarget.value })} />
                 {/if}
             </div>
         {/each}
@@ -377,23 +373,6 @@
 
     .reset:hover { color: var(--theme-accent); }
 
-    /* FIELDS */
-    .field {
-        height: 2.25rem;
-        min-width: 0;
-        padding-inline: 0.75rem;
-        border: 1px solid var(--theme-line);
-        border-radius: var(--layout-radius-control);
-        background: var(--theme-card);
-        color: var(--theme-ink);
-        font-size: 0.875rem;
-        color-scheme: inherit;
-        transition: border-color var(--duration-fast) var(--ease-out);
-    }
-
-    .field:hover { border-color: var(--theme-line-strong); }
-    .field:focus { border-color: var(--theme-accent); outline: none; }
-
     /* CHIPS | on takes the accent */
     .chip {
         display: inline-flex;
@@ -417,7 +396,7 @@
         color: var(--theme-accent);
     }
 
-    /* LABEL CHIPS | the card tabs' colour and type, a ring marks the picked ones */
+    /* LABEL CHIPS | the card tabs' colour and type */
     .label-chip {
         display: inline-flex;
         align-items: center;
@@ -425,7 +404,7 @@
         height: 1.625rem;
         padding-inline: 0.625rem;
         border-radius: 0.375rem;
-        transition: opacity var(--duration-base) var(--ease-out), box-shadow var(--duration-base) var(--ease-out), scale var(--duration-base) var(--ease-spring);
+        transition: opacity var(--duration-base) var(--ease-out), scale var(--duration-base) var(--ease-spring);
     }
 
     .label-chip:hover { scale: 1.05; opacity: 1; }
