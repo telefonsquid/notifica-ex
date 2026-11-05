@@ -92,7 +92,7 @@ export const pushSubscriptionSchema = z.object({
     auth: limitedText('Key', LIMITS.PUSH_KEY),
 });
 
-export type PushSubscriptionRecord = RecordModel & z.infer<typeof pushSubscriptionSchema> & { owner: string }
+type PushSubscriptionRecord = RecordModel & z.infer<typeof pushSubscriptionSchema> & { owner: string }
 
 export const loginInputSchema = z.object({
     email: userInputSchema.shape.email,

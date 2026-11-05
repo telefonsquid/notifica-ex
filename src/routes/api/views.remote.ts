@@ -11,9 +11,7 @@ import { z } from 'zod';
 // In rail order | an account without views gets the starter set, so there is always one
 export const getViews = query(async () => {
 
-    const me = signedIn()
-
-    const owner = me.id
+    const owner = signedIn().id
     let views = await listViews(owner)
     if(!views.length){
         // A parallel request may create them first, the unique name index turns the second try into a no op

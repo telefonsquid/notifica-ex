@@ -3,7 +3,7 @@
     and where each one sits, so the viewer can grow out of it and shrink back.
 */
 
-export type ViewerImage = {
+type ViewerImage = {
     src: string                         // full size
     preview: string                     // already loaded by the card, shows until the full one is there
     ratio: number                       // width over height, so the frame has its size before anything loads

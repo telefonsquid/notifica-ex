@@ -1,5 +1,5 @@
 // TYPES
-export type NotificationType = 'success' | 'error' | 'info'
+type NotificationType = 'success' | 'error' | 'info'
 
 type NotificationOptions = {
     duration?: number

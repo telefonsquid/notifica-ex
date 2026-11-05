@@ -3,7 +3,7 @@ import { LIMITS } from '#lib/schema_limits.ts';
 import type { Note } from '#lib/schemas.ts';
 
 // URLS ====================================================================================================
-export type ImageSize = 'thumb' | 'full'
+type ImageSize = 'thumb' | 'full'
 
 // Served through our own route, the files are protected in pocketbase
 export function imageUrl(note: string, name: string, size: ImageSize = 'thumb'): string {

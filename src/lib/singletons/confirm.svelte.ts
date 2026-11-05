@@ -3,7 +3,7 @@
     with the answer, so a destructive action reads as one awaited line.
 */
 
-export type ConfirmRequest = {
+type ConfirmRequest = {
     title: string
     message: string
     action: string                      // the confirm button, a verb like Delete

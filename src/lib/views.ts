@@ -64,7 +64,7 @@ export function noteDefaults(filter: ViewFilter): Pick<NoteContent, 'color' | 'l
 
 
 // MATCHING ====================================================================================================
-export type MatchContext = {
+type MatchContext = {
     reminders: Map<string, Reminder[]>  // keyed by note id
     now: Date
 }

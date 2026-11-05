@@ -7,7 +7,7 @@ import type { Note } from '#lib/schemas.ts';
 
 export const HISTORY_PAGE = 50
 
-export type HistoryNote = Pick<Note, 'id' | 'title' | 'color'>
+type HistoryNote = Pick<Note, 'id' | 'title' | 'color'>
 
 export const history = $state({
     open: false,

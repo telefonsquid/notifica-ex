@@ -11,7 +11,7 @@ export type NtfyMessage = {
     actions?: NtfyHttpAction[]
 }
 
-export type NtfyHttpAction = {
+type NtfyHttpAction = {
     action: 'http'
     label: string
     url: string                     // called straight from the phone, so it must be the public address
