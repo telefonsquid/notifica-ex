@@ -77,14 +77,10 @@ export const masonry: Attachment<HTMLElement> = (grid) => {
     const loaded = () => requestAnimationFrame(() => pack(grid))
     grid.addEventListener('load', loaded, true)
 
-    const changes = new MutationObserver(() => {
-        watch()
-        pack(grid)
-    })
+    // Watching a cell reports its size once, before the next paint, and that is what packs them
+    const changes = new MutationObserver(watch)
     changes.observe(grid, { childList: true })
-
     watch()
-    pack(grid)
 
     return () => {
         resizes.disconnect()
