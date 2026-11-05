@@ -16,8 +16,6 @@
     // PROPS
     let { user }: { user: User } = $props()
 
-    const unfold = { duration: duration('fast'), easing: easing('out') }
-
     // THIS DEVICE | only known in the browser, so these rows wait for the mount
     let app = $state<ReturnType<typeof androidApp>>(null)
     let mounted = $state(false)
@@ -99,7 +97,7 @@
     async function test() {
         testing = true
         const result = await safeAction(sendTestReminder())
-        if(result) notify(result.tried ? `Sent to ${result.reached} of ${result.tried}.` : 'Nothing is switched on yet.')
+        if(result) notify(`Sent to ${result.reached} of ${result.tried}.`)
         testing = false
     }
 </script>
@@ -130,9 +128,9 @@
                 </div>
 
                 {#if ntfyOpen}
-                    <div class="grid gap-3 px-card pb-4" transition:slide={unfold}>
+                    <div class="grid gap-3 px-card pb-4" transition:slide={{ duration: duration('fast'), easing: easing('out') }}>
                         <form class="flex flex-wrap gap-2" onsubmit={(event) => { event.preventDefault(); saveTopic(); }}>
-                            <input bind:value={topic} placeholder="Topic" aria-label="ntfy topic" class="topic min-w-0 flex-1" />
+                            <input bind:value={topic} placeholder="Topic" aria-label="ntfy topic" class="field h-11 min-w-0 flex-1" />
                             <Button type="button" style="ghost" icon={Dices} onclick={randomTopic}>Random</Button>
                             <Button type="submit" icon={Check} loading={savingTopic} disabled={topic.trim() === stored}>Save</Button>
                         </form>
@@ -162,24 +160,5 @@
 
     .row > :global(:first-child) {
         flex: 1;
-    }
-
-    .topic {
-        height: 2.75rem;
-        padding-inline: 0.875rem;
-        border: 1px solid var(--theme-line);
-        border-radius: var(--layout-radius-control);
-        background: var(--theme-card);
-        color: var(--theme-ink);
-        transition: border-color var(--duration-fast) var(--ease-out);
-    }
-
-    .topic:hover {
-        border-color: var(--theme-line-strong);
-    }
-
-    .topic:focus {
-        border-color: var(--theme-accent);
-        outline: none;
     }
 </style>

@@ -7,9 +7,9 @@ const REGISTERED = 'notifica-push-registered';
 // BROWSER ====================================================================================================
 export function browserPushBlocker(): string | null {
     if(!window.isSecureContext) return 'Needs https';
-    if(!PUBLIC_VAPID_KEY) return 'Not set up on this server';
-    if(!('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window)) return 'Not available in this browser';
-    if(Notification.permission === 'denied') return 'Blocked in this browser';
+    if(!PUBLIC_VAPID_KEY) return 'Not set up';
+    if(!('serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window)) return 'Not available';
+    if(Notification.permission === 'denied') return 'Blocked';
     return null;
 }
 
