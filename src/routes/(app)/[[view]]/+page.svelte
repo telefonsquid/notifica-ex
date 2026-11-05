@@ -50,9 +50,7 @@
 		naming = false;
 		selected.clear();
 		if (type === 'enter') return;
-		editing = null;
-		frozen = null;
-		closing = false;
+		shut();
 	});
 
 	let filter = $derived(draft?.filter ?? view?.filter ?? emptyFilter());
@@ -158,10 +156,14 @@
 			if (!editing) return;
 			await fold();
 			snapshot();
-			editing = null;
-			frozen = null;
-			closing = false;
+			shut();
 		});
+	}
+
+	function shut() {
+		editing = null;
+		frozen = null;
+		closing = false;
 	}
 
 	// The open note's controls fade first | a new note then hands over to its card, or shrinks back into the button when empty
@@ -191,10 +193,13 @@
 		origin = null;
 	}
 
+	// What moves the grid
+	const layoutInputs = () => [visible, editing?.id, editing?.key, editor.loaded];
+
 	// Opening and closing take the snapshot themselves, a card may change before this runs then
 	// Untracked, the grid binding alone would leave a snapshot that no glide ever takes
 	$effect.pre(() => {
-		void [visible, editing?.id, editing?.key, editor.loaded];
+		layoutInputs();
 		untrack(snapshot);
 	});
 
@@ -208,7 +213,7 @@
 	let pending = false;
 
 	$effect(() => {
-		void [visible, editing?.id, editing?.key, editor.loaded];
+		layoutInputs();
 		if (!before || pending) return;
 		pending = true;
 		queueMicrotask(() => {
@@ -292,17 +297,12 @@
 	// The open note got deleted or unshared elsewhere, its card is gone so the editor goes too
 	$effect(() => {
 		if (!editing?.id || editing.fresh || notes.some((note) => note.id === editing?.id)) return;
-		untrack(() => {
-			editing = null;
-			frozen = null;
-			closing = false;
-		});
+		untrack(shut);
 	});
 
 	// SELECTION | a card click toggles while anything is selected, notes that vanished drop out on their own
 	const selected = new Selection();
 	let selection = $derived(notes.filter((note) => selected.has(note.id)));
-
 
 	// Ctrl picks a single note, shift a range | an open card keeps its clicks
 	function modifiedClick(event: MouseEvent, id: string) {
