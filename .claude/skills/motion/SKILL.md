@@ -18,6 +18,7 @@ Motion is deliberate: everything that changes place or size glides, nothing pops
 | Helper | Use |
 |---|---|
 | `rise` / `sink` | Soft appear and disappear (popovers, tooltips, toasts) |
+| `appear` | `rise` with the delay for what only an open note has |
 | `stagger` | Delay for lists that come in together |
 | `unfold` | Height changes inside a card, `in:` and `out:` both. Animates size, padding, margin and flex gap with a symmetric easing, so swapping two branches keeps the sum steady |
 | `morph` | Attachment, lets a band's height follow its content. Its own easing while the card is open and settled, the glide's while it closes. Animates to the height the layout grants, never past a capped scroll area, and never clips scroll areas (that reset the scroll and looped) |

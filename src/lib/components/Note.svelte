@@ -20,14 +20,13 @@
 <script lang="ts">
     import { beforeNavigate, goto } from '$app/navigation';
     import ColorPicker from '#lib/components/ColorPicker.svelte';
-    import LabelAdder from '#lib/components/LabelAdder.svelte';
-    import LabelEditor from '#lib/components/LabelEditor.svelte';
     import ReminderList from '#lib/components/ReminderList.svelte';
     import NoteImages from '#lib/components/NoteImages.svelte';
+    import NoteTabs from '#lib/components/NoteTabs.svelte';
     import ShareEditor from '#lib/components/ShareEditor.svelte';
     import { IMAGE_TYPES, imagesIn, shrink, uploadImage } from '#lib/images.ts';
-    import { rise, unfold } from '#lib/motion.ts';
-    import { confirmNoteRemoval, deleteLabelEverywhere } from '#lib/deletions.ts';
+    import { appear, rise, unfold } from '#lib/motion.ts';
+    import { confirmNoteRemoval } from '#lib/deletions.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
     import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
@@ -37,8 +36,7 @@
     import { serverStatus } from '#lib/singletons/server_status.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pencil, Pin, Trash2, X } from '@lucide/svelte';
-    import { ContextMenu } from 'bits-ui';
+    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pin, Trash2 } from '@lucide/svelte';
     import { untrack } from 'svelte';
     import { createNote, deleteNote, leaveNote, removeImage, shareNote, updateNote } from '../../routes/api/notes.remote';
 
@@ -93,9 +91,6 @@
     let deleted = false
     let root = $state<HTMLElement>()
     let card = $state<HTMLElement>()
-
-    let labelsById = $derived(new Map(labels.map((label) => [label.id, label])))
-    let tabs = $derived(draft.labels.map((labelId) => labelsById.get(labelId)).filter((label) => !!label))
 
     // Starts the breathing wash in phase with every other selected card, timed from page load
     const BREATH = 2400
@@ -250,16 +245,8 @@
     }
 
     // Pasted or dropped onto the open note | caught before the editor, which would ignore them or paste a file name
-    function pasteImages(event: ClipboardEvent){
-        const files = imagesIn(event.clipboardData?.files)
-        if(!open || !files.length) return
-        event.preventDefault()
-        event.stopPropagation()
-        addImages(files)
-    }
-
-    function dropImages(event: DragEvent){
-        const files = imagesIn(event.dataTransfer?.files)
+    function catchImages(event: Event, list?: FileList | null){
+        const files = imagesIn(list)
         if(!open || !files.length) return
         event.preventDefault()
         event.stopPropagation()
@@ -300,18 +287,6 @@
         if(id && !await safeAction(owned ? deleteNote(id) : leaveNote(id))) return
         deleted = true
         onclose?.()
-    }
-
-    // LABELS | the tab menu opens the same editor as a click on the tab name
-    let editingLabel = $state<string | null>(null)
-
-    function dropLabel(labelId: string){
-        draft.labels = draft.labels.filter((item) => item !== labelId)
-    }
-
-    // Waits for the menu to close, its focus return would shut the popover again
-    function editLabel(labelId: string){
-        setTimeout(() => editingLabel = labelId)
     }
 
     // CLOSE | a press anywhere else or Escape folds the card back, its tabs and the popovers opened from it count as inside
@@ -398,11 +373,6 @@
         event.stopPropagation()
         event.preventDefault()
     }
-
-    // Controls that only the open note has drift in once the card made room for them
-    function appear(node: Element){
-        return rise(node, { y: 4, scale: 1, duration: 'base', delay: 120 })
-    }
 </script>
 
 <svelte:window onpointerdown={pressOutside} onpointerup={liftOutside} onpointercancel={() => touchOutside = false} onkeydown={escape} />
@@ -435,55 +405,7 @@
         </span>
     {/if}
 
-    <!-- LABELS | folder tabs on the top or bottom edge, named on hover and while open, the add tab keeps to the far end -->
-    {#if tabs.length || (open && owned)}
-        <ul class="tabs absolute flex gap-1" aria-label="Labels">
-            {#each tabs as label (label.id)}
-                <!-- A closed card's right click opens the note's menu, an open one gives each tab its own -->
-                <ContextMenu.Root>
-                    <ContextMenu.Trigger disabled={!open}>
-                        {#snippet child({ props })}
-                            <li {...props} class="tab note-mark type-meta flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
-                                {#if open}
-                                    <LabelEditor
-                                        {label}
-                                        bind:open={() => editingLabel === label.id, (value) => editingLabel = value ? label.id : null}
-                                        ondelete={() => dropLabel(label.id)}
-                                    />
-                                {:else}
-                                    <span class="name truncate">{label.name}</span>
-                                {/if}
-                                {#if open}
-                                    <button class="remove extra -mr-2 grid shrink-0 place-items-center rounded-full p-0.5" aria-label={`Remove ${label.name}`} onclick={() => dropLabel(label.id)} in:appear out:unfold={{ axis: 'x' }}>
-                                        <X class="size-3" />
-                                    </button>
-                                {/if}
-                            </li>
-                        {/snippet}
-                    </ContextMenu.Trigger>
-                    <ContextMenu.Portal>
-                        <ContextMenu.Content class="menu" collisionPadding={12}>
-                            <ContextMenu.Item class="menu-item" onSelect={() => editLabel(label.id)}>
-                                <Pencil class="size-4" />Edit label
-                            </ContextMenu.Item>
-                            <ContextMenu.Item class="menu-item" onSelect={() => dropLabel(label.id)}>
-                                <X class="size-4" />Remove from note
-                            </ContextMenu.Item>
-                            <ContextMenu.Separator class="menu-separator" />
-                            <ContextMenu.Item class="menu-item" onSelect={async () => { if(await deleteLabelEverywhere(label)) dropLabel(label.id) }}>
-                                <Trash2 class="size-4" />Delete label
-                            </ContextMenu.Item>
-                        </ContextMenu.Content>
-                    </ContextMenu.Portal>
-                </ContextMenu.Root>
-            {/each}
-            {#if open && owned}
-                <li class="adder-tab extra ml-auto shrink-0" in:appear out:unfold={{ axis: 'x' }}>
-                    <LabelAdder class="h-full" {labels} taken={draft.labels} onadd={(labelId) => draft.labels = [...draft.labels, labelId]} />
-                </li>
-            {/if}
-        </ul>
-    {/if}
+    <NoteTabs bind:picked={draft.labels} {labels} {open} {owned} />
 
     <article
         bind:this={card}
@@ -496,9 +418,9 @@
         onpointerup={release}
         onpointerleave={release}
         onclickcapture={swallow}
-        onpastecapture={pasteImages}
+        onpastecapture={(event) => catchImages(event, event.clipboardData?.files)}
         ondragovercapture={dragOver}
-        ondropcapture={dropImages}
+        ondropcapture={(event) => catchImages(event, event.dataTransfer?.files)}
     >
         {#if !open}
             <button class="cover absolute inset-0 rounded-card" aria-label={`Open ${draft.title || 'note'}`} aria-pressed={selected || undefined} onpointerenter={loadEditor} onfocus={loadEditor} onclick={onopen}></button>
@@ -682,80 +604,8 @@
         to { opacity: 0.4; }
     }
 
-    /* TABS | inset by the corner radius so they sit on the straight part of the edge */
-    .tabs {
-        bottom: 100%;
-        left: var(--layout-radius-card);
-        max-width: calc(100% - 2 * var(--layout-radius-card));
-        align-items: end;
-        overflow: hidden;
-        pointer-events: none;
-    }
-
-    .open .tabs {
-        right: var(--layout-radius-card);
-        pointer-events: auto;
-    }
-
-    .tab {
-        height: 0.3125rem;
-        border-radius: 0.375rem 0.375rem 0 0;
-        transition: height var(--duration-base) var(--ease-spring);
-    }
-
-    .adder-tab {
-        height: 1.375rem;
-    }
-
-    /* Bottom edge as picked in the settings, the tabs then grow downwards */
-    :global([data-labels='bottom']) .tabs {
-        top: 100%;
-        bottom: auto;
-        align-items: start;
-    }
-
-    :global([data-labels='bottom']) .tab {
-        border-radius: 0 0 0.375rem 0.375rem;
-    }
-
-    .name {
-        opacity: 0;
-        transition: opacity var(--duration-fast) var(--ease-out);
-    }
-
-    .note:hover .tab,
-    .note:focus-within .tab {
-        height: 1.25rem;
-    }
-
-    .open .tab,
-    .open:hover .tab {
-        height: 1.375rem;
-    }
-
-    .note:hover .name,
-    .note:focus-within .name,
-    .open .name {
-        opacity: 1;
-        transition-delay: calc(var(--duration-fast) * 0.5);
-    }
-
     /* A ring in the card's own colour keeps overlapping faces apart */
     .face {
         box-shadow: 0 0 0 2px var(--note-bg, var(--theme-card));
-    }
-
-    .remove {
-        opacity: 0.6;
-        transition: opacity var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
-    }
-
-    .remove:hover {
-        opacity: 1;
-        background: color-mix(in oklab, currentColor 15%, transparent);
-    }
-
-    .folded .remove {
-        opacity: 0;
     }
 </style>

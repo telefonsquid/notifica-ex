@@ -228,6 +228,11 @@ export function morph(timing: () => { duration: number, easing: string } | null)
     }
 }
 
+// APPEAR | what only an open note has drifts in once the card made room for it
+export function appear(node: Element): TransitionConfig {
+    return rise(node, { y: 4, scale: 1, duration: 'base', delay: 120 })
+}
+
 // STAGGER | delay for the nth item of a group entering together, capped so long lists don't drag
 export function stagger(index: number, step = 45, max = 8): number {
     return Math.min(index, max) * step
