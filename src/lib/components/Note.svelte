@@ -106,23 +106,30 @@
         return { title, body, color, labels: [...labels], pinned, archived }
     }
 
-    // Changes from elsewhere land while closed and nothing is waiting to be saved | a copy older than the last save is stale
+    // Changes from elsewhere land while closed and nothing is waiting to be saved | a copy not newer than the last save has nothing new
     $effect.pre(() => {
-        if(open || !note || note.updated < savedAt) return
+        if(open || !note || note.updated <= savedAt) return
         if(untrack(() => JSON.stringify(draft)) !== saved) return
 
-        const content = contentOf(note)
-        const snapshot = JSON.stringify(content)
-        if(snapshot === saved) return
-        draft = content
-        saved = snapshot
+        draft = contentOf(note)
+        saved = JSON.stringify(draft)
+        savedAt = note.updated
     })
 
     // SAVING | one save at a time, a new note gets created exactly once
     let queue: Promise<unknown> = Promise.resolve()
 
+    // Drafts only change on an open card, so the rest of the grid stays out of all this
+    let edited = false
+
+    $effect.pre(() => {
+        if(open) edited = true
+    })
+
     // Forced, an empty new note gets created anyway, images need a stored note to hang on
     function save(force = false): Promise<string | null> {
+        if(!edited && !force) return Promise.resolve(id ?? null)
+
         const run = queue.then(async () => {
             const snapshot = JSON.stringify(draft)
             if(deleted || (snapshot === saved && (id || !force))) return id ?? null
@@ -157,6 +164,7 @@
 
     // Autosave a moment after typing stops, right away once the note closes or goes
     $effect(() => {
+        if(!open) return
         JSON.stringify(draft)
         const timer = setTimeout(save, 900)
         return () => clearTimeout(timer)

@@ -42,6 +42,7 @@
         if(!editable){
             if(ready) shrinking = true
             ready = false
+            if(!shrinking) return
         }
         const timer = setTimeout(() => editable ? ready = true : shrinking = false, duration('slow'))
         return () => clearTimeout(timer)
