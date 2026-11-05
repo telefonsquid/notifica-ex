@@ -96,19 +96,9 @@ export const handleError: HandleServerError = ({ kind, error, issues }) => {
     // LOG THE RAW ISSUES => THE CALL AND THE REJECTED VALUES ARE ALREADY REPORTED IN #lib/server/remote_function_error_trace
     console.dir(issues, { depth: null });
 
-    let notification = 'ERROR:'
-    for(const issue of issues){
-        notification = notification + '\n– '
-        if(issue.message){
-            notification = notification + issue.message
-        } else if(issue.path && issue.path.length >= 1){
-            notification = notification + issue.path.toString() + ': validation failed'
-        } else {
-            notification = notification + 'Unknown'
-        }
-    }
+    const lines = issues.map((issue) => issue.message || (issue.path?.length ? `${issue.path}: validation failed` : 'Unknown'))
 
     return {
-        message: notification
+        message: ['ERROR:', ...lines].join('\n– ')
     };
 };
