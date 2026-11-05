@@ -13,14 +13,23 @@ description: The Android app, a Tauri 2 mobile shell in src-tauri that opens the
 - The window is built in `setup`, not in `tauri.conf.json`, so it can take `on_navigation`: the local page and the server's origin stay in the webview, other http, mailto and tel links go to the system through `tauri-plugin-opener`, anything else is dropped. Markdown links carry `target="_blank"`, Android's webview loads those in place, so the same check catches them.
 - Back first asks the page to close an overlay (`window.closeOverlay`, see the decision in AGENTS.md), then walks the webview history in `MainActivity` (Tauri's own handling is off) and hides the app instead of stepping onto the connect page: Tauri still files that page under the server's URL, refuses its calls and the splash hung.
 - Edge to edge: the web UI pads its top with `env(safe-area-inset-top)` (page, side rail, phone menu, settings height, progress bar) and the root layout lays a canvas strip under the status bar, zero high in a browser.
-- Status bar icons follow the theme, not the phone's dark mode: `MainActivity` exposes `window.NotificaAndroid.statusBar(light)`, `syncStatusBar()` in `#lib/android.ts` calls it on load and on every theme switch. It is the one native call remote pages get, it only flips icon colour.
+- Status bar icons follow the theme, not the phone's dark mode: `MainActivity` exposes `window.NotificaAndroid.statusBar(light)`, `syncStatusBar()` in `#lib/android.ts` calls it on load and on every theme switch.
 - Overlays with a dark backdrop of their own pass `syncStatusBar('dark')` while open (image viewer). Fixed bars at the top of an overlay pad with the inset too, the strip sits at z 35, below dialogs and the viewer.
 - Launcher icon is an adaptive vector (`res/drawable*/ic_launcher_*.xml`), the start window takes the canvas colour of Platinum or Charcoal in `res/values*/themes.xml`.
 - Identifier `ex.notifica.app`. Changing it later means a new app on the phone, not an update.
 
+## Notifications
+
+- `ReminderService` is a foreground service with a small silent notification. It holds `/api/app-stream/<user>?key=...` open (newline separated JSON, signed key, with a heartbeat), retries with backoff from 2 s to 60 s, and resumes with `since` so pushes from a gap are replayed. A 401 means the account is gone: it forgets the address and stops.
+- `ReminderNotifier` shows the pushes. A tap opens the note through `MainActivity` (`EXTRA_LINK`), Done posts the signed link from `DoneReceiver`, no login needed. `StartReceiver` restarts the service after a reboot or an app update.
+- `ReminderPrefs` keeps the address, the on switch (default on), the replay cursor and whether permissions were asked.
+- Bridge in `window.NotificaAndroid`: `listen`, `stopListening`, `notificationsOn`, `notificationsAllowed`, `setNotifications`, `openNotificationSettings`, `pendingLink`. `#lib/device_notifications.ts` and `NotificationSettings.svelte` use them. Optional in the types, an older app lacks them. `MainActivity` sends a `notifica-android` window event when permissions may have changed.
+- The first `listen` asks for the notification permission, then for the battery exemption, once.
+- To test: `adb shell dumpsys activity services ex.notifica.app` shows the service, Send a test in settings should show a notification.
+
 ## Capabilities
 
-- `capabilities/connect.json` is `local` only: the connect page may call `saved_server` and `connect`. Remote pages get no Tauri IPC, only the status bar bridge above.
+- `capabilities/connect.json` is `local` only: the connect page may call `saved_server` and `connect`. Remote pages get no Tauri IPC, only the JS bridge above.
 - App commands are listed in `build.rs` (`AppManifest::commands`), which makes them deny by default and grantable as `allow-<name>`. A new command needs both lines, else the call rejects silently.
 - When the web UI needs native calls, grant them through a capability with `remote.urls` for the saved server, added at runtime (`app.add_capability`) since the address is only known then.
 
