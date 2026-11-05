@@ -1,7 +1,7 @@
 import { tasksOf } from '#lib/markdown.ts';
 import { isOpenTask } from '#lib/notes.ts';
 import { parseTimestamp } from '#lib/reminders.ts';
-import { viewFilterSchema, viewSortSchema, type DateRange, type Note, type NoteContent, type Reminder, type ViewContent, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
+import type { DateRange, Note, NoteContent, Reminder, ViewContent, ViewFilter, ViewSort } from '#lib/schemas.ts';
 
 /*
     A view is a saved set of filters plus a sort order.
@@ -11,8 +11,28 @@ import { viewFilterSchema, viewSortSchema, type DateRange, type Note, type NoteC
 
 
 // DEFAULTS ====================================================================================================
-export const emptyFilter = (): ViewFilter => viewFilterSchema.parse({})
-export const defaultSort = (): ViewSort => viewSortSchema.parse({})
+const anyDate = (): DateRange => ({ mode: 'any', amount: 7, unit: 'days', from: '', to: '' })
+
+// Same as what viewFilterSchema and viewSortSchema fill in, a test holds them together | written out so the browser can do without zod
+export const emptyFilter = (): ViewFilter => ({
+    words: '',
+    without: '',
+    titleOnly: false,
+    include: [],
+    exclude: [],
+    labelMatch: 'any',
+    labelled: 'any',
+    colors: [],
+    pinned: 'any',
+    archived: 'hide',
+    reminder: 'any',
+    list: 'any',
+    created: anyDate(),
+    updated: anyDate(),
+    due: anyDate()
+})
+
+export const defaultSort = (): ViewSort => ({ by: 'manual', direction: 'desc', pinnedFirst: true })
 
 // Every new account starts with these, each can be changed or deleted like any other view
 export function starterViews(): ViewContent[] {
@@ -21,17 +41,6 @@ export function starterViews(): ViewContent[] {
         { name: 'Reminders', icon: 'bell', filter: { ...emptyFilter(), reminder: 'with' }, sort: { by: 'reminder', direction: 'asc', pinnedFirst: false } },
         { name: 'Archived', icon: 'archive', filter: { ...emptyFilter(), archived: 'only' }, sort: { by: 'updated', direction: 'desc', pinnedFirst: false } }
     ]
-}
-
-// Saved filters may predate newer fields, parsing fills them in
-export function readFilter(value: unknown): ViewFilter {
-    const parsed = viewFilterSchema.safeParse(value ?? {})
-    return parsed.success ? parsed.data : emptyFilter()
-}
-
-export function readSort(value: unknown): ViewSort {
-    const parsed = viewSortSchema.safeParse(value ?? {})
-    return parsed.success ? parsed.data : defaultSort()
 }
 
 // How many fields differ from an empty filter

@@ -1,4 +1,4 @@
-import { isId } from '#lib/schema_limits.ts';
+import { isId } from '#lib/schemas.ts';
 import { countOpenOccurrences, getOne, updateOnePartial } from '#lib/server/queries.ts';
 import { doneSubject } from '#lib/server/delivery.ts';
 import { hasValidSignature } from '#lib/server/server_auth.ts';

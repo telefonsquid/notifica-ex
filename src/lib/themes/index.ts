@@ -1,5 +1,3 @@
-import z from 'zod';
-
 // THEME REGISTRY | every entry needs a matching src/lib/themes/<name>.css
 export const THEMES = [
     { name: 'platinum', label: 'Platinum', scheme: 'light' },
@@ -7,9 +5,8 @@ export const THEMES = [
 ] as const;
 
 export type ThemeName = typeof THEMES[number]['name'];
-export const themeNameSchema = z.enum(THEMES.map((theme) => theme.name) as [ThemeName, ...ThemeName[]]);
 
 export const DEFAULT_THEME: ThemeName = 'platinum';
 export const THEME_COOKIE = 'theme';
 
-export function isThemeName(value: unknown): value is ThemeName { return themeNameSchema.safeParse(value).success }
+export function isThemeName(value: unknown): value is ThemeName { return THEMES.some((theme) => theme.name === value) }

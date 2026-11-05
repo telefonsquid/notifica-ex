@@ -1,5 +1,4 @@
-import { idSchema } from '#lib/schema_limits.ts';
-import { labelNameSchema, noteColorSchema } from '#lib/schemas.ts';
+import { idSchema, labelNameSchema, noteColorSchema } from '#lib/schemas.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';

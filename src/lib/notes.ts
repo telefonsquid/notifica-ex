@@ -1,5 +1,6 @@
 import { parseTimestamp } from '#lib/reminders.ts';
-import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS, type NoteColor, type NoteContent, type Reminder } from '#lib/schemas.ts';
+import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS } from '#lib/note_colors.ts';
+import type { NoteColor, NoteContent, Reminder } from '#lib/schemas.ts';
 
 // COLORS ====================================================================================================
 

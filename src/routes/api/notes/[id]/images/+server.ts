@@ -1,4 +1,5 @@
-import { LIMITS, isId } from '#lib/schema_limits.ts';
+import { LIMITS } from '#lib/schema_limits.ts';
+import { isId } from '#lib/schemas.ts';
 import { addNoteImages, getNoteFor } from '#lib/server/queries.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error, json } from '@sveltejs/kit';

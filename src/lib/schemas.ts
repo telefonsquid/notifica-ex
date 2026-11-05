@@ -1,6 +1,26 @@
-import { LIMITS, idSchema, limitedCount, limitedText } from '#lib/schema_limits.ts';
+import { NOTE_COLORS } from '#lib/note_colors.ts';
+import { LIMITS } from '#lib/schema_limits.ts';
 import type { RecordAuthResponse } from 'pocketbase';
 import z from 'zod';
+
+// PRIMITIVES ==============================================
+function limitedText(label: string, max: number) {
+    return z.string().max(max, `${label} must not be longer than ${max} characters.`)
+}
+
+function limitedCount(label: string, max: number) {
+    return z.number()
+        .int(`${label} must be a whole number.`)
+        .min(0, `${label} must not be negative.`)
+        .max(max, `${label} must not be larger than ${max}.`)
+}
+
+export const idSchema = limitedText('Id', LIMITS.ID)
+    .regex(/^[A-Za-z0-9_-]*$/, 'Id may only contain letters, numbers, underscores and dashes.');
+
+export function isId(value: unknown): value is string { return idSchema.safeParse(value).success }
+
+
 
 // TYPES => POCKETBASE =================================================
 export type CollectionMap = {
@@ -110,12 +130,6 @@ export const setPasswordSchema = z.object({
 
 
 // TYPES => COLORS ===================================================================
-// Notes and labels share them, each name has a [data-note] rule in #lib/note_colors.css
-export const NOTE_TINTS = ['lemon', 'ochre', 'tangerine', 'coral', 'cherry', 'rose', 'magenta', 'plum', 'violet', 'cobalt', 'sky', 'powder', 'teal', 'mint', 'moss', 'slate', 'platinum'] as const;
-export const NOTE_SOLIDS = ['ochre-solid', 'tangerine-solid', 'coral-solid', 'cherry-solid', 'rose-solid', 'magenta-solid', 'plum-solid', 'violet-solid', 'midnight-solid', 'cobalt-solid', 'sky-solid', 'powder-solid', 'teal-solid', 'mint-solid', 'moss-solid', 'forest-solid', 'slate-solid', 'platinum-solid'] as const;
-export const NOTE_STICKIES = ['canary', 'marigold', 'apricot', 'peach', 'flamingo', 'bubblegum', 'candy', 'orchid', 'lilac', 'periwinkle', 'cornflower', 'aqua', 'ice', 'seafoam', 'pistachio', 'lime', 'chartreuse', 'cloud'] as const;
-export const NOTE_TEXTURES = ['ruled', 'legal', 'graph', 'dots', 'linen', 'gingham', 'zigzag', 'terrazzo', 'topo', 'waves', 'stripes', 'kraft', 'chalkboard', 'blueprint', 'starry', 'aurora', 'sunset', 'holo'] as const;
-const NOTE_COLORS = [...NOTE_TINTS, ...NOTE_SOLIDS, ...NOTE_STICKIES, ...NOTE_TEXTURES] as const;
 
 // Empty means the plain card
 export type NoteColor = z.infer<typeof noteColorSchema>;
@@ -222,9 +236,6 @@ export type Occurrence = RecordModel & {
 
 
 // TYPES => VIEWS ===================================================================
-// The picker's first page | any other lucide name works too, see #lib/view_icons.ts
-export const VIEW_ICONS = ['sticky-note', 'bell', 'archive', 'star', 'pin', 'list-checks', 'calendar', 'clock', 'book', 'briefcase', 'house', 'heart', 'lightbulb', 'tag', 'inbox', 'flame', 'leaf', 'music', 'plane', 'shopping-cart', 'code', 'graduation-cap', 'palette', 'coffee'] as const;
-
 export type ViewIcon = z.infer<typeof viewIconSchema>;
 const viewIconSchema = limitedText('Icon', LIMITS.VIEW_ICON).regex(/^[a-z0-9]+(-[a-z0-9]+)*$/, 'Icon must be a lucide name.');
 

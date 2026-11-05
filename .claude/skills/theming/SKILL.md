@@ -17,7 +17,7 @@ A new token goes into every theme file (or the `:root` defaults if it is theme i
 ## Themes
 
 - Platinum (light, default) and Charcoal (dark). Tangerine accent, Powder Blue secondary in both.
-- `#lib/themes/index.ts` holds the `THEMES` registry, `themeNameSchema`, `DEFAULT_THEME` and `THEME_COOKIE`. A new theme needs an entry there and its CSS file imported in `app.css`.
+- `#lib/themes/index.ts` holds the `THEMES` registry, `DEFAULT_THEME` and `THEME_COOKIE`. A new theme needs an entry there and its CSS file imported in `app.css`.
 - The choice is a cookie. `hooks.server.ts` renders it into `%theme%` on `<html>`, so the first paint is right.
 - `#lib/themes/switch.ts` reveals the new theme as a circle growing from the click point (view transition).
 - Pickers read the `<html>` attribute, not the load data, which keeps the first page load's value across client navigation.
@@ -28,8 +28,8 @@ Same pattern as the theme: a cookie per device, rendered into an `<html data-*>`
 
 ## Note colours
 
-- Names from `NOTE_COLORS` (tints, solids, stickies, textures), shared by notes and labels and stored as the name, never a hex value.
-- Adding one: `schemas.ts`, both `color` selects in `pocketbase/pb_schema.json`, `#lib/note_colors.css`, and its place in `COLOR_GROUPS` (`#lib/notes.ts`).
+- Names from `NOTE_COLORS` in `#lib/note_colors.ts` (tints, solids, stickies, textures), shared by notes and labels and stored as the name, never a hex value.
+- Adding one: `#lib/note_colors.ts`, both `color` selects in `pocketbase/pb_schema.json`, `#lib/note_colors.css`, and its place in `COLOR_GROUPS` (`#lib/notes.ts`).
 - Elements set `data-note`. `note_colors.css` paints `.note-surface` and `.note-mark` from it.
 - Tints and stickies come from each theme's `--theme-note-*`. Solids are the same in every theme and sit in the `:root` defaults.
 - `COLOR_GROUPS` orders every picker: Soft, Sticky, Solid, Texture, 18 each so a group fills two rows of nine.

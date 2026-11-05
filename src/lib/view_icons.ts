@@ -33,6 +33,9 @@ const CURATED: Record<string, IconComponent> = {
     'coffee': Coffee
 }
 
+// The picker's first page
+export const VIEW_ICONS = Object.keys(CURATED)
+
 const loaded = new SvelteMap<string, IconComponent>()
 const requested = new Set<string>()
 

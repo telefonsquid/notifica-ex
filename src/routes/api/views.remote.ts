@@ -1,9 +1,10 @@
-import { LIMITS, idSchema } from '#lib/schema_limits.ts';
-import { viewChangesSchema, viewContentSchema, type View } from '#lib/schemas.ts';
+import { LIMITS } from '#lib/schema_limits.ts';
+import { idSchema, viewChangesSchema, viewContentSchema, type View } from '#lib/schemas.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
-import { readFilter, readSort, starterViews } from '#lib/views.ts';
+import { readFilter, readSort } from '#lib/server/views.ts';
+import { starterViews } from '#lib/views.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 

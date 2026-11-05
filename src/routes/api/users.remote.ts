@@ -1,5 +1,4 @@
-import { idSchema } from '#lib/schema_limits.ts';
-import { setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type Person, type User, type UserSummary } from '#lib/schemas.ts';
+import { idSchema, setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type Person, type User, type UserSummary } from '#lib/schemas.ts';
 import { confirmPasswordReset, findOne, getAll, getOne, insertOnePartial, requestPasswordReset, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';

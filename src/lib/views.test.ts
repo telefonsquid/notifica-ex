@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import type { Note, Reminder } from '#lib/schemas.ts';
-import { countActive, emptyFilter, groupReminders, matchesView, noteDefaults, positionBetween, positionOf, readFilter, sortNotes } from '#lib/views.ts';
+import { viewFilterSchema, viewSortSchema, type Note, type Reminder } from '#lib/schemas.ts';
+import { readFilter } from '#lib/server/views.ts';
+import { countActive, defaultSort, emptyFilter, groupReminders, matchesView, noteDefaults, positionBetween, positionOf, sortNotes } from '#lib/views.ts';
 
 // A note as pocketbase returns it, with only what a test cares about changed
 const note = (overrides: Partial<Note>): Note => ({
@@ -96,6 +97,11 @@ describe('saved filters', () => {
     test('older ones get the fields added since', () => {
         expect(readFilter({ words: 'x' })).toEqual({ ...emptyFilter(), words: 'x' })
         expect(readFilter({ archived: 'nonsense' })).toEqual(emptyFilter())
+    })
+
+    test('defaults match the schemas, key order included since filters compare as JSON', () => {
+        expect(JSON.stringify(emptyFilter())).toBe(JSON.stringify(viewFilterSchema.parse({})))
+        expect(JSON.stringify(defaultSort())).toBe(JSON.stringify(viewSortSchema.parse({})))
     })
 
     test('count the changed fields', () => {

@@ -6,11 +6,11 @@
     import { onCollectionChange } from '#lib/realtime.ts';
     import { duration, easing } from '#lib/motion.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
-    import { VIEW_ICONS, type Label, type ViewFilter, type ViewIcon, type ViewSort } from '#lib/schemas.ts';
+    import type { Label, ViewFilter, ViewIcon, ViewSort } from '#lib/schemas.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
     import InlineInput from '#lib/ui/InlineInput.svelte';
-    import { viewIcon } from '#lib/view_icons.ts';
+    import { VIEW_ICONS, viewIcon } from '#lib/view_icons.ts';
     import { countActive, defaultSort, emptyFilter } from '#lib/views.ts';
     import { ChevronDown, ChevronUp, Plus, Search, SlidersHorizontal, Trash2, X } from '@lucide/svelte';
     import { Popover } from 'bits-ui';

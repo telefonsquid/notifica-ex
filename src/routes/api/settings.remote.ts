@@ -1,7 +1,8 @@
 import { getRequestEvent } from '$app/server';
 import { command } from '#lib/server/remote_function_error_trace.ts';
-import { IMAGE_FIT_COOKIE, LABEL_POSITION_COOKIE, imageFitSchema, labelPositionSchema } from '#lib/preferences.ts';
-import { THEME_COOKIE, themeNameSchema } from '#lib/themes/index.ts';
+import { IMAGE_FITS, IMAGE_FIT_COOKIE, LABEL_POSITIONS, LABEL_POSITION_COOKIE } from '#lib/preferences.ts';
+import { THEMES, THEME_COOKIE, type ThemeName } from '#lib/themes/index.ts';
+import { z } from 'zod';
 
 // APPEARANCE ============================================================
 
@@ -10,6 +11,6 @@ function remember(cookie: string, value: string){
     getRequestEvent().cookies.set(cookie, value, { path: '/', httpOnly: false, sameSite: 'lax', maxAge: 60 * 60 * 24 * 365 })
 }
 
-export const setTheme = command(themeNameSchema, async (theme) => remember(THEME_COOKIE, theme));
-export const setLabelPosition = command(labelPositionSchema, async (position) => remember(LABEL_POSITION_COOKIE, position));
-export const setImageFit = command(imageFitSchema, async (fit) => remember(IMAGE_FIT_COOKIE, fit));
+export const setTheme = command(z.enum(THEMES.map((theme) => theme.name) as [ThemeName, ...ThemeName[]]), async (theme) => remember(THEME_COOKIE, theme));
+export const setLabelPosition = command(z.enum(LABEL_POSITIONS), async (position) => remember(LABEL_POSITION_COOKIE, position));
+export const setImageFit = command(z.enum(IMAGE_FITS), async (fit) => remember(IMAGE_FIT_COOKIE, fit));
