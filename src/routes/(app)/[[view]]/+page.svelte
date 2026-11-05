@@ -32,9 +32,15 @@
 
 	let remindersByNote = $derived(groupReminders(reminders));
 
-	$effect(() => onCollectionChange('notes', () => getNotes().refresh()));
+	$effect(() => onCollectionChange<Note>('notes', () => getNotes().refresh(), shown));
 	$effect(() => onCollectionChange('labels', () => getLabels().refresh()));
 	$effect(() => onCollectionChange('reminders', () => getReminders().refresh()));
+
+	// Own saves echo back through realtime, a second copy of every note would be wasted
+	function shown({ action, record }: { action: string; record: Note }): boolean {
+		const note = notes.find((item) => item.id === record.id);
+		return action === 'delete' ? !note : note?.updated === record.updated;
+	}
 
 	// VIEW | the first one lives at the root, a deleted one leaves an empty page behind
 	let view = $derived(page.params.view ? views.find((item) => item.id === page.params.view) : views[0]);

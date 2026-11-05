@@ -7,7 +7,7 @@ description: PocketBase collections and access rules, sharing, images, realtime,
 
 ## Collections
 
-Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas.ts` holds zod for what the browser sends and plain types for stored records, size caps sit in `#lib/schema_limits.ts`.
+Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas.ts` holds zod for what the browser sends and plain types for stored records, size caps sit in `#lib/schema_limits.ts`. Zod stays out of the browser bundle: client code takes only types from `schemas.ts`, constants it needs sit in zod free modules (`schema_limits.ts`, `note_colors.ts`, `preferences.ts`), reading saved views in `#lib/server/views.ts`.
 
 | Collection | Fields | List/view rule |
 |---|---|---|
@@ -50,7 +50,7 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 
 ## Realtime
 
-The root layout hands the auth token to the browser (the cookie stays httpOnly), the `(app)` layout connects once. Pages subscribe with `onCollectionChange()` from `#lib/realtime.ts` (bursts coalesce into one refresh) and react with `query().refresh()` for remote queries, `invalidateAll()` for load data. After a reconnect everything is invalidated once.
+The root layout hands the auth token to the browser (the cookie stays httpOnly), the `(app)` layout connects once. Pages subscribe with `onCollectionChange()` from `#lib/realtime.ts` (bursts coalesce into one refresh) and react with `query().refresh()` for remote queries, `invalidateAll()` for load data. Commands already refresh what they change, so the notes page skips events that only echo what it shows (a third argument to `onCollectionChange`), an autosave would otherwise fetch every note twice. After a reconnect everything is invalidated once.
 
 ## Ordering
 

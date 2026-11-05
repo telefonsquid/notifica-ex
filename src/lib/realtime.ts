@@ -1,5 +1,6 @@
 import { invalidateAll } from '$app/navigation';
 import { pb } from '#lib/pocketbase.ts';
+import { busy } from '#lib/singletons/busy.svelte.ts';
 import type { Collection } from '#lib/schemas.ts';
 import type { RecordModel, RecordSubscription } from 'pocketbase';
 
@@ -64,11 +65,28 @@ export function onRecordChange<T extends RecordModel = RecordModel>(
 }
 
 // ON COLLECTION CHANGE | a burst of events, like a reorder touching every record, turns into one call
-export function onCollectionChange(collection: Collection, callback: () => void, wait = 60): () => void {
+// Known says the page already shows an event, like the echo of its own save, a burst of only those calls nothing
+export function onCollectionChange<T extends RecordModel = RecordModel>(
+    collection: Collection,
+    callback: () => void,
+    known?: (event: RecordSubscription<T>) => boolean
+): () => void {
+    const WAIT = 60
     let timer: ReturnType<typeof setTimeout> | undefined
-    const stop = onRecordChange(collection, () => {
+    let burst: RecordSubscription<T>[] = []
+
+    const settle = () => {
+        if(busy.actions){ timer = setTimeout(settle, WAIT); return } // A save on its way brings the fresh data along
+
+        const events = burst
+        burst = []
+        if(!known || !events.every(known)) callback()
+    }
+
+    const stop = onRecordChange<T>(collection, (event) => {
+        burst.push(event)
         clearTimeout(timer)
-        timer = setTimeout(callback, wait)
+        timer = setTimeout(settle, WAIT)
     })
 
     return () => {
