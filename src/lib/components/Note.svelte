@@ -25,6 +25,7 @@
     import NoteTabs from '#lib/components/NoteTabs.svelte';
     import ShareEditor from '#lib/components/ShareEditor.svelte';
     import { IMAGE_TYPES, imagesIn, shrink, uploadImage } from '#lib/images.ts';
+    import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
     import { confirmNoteRemoval } from '#lib/deletions.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
@@ -341,38 +342,6 @@
         const tasks = [...(event.currentTarget as HTMLElement).querySelectorAll('input.task')]
         ontoggle?.(tasks.indexOf(box))
     }
-
-    // LONG PRESS | held still for a moment, the click that follows the release gets swallowed
-    const HOLD = 500
-    let timer: ReturnType<typeof setTimeout> | undefined
-    let start = { x: 0, y: 0 }
-    let held = false
-
-    function press(event: PointerEvent){
-        if(open || event.pointerType !== 'mouse' || event.button !== 0) return
-        start = { x: event.clientX, y: event.clientY }
-        held = false
-        timer = setTimeout(() => {
-            held = true
-            onlongpress?.()
-        }, HOLD)
-    }
-
-    function drift(event: PointerEvent){
-        if(timer && Math.hypot(event.clientX - start.x, event.clientY - start.y) > 6) release()
-    }
-
-    function release(){
-        clearTimeout(timer)
-        timer = undefined
-    }
-
-    function swallow(event: MouseEvent){
-        if(!held) return
-        held = false
-        event.stopPropagation()
-        event.preventDefault()
-    }
 </script>
 
 <svelte:window onpointerdown={pressOutside} onpointerup={liftOutside} onpointercancel={() => touchOutside = false} onkeydown={escape} />
@@ -413,11 +382,7 @@
         class={['card note-surface relative flex flex-col gap-3 rounded-card border p-card text-ink', open ? 'border-line-strong shadow-2xl' : 'border-line hover:border-line-strong', selected && 'selected']}
         data-note={draft.color || undefined}
         aria-label={open ? (id ? 'Edit note' : 'New note') : undefined}
-        onpointerdown={press}
-        onpointermove={drift}
-        onpointerup={release}
-        onpointerleave={release}
-        onclickcapture={swallow}
+        {@attach longPress(() => !open, () => onlongpress?.())}
         onpastecapture={(event) => catchImages(event, event.clipboardData?.files)}
         ondragovercapture={dragOver}
         ondropcapture={(event) => catchImages(event, event.dataTransfer?.files)}

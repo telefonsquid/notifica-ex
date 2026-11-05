@@ -81,7 +81,6 @@
         Promise.all(attached.map((reminder) => safeAction(removeReminder(reminder.id))))
     }
 
-    // The menu is gone by the time the answer comes, so the notes are held on to first
     async function remove(){
         if(await removeNotes(notes, me)) onfinish?.()
     }
@@ -218,7 +217,6 @@
     </Menu.Item>
 {/if}
 
-<!-- Asks once more in place before anything is gone -->
 <Menu.Item class="menu-item" onSelect={remove}>
     {#if owned.length}<Trash2 class="size-4" />{:else}<LogOut class="size-4" />{/if}
     {removeLabel}{notes.length > 1 ? ` ${notes.length} notes` : ''}

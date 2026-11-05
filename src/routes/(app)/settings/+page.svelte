@@ -20,8 +20,7 @@
 	import InlineInput from '#lib/ui/InlineInput.svelte';
 	import { Bell, Check, CircleUserRound, KeyRound, Palette, PanelsTopLeft, Tag, Trash2, Users } from '@lucide/svelte';
 	import { untrack } from 'svelte';
-	import { slide } from 'svelte/transition';
-	import { duration, easing } from '#lib/motion.ts';
+	import { unfold } from '#lib/motion.ts';
 	import { getLabels, updateLabel } from '../../api/labels.remote';
 	import { sendPasswordLink, updateProfile } from '../../api/users.remote';
 	import type { PageProps } from './$types';
@@ -91,6 +90,11 @@
 
 		const top = stage.scrollTop + section.getBoundingClientRect().top - snapLine(stage);
 		stage.scrollTo({ top, behavior: 'smooth' });
+	}
+
+	// What every stop of the scroll hands its section
+	function stop(id: Tab) {
+		return { id, title: SECTIONS.find((item) => item.id === id)?.label ?? id, current: tab === id, onselect: () => go(id) };
 	}
 
 	// The rail's Edit view lands here with ?view=<id> and opens that view's filters
@@ -185,7 +189,7 @@
 <div class="track">
 
 	<!-- APPEARANCE -->
-	<SettingsSection id="appearance" title="Appearance" current={tab === 'appearance'} onselect={() => go('appearance')}>
+	<SettingsSection {...stop('appearance')}>
 		<div class="grid gap-10">
 			<div>
 				<h3 class="type-meta mb-4 text-ink-faint">Theme</h3>
@@ -203,12 +207,12 @@
 	</SettingsSection>
 
 	<!-- VIEWS -->
-	<SettingsSection id="views" title="Views" current={tab === 'views'} onselect={() => go('views')}>
+	<SettingsSection {...stop('views')}>
 		<ViewSettings {labels} bind:expanded={editing} />
 	</SettingsSection>
 
 	<!-- LABELS -->
-	<SettingsSection id="labels" title="Labels" current={tab === 'labels'} onselect={() => go('labels')}>
+	<SettingsSection {...stop('labels')}>
 		{#if labels.length}
 			<ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
 				{#each labels as label (label.id)}
@@ -227,12 +231,12 @@
 	</SettingsSection>
 
 	<!-- NOTIFICATIONS -->
-	<SettingsSection id="notifications" title="Notifications" current={tab === 'notifications'} onselect={() => go('notifications')}>
+	<SettingsSection {...stop('notifications')}>
 		<NotificationSettings user={data.user} />
 	</SettingsSection>
 
 	<!-- ACCOUNT -->
-	<SettingsSection id="account" title="Account" current={tab === 'account'} onselect={() => go('account')}>
+	<SettingsSection {...stop('account')}>
 		<form class="grid gap-4" onsubmit={(event) => { event.preventDefault(); saveProfile(); }}>
 			<dl class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
 				<div class="flex items-baseline justify-between gap-4 bg-card px-card py-2.5">
@@ -253,7 +257,7 @@
 				</div>
 			</dl>
 			{#if profileChanged}
-				<div class="flex justify-end gap-2" transition:slide={{ duration: duration('fast'), easing: easing('out') }}>
+				<div class="flex justify-end gap-2" transition:unfold>
 					<Button type="button" style="ghost" onclick={() => { name = data.user.name ?? ''; email = data.user.email; }}>Undo</Button>
 					<Button type="submit" icon={Check} loading={savingProfile}>Save</Button>
 				</div>
@@ -263,7 +267,7 @@
 
 	<!-- USERS -->
 	{#if hasPermission(data.user, 'admin')}
-	<SettingsSection id="users" title="Users" current={tab === 'users'} onselect={() => go('users')}>
+	<SettingsSection {...stop('users')}>
 		<UserAdmin userId={data.user.id} />
 	</SettingsSection>
 	{/if}

@@ -2,7 +2,7 @@
     import { PUBLIC_NTFY_URL } from '$app/env/public';
     import { invalidateAll } from '$app/navigation';
     import { androidApp, browserPushBlocker, browserPushOn, disableBrowserPush, enableBrowserPush } from '#lib/device_notifications.ts';
-    import { duration, easing } from '#lib/motion.ts';
+    import { unfold } from '#lib/motion.ts';
     import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import type { User } from '#lib/schemas.ts';
@@ -10,7 +10,6 @@
     import Switch from '#lib/ui/Switch.svelte';
     import { Check, Dices, Send } from '@lucide/svelte';
     import { onMount, untrack } from 'svelte';
-    import { slide } from 'svelte/transition';
     import { sendTestReminder, setNtfyPaused, setNtfyTopic } from '../../routes/api/reminders.remote';
 
     // PROPS
@@ -128,7 +127,7 @@
                 </div>
 
                 {#if ntfyOpen}
-                    <div class="grid gap-3 px-card pb-4" transition:slide={{ duration: duration('fast'), easing: easing('out') }}>
+                    <div class="grid gap-3 px-card pb-4" transition:unfold>
                         <form class="flex flex-wrap gap-2" onsubmit={(event) => { event.preventDefault(); saveTopic(); }}>
                             <input bind:value={topic} placeholder="Topic" aria-label="ntfy topic" class="field h-11 min-w-0 flex-1" />
                             <Button type="button" style="ghost" icon={Dices} onclick={randomTopic}>Random</Button>
