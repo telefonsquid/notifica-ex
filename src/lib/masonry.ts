@@ -30,11 +30,12 @@ export function pack(grid: HTMLElement){
     const floating = cells.filter((cell) => cell.style.position === 'absolute')
     const placed = cells.filter((cell) => !floating.includes(cell))
     const heights = withoutLeaving(grid, () => placed.map((cell) => Math.ceil(cell.offsetHeight)))
+    const spans = placed.map((cell) => Math.min(columns, parseInt(getComputedStyle(cell).gridColumnEnd.replace('span', '')) || 1))
 
     // Every column remembers where it ends | a wide card needs neighbours that are free at once
     const bottoms: number[] = new Array(columns).fill(0)
     placed.forEach((cell, index) => {
-        const span = Math.min(columns, parseInt(getComputedStyle(cell).gridColumnEnd.replace('span', '')) || 1)
+        const span = spans[index]
 
         let column = 0, top = Infinity
         for(let start = 0; start + span <= columns; start++){
