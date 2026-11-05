@@ -1,9 +1,8 @@
-import { getRequestEvent } from '$app/server';
 import { LIMITS, idSchema } from '#lib/schema_limits.ts';
 import { viewChangesSchema, viewContentSchema, type View } from '#lib/schemas.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
-import { restrictAccess } from '#lib/user.ts';
+import { signedIn } from '#lib/server/signed_in.ts';
 import { readFilter, readSort, starterViews } from '#lib/views.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
@@ -12,10 +11,9 @@ import { z } from 'zod';
 // In rail order | an account without views gets the starter set, so there is always one
 export const getViews = query(async () => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'user')
+    const me = signedIn()
 
-    const owner = locals.user.id
+    const owner = me.id
     let views = await listViews(owner)
     if(!views.length){
         // A parallel request may create them first, the unique name index turns the second try into a no op
@@ -33,14 +31,13 @@ async function listViews(owner: string): Promise<View[]> {
 
 export const createView = command(viewContentSchema, async (content) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'user')
+    const me = signedIn()
 
-    const views = await listViews(locals.user.id)
+    const views = await listViews(me.id)
     if(views.length >= LIMITS.VIEWS) error(400, `A maximum of ${LIMITS.VIEWS} views is allowed.`)
 
     const position = Math.max(-1, ...views.map((view) => view.position)) + 1
-    const view = unwrap(await insertOnePartial('views', { ...content, position, owner: locals.user.id }), 'A view with that name already exists.')
+    const view = unwrap(await insertOnePartial('views', { ...content, position, owner: me.id }), 'A view with that name already exists.')
 
     await getViews().refresh()
     return view
@@ -49,9 +46,8 @@ export const createView = command(viewContentSchema, async (content) => {
 
 export const updateView = command(viewChangesSchema.extend({ id: idSchema }), async ({ id, ...changes }) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'user')
-    unwrap(await getOwned('views', id, locals.user.id), 'View not found.')
+    const me = signedIn()
+    unwrap(await getOwned('views', id, me.id), 'View not found.')
     const view = unwrap(await updateOnePartial('views', id, changes), 'A view with that name already exists.')
 
     await getViews().refresh()
@@ -62,11 +58,10 @@ export const updateView = command(viewChangesSchema.extend({ id: idSchema }), as
 // The last view stays, the rail always needs somewhere to go
 export const deleteView = command(idSchema, async (id) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'user')
-    unwrap(await getOwned('views', id, locals.user.id), 'View not found.')
+    const me = signedIn()
+    unwrap(await getOwned('views', id, me.id), 'View not found.')
 
-    const views = await listViews(locals.user.id)
+    const views = await listViews(me.id)
     if(views.length <= 1) error(400, 'Keep at least one view.')
     unwrap(await deleteOne('views', id), 'Could not delete the view.')
 
@@ -78,10 +73,9 @@ export const deleteView = command(idSchema, async (id) => {
 // Takes every view id in the new order
 export const reorderViews = command(z.array(idSchema).max(LIMITS.VIEWS), async (ids) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'user')
+    const me = signedIn()
 
-    const owned = new Set((await listViews(locals.user.id)).map((view) => view.id))
+    const owned = new Set((await listViews(me.id)).map((view) => view.id))
     if(ids.length !== owned.size || !ids.every((id) => owned.has(id))) error(400, 'Views changed meanwhile, try again.')
     await Promise.all(ids.map((id, position) => updateOnePartial('views', id, { position })))
 

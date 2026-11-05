@@ -1,9 +1,9 @@
-import { getRequestEvent } from '$app/server';
 import { idSchema } from '#lib/schema_limits.ts';
 import { setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type Person, type User, type UserSummary } from '#lib/schemas.ts';
 import { confirmPasswordReset, findOne, getAll, getOne, insertOnePartial, requestPasswordReset, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
-import { hasPermission, restrictAccess } from '#lib/user.ts';
+import { signedIn } from '#lib/server/signed_in.ts';
+import { hasPermission } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
 
@@ -14,8 +14,7 @@ function summary({ id, name, email, authorizationLevel, state }: User): UserSumm
 // USERS ============================================================
 export const getUsers = query(async () => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'admin')
+    signedIn('admin')
     const users = unwrap(await getAll('users', { sort: 'name' }), 'Could not load users.')
     return users.map(summary)
 
@@ -24,9 +23,8 @@ export const getUsers = query(async () => {
 // Everyone a note can be shared with, names only so the others' mail addresses stay private
 export const getPeople = query(async (): Promise<Person[]> => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'user')
-    const users = unwrap(await getAll('users', { filter: 'state = "active"', sort: 'name' }), 'Could not load people.')
+    signedIn()
+    const users = unwrap(await getAll('users', { filter: 'state = "active"', sort: 'name', fields: 'id,name,email' }), 'Could not load people.')
     return users.map(({ id, name, email }) => ({ id, name: name || email.split('@')[0] }))
 
 });
@@ -34,8 +32,7 @@ export const getPeople = query(async (): Promise<Person[]> => {
 // INVITE | random password nobody knows, the mail lets the person set their own
 export const inviteUser = command(userInputSchema, async (input) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'admin')
+    signedIn('admin')
 
     const password = crypto.randomUUID()
     const user = unwrap(await insertOnePartial('users', {
@@ -56,11 +53,10 @@ export const inviteUser = command(userInputSchema, async (input) => {
 
 export const updateUser = command(userEditSchema, async ({ id, ...changes }) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'admin')
+    const me = signedIn('admin')
 
     // Keep at least the acting admin in charge
-    if(id === locals.user.id && changes.authorizationLevel !== locals.user.authorizationLevel){
+    if(id === me.id && changes.authorizationLevel !== me.authorizationLevel){
         error(400, 'You cannot change your own role.')
     }
 
@@ -74,13 +70,12 @@ export const updateUser = command(userEditSchema, async ({ id, ...changes }) => 
 // Everyone changes their own name and mail, the role stays with the admins
 export const updateProfile = command(userInputSchema.pick({ name: true, email: true }), async (changes) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'user')
+    const me = signedIn()
 
-    const taken = await findOne('users', 'email = {:email} && id != {:id}', undefined, { email: changes.email, id: locals.user.id })
+    const taken = await findOne('users', 'email = {:email} && id != {:id}', undefined, { email: changes.email, id: me.id })
     if(taken.success) error(400, 'Another account already uses this address.')
 
-    const user = unwrap(await updateOnePartial('users', locals.user.id, changes), 'Could not update your account.')
+    const user = unwrap(await updateOnePartial('users', me.id, changes), 'Could not update your account.')
 
     await getPeople().refresh()
     return summary(user)
@@ -90,9 +85,8 @@ export const updateProfile = command(userInputSchema.pick({ name: true, email: t
 // DEACTIVATE | a new token key ends every running session, the request hook rejects the rest
 export const setUserState = command(z.object({ id: idSchema, state: userStateSchema }), async ({ id, state }) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'admin')
-    if(id === locals.user.id) error(400, 'You cannot deactivate yourself.')
+    const me = signedIn('admin')
+    if(id === me.id) error(400, 'You cannot deactivate yourself.')
 
     const changes = state === 'inactive' ? { state, 'tokenKey:autogenerate': '' } : { state }
     const user = unwrap(await updateOnePartial('users', id, changes), 'Could not change the user.')
@@ -108,9 +102,8 @@ export const setUserState = command(z.object({ id: idSchema, state: userStateSch
 // Admins send it to anyone, everyone else only to themselves
 export const sendPasswordLink = command(idSchema, async (id) => {
 
-    const { locals } = getRequestEvent()
-    restrictAccess(locals.user, 'user')
-    if(id !== locals.user.id && !hasPermission(locals.user, 'admin')) error(403, 'You can only reset your own password.')
+    const me = signedIn()
+    if(id !== me.id && !hasPermission(me, 'admin')) error(403, 'You can only reset your own password.')
 
     const user = unwrap(await getOne('users', id), 'User not found.')
     if(user.state === 'inactive') error(400, 'This account is deactivated.')
