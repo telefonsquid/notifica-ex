@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { describeRule, occurrenceAfter } from '#lib/reminders.ts';
+import { describeRule, firstOccurrence, occurrenceAfter } from '#lib/reminders.ts';
 
 // Rules as the form stores them, in Berlin unless a test says otherwise
 const rule = (overrides: Partial<Parameters<typeof occurrenceAfter>[0]>) => ({ at: '2026-10-20T07:00:00.000Z', repeat: 'days' as const, every: 1, weekdays: [], until: '', timezone: 'Europe/Berlin', ...overrides })
@@ -20,6 +20,14 @@ describe('once', () => {
 
     test('ignores an end date', () => {
         expect(iso(occurrenceAfter(rule({ repeat: 'never', until: '2026-10-01T00:00:00Z' }), after('2026-10-01T00:00:00Z')))).toBe('2026-10-20T07:00:00.000Z')
+    })
+
+    test('saved within its own minute still goes off', () => {
+        expect(iso(firstOccurrence(rule({ repeat: 'never' }), after('2026-10-20T07:00:12Z')))).toBe('2026-10-20T07:00:00.000Z')
+    })
+
+    test('saved after its minute is over', () => {
+        expect(firstOccurrence(rule({ repeat: 'never' }), after('2026-10-20T07:01:00Z'))).toBeNull()
     })
 })
 

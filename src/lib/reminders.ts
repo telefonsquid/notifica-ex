@@ -51,6 +51,11 @@ export function occurrenceAfter(rule: Rule, after: Date): Date | null {
     return null
 }
 
+// First time of a rule being saved now | the form picks whole minutes, so the current one still counts
+export function firstOccurrence(rule: Rule, now: Date): Date | null {
+    return occurrenceAfter(rule, new Date(Math.floor(now.getTime() / MINUTE) * MINUTE - 1))
+}
+
 function nextOccurrence(rule: Rule, start: Date, after: Date): Date | null {
 
     // WEEKDAYS | the start itself only counts when it falls on one of the days

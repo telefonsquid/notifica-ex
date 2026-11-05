@@ -1,5 +1,5 @@
 import { getRequestEvent } from '$app/server';
-import { occurrenceAfter } from '#lib/reminders.ts';
+import { firstOccurrence } from '#lib/reminders.ts';
 import { idSchema, LIMITS } from '#lib/schema_limits.ts';
 import { ntfyTopicSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
 import { publish } from '#lib/server/ntfy.ts';
@@ -120,7 +120,7 @@ function ruleFields(rule: ReminderRule) {
     if(rule.until && rule.repeat !== 'never' && new Date(rule.until) < new Date(rule.at)) error(400, 'The end lies before the start.')
 
     // A time already passed is kept as finished
-    const next = occurrenceAfter(rule, new Date())
+    const next = firstOccurrence(rule, new Date())
 
     // Only what the chosen repeat uses gets stored
     const weekdays = rule.repeat === 'weekdays' ? rule.weekdays : []
