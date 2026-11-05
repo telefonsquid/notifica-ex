@@ -7,7 +7,7 @@ description: PocketBase collections and access rules, sharing, images, realtime,
 
 ## Collections
 
-Schema lives in `pocketbase/pb_schema.json`. Zod mirrors live in `#lib/schemas.ts`, size caps in `#lib/schema_limits.ts`.
+Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas.ts` holds zod for what the browser sends and plain types for stored records, size caps sit in `#lib/schema_limits.ts`.
 
 | Collection | Fields | List/view rule |
 |---|---|---|
@@ -45,7 +45,7 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 ## Server layers
 
 - **Queries**: `#lib/server/queries.ts`, every function returns `Result<T>`. Callers `unwrap()` into a SvelteKit error.
-- **Remote functions**: `src/routes/api/*.remote.ts`, wrapped by `#lib/server/remote_function_error_trace`. Every argument has a zod schema.
+- **Remote functions**: `src/routes/api/*.remote.ts`, wrapped by `#lib/server/remote_function_error_trace`. Every argument has a zod schema, each starts with `signedIn()` (`#lib/server/signed_in.ts`), which gives the user or a 403.
 - **Client**: calls go through `safeAction()` (`#lib/pocketbase.ts`), which turns errors into toasts. The client `pb` instance is never imported on the server.
 
 ## Realtime

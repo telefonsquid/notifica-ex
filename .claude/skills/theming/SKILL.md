@@ -24,7 +24,7 @@ A new token goes into every theme file (or the `:root` defaults if it is theme i
 
 ## Device preferences
 
-Same pattern as the theme: a cookie per device, rendered into an `<html data-*>` attribute by `hooks.server.ts`. `#lib/preferences.ts` holds them. Example: `labels` (top or bottom card edge for label tabs) becomes `<html data-labels>`, `images` (cropped or whole) becomes `<html data-images>`.
+Same pattern as the theme: a cookie per device, rendered into an `<html data-*>` attribute by `hooks.server.ts`. `#lib/preferences.ts` holds them. Example: `labels` (top or bottom card edge for label tabs) becomes `<html data-labels>`, `images` (cropped or whole) becomes `<html data-images>`. Their pickers share `PreferencePicker`.
 
 ## Note colours
 
