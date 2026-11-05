@@ -19,9 +19,17 @@ type EasingToken = 'out' | 'in' | 'in-out' | 'emphasized' | 'spring'
 const FALLBACK_DURATIONS: Record<DurationToken, number> = { instant: 90, fast: 160, base: 280, slow: 460, page: 560 }
 const FALLBACK_EASING = 'cubic-bezier(0.16, 1, 0.3, 1)'
 
+// Kept once read, every read makes the browser recalculate styles and tokens never change
+const tokens = new Map<string, string>()
+
 function readToken(name: string): string {
     if(!browser) return ''
-    return getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    const known = tokens.get(name)
+    if(known) return known
+
+    const value = getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+    tokens.set(name, value)
+    return value
 }
 
 // DURATION IN MS | zero when the user asked for reduced motion
@@ -297,7 +305,7 @@ export function glide(root: ParentNode, before: Map<string, DOMRect>, layout?: (
 
 const running = new WeakMap<HTMLElement, Animation[]>()
 
-function offscreen(rect: DOMRect){
+export function offscreen(rect: DOMRect){
     return rect.bottom < 0 || rect.top > innerHeight
 }
 

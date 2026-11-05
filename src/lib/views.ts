@@ -34,7 +34,7 @@ export function readSort(value: unknown): ViewSort {
     return parsed.success ? parsed.data : defaultSort()
 }
 
-// How many fields differ from an empty filter | drives the dot on the filter button
+// How many fields differ from an empty filter
 export function countActive(filter: ViewFilter): number {
     const empty = emptyFilter()
     return (Object.keys(empty) as (keyof ViewFilter)[])
@@ -73,7 +73,9 @@ type MatchContext = {
 export function groupReminders(reminders: Reminder[]): Map<string, Reminder[]> {
     const grouped = new Map<string, Reminder[]>()
     for(const reminder of reminders.toSorted((a, b) => Number(!a.next) - Number(!b.next) || a.next.localeCompare(b.next))){
-        grouped.set(reminder.note, [...(grouped.get(reminder.note) ?? []), reminder])
+        const group = grouped.get(reminder.note)
+        if(group) group.push(reminder)
+        else grouped.set(reminder.note, [reminder])
     }
     return grouped
 }
@@ -109,16 +111,14 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
     if(!matchesReminders(reminders, filter.reminder)) return false
 
     // DATES
-    if(!inRange(parseTimestamp(note.created), filter.created, context.now, 'past')) return false
-    if(!inRange(parseTimestamp(note.updated), filter.updated, context.now, 'past')) return false
-    if(filter.due.mode !== 'any' && !reminders.some((reminder) => inRange(parseTimestamp(reminder.next), filter.due, context.now, 'future'))) return false
+    if(!inRange(note.created, filter.created, context.now, 'past')) return false
+    if(!inRange(note.updated, filter.updated, context.now, 'past')) return false
+    if(filter.due.mode !== 'any' && !reminders.some((reminder) => inRange(reminder.next, filter.due, context.now, 'future'))) return false
 
     // WORDS
+    if(!filter.words && !filter.without) return true
     const text = noteText(note, filter.titleOnly)
-    if(!wordsOf(filter.words).every((word) => text.includes(word))) return false
-    if(wordsOf(filter.without).some((word) => text.includes(word))) return false
-
-    return true
+    return wordsOf(filter.words).every((word) => text.includes(word)) && !wordsOf(filter.without).some((word) => text.includes(word))
 }
 
 // Lowercased, ready to look for words in
@@ -146,8 +146,9 @@ function matchesReminders(reminders: Reminder[], state: ViewFilter['reminder']):
 }
 
 // Past looks back from now, future looks ahead | a missing date never matches an active range
-function inRange(date: Date | null, range: DateRange, now: Date, direction: 'past' | 'future'): boolean {
+function inRange(timestamp: string, range: DateRange, now: Date, direction: 'past' | 'future'): boolean {
     if(range.mode === 'any') return true
+    const date = parseTimestamp(timestamp)
     if(!date) return false
 
     if(range.mode === 'between'){
@@ -173,6 +174,7 @@ function shift(date: Date, amount: number, unit: DateRange['unit']): Date {
 // SORTING ====================================================================================================
 export function sortNotes(notes: Note[], sort: ViewSort, reminders: Map<string, Reminder[]>): Note[] {
     const sign = sort.direction === 'asc' ? 1 : -1
+    const positions = new Map(sort.by === 'manual' ? notes.map((note) => [note.id, positionOf(note)]) : [])
 
     // Notes without a reminder always go last, whichever way the rest runs
     const compare = (a: Note, b: Note): number => {
@@ -182,7 +184,7 @@ export function sortNotes(notes: Note[], sort: ViewSort, reminders: Map<string, 
             if(!nextA || !nextB) return Number(!nextA) - Number(!nextB)
             return sign * nextA.localeCompare(nextB)
         }
-        if(sort.by === 'manual') return sign * (positionOf(a) - positionOf(b))
+        if(sort.by === 'manual') return sign * (positions.get(a.id)! - positions.get(b.id)!)
         return sign * a[sort.by].localeCompare(b[sort.by])
     }
 

@@ -35,14 +35,14 @@ Motion is deliberate: everything that changes place or size glides, nothing pops
 
 ## Masonry
 
-`#lib/masonry.ts` places every cell explicitly on 1px grid rows, each in the column (or column pair for a wide card) that ends highest, in sort order. CSS only sets the column count, the vertical gap is `--note-row-gap`. It repacks on cell resize and child changes, `glide()` takes it as its layout step so cards glide straight to the packed spot. Absolutely positioned leaving cells are skipped.
+`#lib/masonry.ts` places every cell explicitly on 1px grid rows, each in the column (or column pair for a wide card) that ends highest, in sort order. CSS only sets the column count, the vertical gap is `--note-row-gap`. It repacks through a ResizeObserver, a new cell gets watched and its first report packs it, so a change never packs twice. `glide()` takes it as its layout step so cards glide straight to the packed spot. Absolutely positioned leaving cells are skipped. `pack()` reads every span before it writes a placement: one read per placement forces a full layout each time, which cost seconds at 500 notes.
 
 An open card (`.wide`) keeps `--note-open-gap` from its neighbour on the side its label tabs show, above it only when a note sits there. `pack()` clears all placements to count the columns, so it holds the grid's height with `min-height` meanwhile: the collapsed page would clamp the scroll position to the top.
 
 ## Page changes
 
 - View transitions from the root layout. `.vt-rail`, `.vt-page`, `.vt-rail-indicator` and `.vt-toolbar` name the moving parts. The indicator glides with in-out.
-- Within one route (switching views) `data-transition="same-page"` unnames `.vt-page`, so the page shows live and shared cards glide via `glide()`, snapshotted in the page's `onNavigate` since the async batch swaps cells before `$effect.pre`. Leaving cards fade in place (`leave`).
+- Within one route (switching views) `data-transition="same-page"` unnames `.vt-page`, so the page shows live and shared cards glide via `glide()`, snapshotted in the page's `onNavigate` since the async batch swaps cells before `$effect.pre`. Leaving cards fade in place (`leave`), the ones off screen hide at once. Their transition still needs a duration: Svelte never removes a card whose outro ended instantly while others in its each block still run.
 - Rail icons carry `.vt-rail-icon` (`match-element`, class `rail-icon`) so their layers sit above the indicator. The name sits on a still wrapper, the hover tilt on the svg inside: Firefox loses the new snapshot of a named element with its own transform.
 - Icons crossfade with the indicator's timing. The toolbar shows live (old image hidden, new one unanimated). A part present on one side only fades with the page (`:only-child`, `:not()` never matches on these pseudos).
 

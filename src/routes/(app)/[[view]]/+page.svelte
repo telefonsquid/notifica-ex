@@ -8,7 +8,7 @@
 	import NoteMenu from '#lib/components/NoteMenu.svelte';
 	import { toggleTask } from '#lib/markdown.ts';
 	import { masonry, pack } from '#lib/masonry.ts';
-	import { cssEasing, duration, easing, glide, measure, rise, stagger, unfold } from '#lib/motion.ts';
+	import { cssEasing, duration, easing, glide, measure, offscreen, rise, stagger, unfold } from '#lib/motion.ts';
 	import { removeNotes } from '#lib/deletions.ts';
 	import { safeAction } from '#lib/pocketbase.ts';
 	import { onCollectionChange } from '#lib/realtime.ts';
@@ -71,7 +71,9 @@
 		const words = wordsOf(search);
 		const shown = notes.filter((note) => {
 			if (note.id === editing?.id) return !editing.fresh;
-			return matchesView(note, filter, context) && words.every((word) => noteText(note).includes(word));
+			if (!matchesView(note, filter, context)) return false;
+			const text = words.length ? noteText(note) : '';
+			return words.every((word) => text.includes(word));
 		});
 		const sorted = sortNotes(shown, sort, remindersByNote);
 		if (!frozen) return sorted;
@@ -225,16 +227,23 @@
 		});
 	});
 
+	const UNSEEN_FROM = 40; // Cards this far down the list skip their entrance, nobody sees it
+
 	// New cards rise into place, the card taking over from a new note glides there instead
 	function enter(node: Element, { id, index }: { id: string; index: number }): TransitionConfig {
-		return id === handover ? {} : rise(node, { delay: stagger(index) });
+		return id === handover || index >= UNSEEN_FROM ? {} : rise(node, { delay: stagger(index) });
 	}
 
 	// Leaving cards fade where they stood, out of the flow so the rest glide into their place
 	function leave(node: HTMLElement, id: string): TransitionConfig {
 		const from = before?.get(id) ?? node.getBoundingClientRect();
-		const frame = grid?.getBoundingClientRect();
 		delete node.dataset.flip;
+		if (offscreen(from)) {
+			node.style.display = 'none';
+			return { duration: 1 }; // An empty transition ends at once, Svelte then never removes the card while others still fade
+		}
+
+		const frame = grid?.getBoundingClientRect();
 		if (frame) Object.assign(node.style, { position: 'absolute', left: `${from.left - frame.left}px`, top: `${from.top - frame.top}px`, width: `${from.width}px` });
 
 		return {
