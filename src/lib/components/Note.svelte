@@ -34,6 +34,7 @@
     import { LIMITS } from '#lib/schema_limits.ts';
     import type { Label, Note, NoteContent, Person, Reminder } from '#lib/schemas.ts';
     import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
+    import { serverStatus } from '#lib/singletons/server_status.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
     import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pencil, Pin, Trash2, X } from '@lucide/svelte';
@@ -166,6 +167,11 @@
     })
 
     $effect(() => () => { save() })
+
+    // A save lost to an outage goes out again once the server is back
+    $effect(() => {
+        if(!serverStatus.down) untrack(save)
+    })
 
     // A reminder needs a stored note, an empty new one gets created on demand
     async function ensureNote(): Promise<string | null> {
@@ -596,14 +602,14 @@
         transition: opacity var(--duration-base) var(--ease-out);
     }
 
-    /* Breathes through filter so the opacity fade in stays untouched */
+    /* Breathes through its colour so the opacity fade in stays untouched */
     .card.selected::after {
         opacity: 0.18;
         animation: breathe 2.4s var(--ease-in-out) var(--breath-offset, 0s) infinite;
     }
 
     @keyframes breathe {
-        50% { opacity: 0.08; }
+        50% { background: color-mix(in oklab, var(--theme-signature) 45%, transparent); }
     }
 
     @media (prefers-reduced-motion: reduce) {
