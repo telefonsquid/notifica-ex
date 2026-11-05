@@ -154,6 +154,15 @@
                 "primaryKey": false,
                 "required": false,
                 "type": "text"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "id": "bool1700015839",
+                "name": "ntfyPaused",
+                "required": false,
+                "type": "bool"
             }
         ],
         "indexes": [
@@ -1076,7 +1085,8 @@
         ],
         "indexes": [
             "CREATE INDEX `idx_occurrences_note_at` ON `occurrences` (`note`, `at`)",
-            "CREATE INDEX `idx_occurrences_reminder` ON `occurrences` (`reminder`, `done`)"
+            "CREATE INDEX `idx_occurrences_reminder` ON `occurrences` (`reminder`, `done`)",
+            "CREATE INDEX `idx_occurrences_owner_created` ON `occurrences` (`owner`, `created`)"
         ],
         "system": false
     },
@@ -1200,6 +1210,112 @@
         ],
         "indexes": [
             "CREATE UNIQUE INDEX `idx_views_owner_name` ON `views` (`owner`, `name`)"
+        ],
+        "system": false
+    },
+    {
+        "id": "pbc_2750114863",
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "name": "push_subscriptions",
+        "type": "base",
+        "fields": [
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": true,
+                "autogeneratePattern": "[a-z0-9]{15}",
+                "id": "text2750114001",
+                "max": 15,
+                "min": 15,
+                "name": "id",
+                "pattern": "^[a-z0-9]+$",
+                "primaryKey": true,
+                "required": true,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "cascadeDelete": true,
+                "collectionId": "_pb_users_auth_",
+                "id": "relation2750114002",
+                "maxSelect": 1,
+                "minSelect": 0,
+                "name": "owner",
+                "required": true,
+                "type": "relation"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "autogeneratePattern": "",
+                "id": "text2750114003",
+                "max": 1024,
+                "min": 0,
+                "name": "endpoint",
+                "pattern": "",
+                "primaryKey": false,
+                "required": true,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "autogeneratePattern": "",
+                "id": "text2750114004",
+                "max": 256,
+                "min": 0,
+                "name": "p256dh",
+                "pattern": "",
+                "primaryKey": false,
+                "required": true,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "autogeneratePattern": "",
+                "id": "text2750114005",
+                "max": 64,
+                "min": 0,
+                "name": "auth",
+                "pattern": "",
+                "primaryKey": false,
+                "required": true,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "id": "autodate2750114006",
+                "name": "created",
+                "onCreate": true,
+                "onUpdate": false,
+                "type": "autodate"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "id": "autodate2750114007",
+                "name": "updated",
+                "onCreate": true,
+                "onUpdate": true,
+                "type": "autodate"
+            }
+        ],
+        "indexes": [
+            "CREATE UNIQUE INDEX `idx_push_subscriptions_endpoint` ON `push_subscriptions` (`endpoint`)",
+            "CREATE INDEX `idx_push_subscriptions_owner` ON `push_subscriptions` (`owner`)"
         ],
         "system": false
     }

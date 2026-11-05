@@ -1,6 +1,6 @@
 # notifica-ex
 
-Self-hosted notes in the spirit of Google Keep, with reminders pushed through [ntfy](https://ntfy.sh).
+Self-hosted notes in the spirit of Google Keep, with reminders pushed to the Android app, the browser and [ntfy](https://ntfy.sh).
 
 ## Local development
 
@@ -52,9 +52,13 @@ docker compose up --build -d
 
 The `migration` container waits for the others, triggers the setup and exits. It exits with an error if the setup does not go through, so check its log if the app comes up empty.
 
-### 3. Set up ntfy
+### 3. Set up notifications
 
-ntfy denies all access by default, since reminders are private. Create a user the app publishes with and give its token to the `web` service as `NTFY_TOKEN`:
+Everyone picks their ways to get reminders under Settings, Notifications. The Android app needs nothing on the server.
+
+Browser notifications need https and a key pair. Run `bunx web-push generate-vapid-keys` and give both keys to the `web` service as `PUBLIC_VAPID_KEY` and `VAPID_PRIVATE_KEY`. They stay off while those are empty, and changing the keys later means everyone has to turn them on again.
+
+ntfy is optional. It denies all access by default, since reminders are private. Create a user the app publishes with and give its token to the `web` service as `NTFY_TOKEN`:
 
 ```bash
 docker exec -it notifica-ex-ntfy ntfy user add --role=admin notifica-ex
@@ -80,7 +84,7 @@ Task reminders carry a Done button that calls back into the app, so `ORIGIN` mus
 
 ### 4. Routing
 
-Put web, PocketBase and ntfy behind a reverse proxy with TLS, and make sure `ORIGIN`, `PUBLIC_POCKETBASE_URL`, `NTFY_BASE_URL` and `PUBLIC_NTFY_URL` match the public addresses. The app keeps every screen live over PocketBase realtime (server sent events), so the proxy must not buffer PocketBase responses. With nginx:
+Put web, PocketBase and ntfy behind a reverse proxy with TLS, and make sure `ORIGIN`, `PUBLIC_POCKETBASE_URL`, `NTFY_BASE_URL` and `PUBLIC_NTFY_URL` match the public addresses. The app keeps every screen live over PocketBase realtime (server sent events), and the Android app holds a stream open to web, so the proxy must not buffer either. With nginx:
 
 ```nginx
 location / {
@@ -89,7 +93,7 @@ location / {
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
 
-    # POCKETBASE REALTIME AND NTFY STREAMS
+    # POCKETBASE REALTIME, THE APP STREAM AND NTFY STREAMS
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";

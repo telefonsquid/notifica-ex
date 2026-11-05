@@ -22,14 +22,16 @@ Runs on server and client: `occurrenceAfter()` computes the next occurrence, `pa
 ## Scheduler
 
 - `pocketbase/cronjobs/cron.pb.js` POSTs to `WEB_INTERNAL_URL` with `SERVER_AUTH_SECRET`: reminders every minute (`/api/reminders/dispatch`), maintenance daily at 3am.
-- `dispatchDueReminders()` in `#lib/server/reminders.ts` takes every reminder with `next` due, logs an occurrence, publishes it, then sets `next: occurrenceAfter(now)` and recounts `open`. Missed occurrences collapse into one push. "Due" reaches 30 s ahead, since PocketBase's cron sometimes fires a few ms before the full minute. A failed push stays due and is retried every minute for an hour (its log entry removed again), then the reminder moves on. One run at a time.
+- `dispatchDueReminders()` in `#lib/server/reminders.ts` takes every reminder with `next` due, logs an occurrence, delivers it, then sets `next: occurrenceAfter(now)` and recounts `open`. Missed occurrences collapse into one push. "Due" reaches 30 s ahead, since PocketBase's cron sometimes fires a few ms before the full minute. A failed push stays due and is retried every minute for an hour (its log entry removed again), then the reminder moves on. One run at a time.
 - Local dev: PocketBase in Docker calls the host dev server through `host.docker.internal`, so the dev script binds Vite to `127.0.0.1` (not `::1`) and `vite.config.ts` allows that host. Rebuild the PocketBase image whenever `pocketbase/cronjobs` changes.
 
 ## Delivery
 
-- ntfy is bundled as its own compose service (port 8092), the app publishes over HTTP through `#lib/server/ntfy.ts` `publish()` (returns a `Result`) to the owner's `ntfyTopic`.
-- `notification()` sets the click target to `${ORIGIN}/?note=<id>`, which opens the note.
-- Tasks add a Done `http` action posting `{signature}` to `/api/occurrences/[id]/done`.
+`deliver()` in `#lib/server/delivery.ts` sends one `Push` (`pushFor()`) to every way the owner has. Paths in it are relative, each channel knows its server. A push only stays due while it reached nowhere, a failure on one channel doesn't repeat it on the others. Settings, Notifications has a switch per channel.
+
+- **Android app**: `#lib/server/app_stream.ts` holds the open connections, `/api/app-stream/[user]` serves them as one json line per push, key signed from the user id (`getAppStream`). A foreground service in the app stays connected and shows the notifications itself, see the `android` skill. Coming back with `?since=` replays what it missed from the occurrence log, up to 12 hours and 20 pushes, so a phone that was away never needs server side queueing.
+- **Browser**: Web Push through `#lib/server/web_push.ts` to `push_subscriptions`, keys from `PUBLIC_VAPID_KEY` and `VAPID_PRIVATE_KEY`, off while those are empty. `src/service-worker/index.ts` shows them. It registers only once someone turns them on and caches nothing. A subscription the browser dropped (404, 410) is deleted.
+- **ntfy**: bundled as its own compose service (port 8092), `#lib/server/ntfy.ts` `publish()` to the owner's `ntfyTopic`, unless `ntfyPaused`. The click target is `${ORIGIN}/?note=<id>`, tasks add a Done `http` action.
 
 ## Done links
 
@@ -46,7 +48,3 @@ Runs on server and client: `occurrenceAfter()` computes the next occurrence, `pa
 - An open task shows `DoneButton`, the one Done pill, pulsing. More than one open adds a count badge, and the pill opens the history instead of ticking anything.
 - **History** (`ReminderHistory`, state in `#lib/singletons/reminder_history.svelte.ts`) grows out of the button that asked. It wears the note's colour and title, lists one line per occurrence newest first, grouped by day: the time, then a `DoneButton`, a ticked "hh:mm" with comment and Undo icons, or a faint bell for plain reminders. Above the days, while more than one is open, a row with the count and a Check all pill (`CheckCheck`, `checkOffHistory`) in the same column as the row pills. Toggles show at once from local state (`checks`), then refresh: the pill shrinks into one grid cell while the checked time slides in from the right, its tick draws itself, and an accent wash sweeps the row from the right (Check all staggers it down the list). Comments (`setOccurrenceComment`, max `OCCURRENCE_COMMENT`) exist only here and only on request: the icon unfolds a framed field under the row with an accent OK button. OK, Enter or focus leaving the field saves, Escape drops it, an empty text clears it. A saved comment shows as a quote line (left rule, text where the field's text sits), a click edits it. Pages of `HISTORY_PAGE`, the client refreshes `getHistory` itself since only it knows how far the list is shown. Opened from the band's History button and the note menu.
 - The note menu lists a single note's reminders and opens the card at one, a selection only offers Remove reminders.
-
-## Later
-
-Recurring tasks checked off from the Android app's notification (see the `android` skill once it exists).

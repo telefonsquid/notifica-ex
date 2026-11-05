@@ -12,6 +12,7 @@ export type CollectionMap = {
     'reminders': Reminder;
     'occurrences': Occurrence;
     'views': View;
+    'push_subscriptions': PushSubscriptionRecord;
     '_superusers': RecordAuthResponse<RecordModel>;
 }
 
@@ -23,6 +24,7 @@ const _collectionKeys: Record<keyof CollectionMap, true> = { // the collection t
     'reminders': true,
     'occurrences': true,
     'views': true,
+    'push_subscriptions': true,
     '_superusers': true,
 };
 
@@ -106,6 +108,7 @@ export const userBaseSchema = z.object({
         .optional(),
     'tokenKey:autogenerate': limitedText('Token key', LIMITS.TOKEN_KEY).optional(),
     ntfyTopic: ntfyTopicSchema.optional(),
+    ntfyPaused: z.boolean().optional(),
 });
 
 export type User = z.infer<typeof userSchema>;
@@ -122,6 +125,17 @@ export const userSchema = recordModelSchema
             }
         }
     });
+
+// One browser that wants reminders | https only, the server posts to this address
+export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;
+export const pushSubscriptionSchema = z.object({
+    endpoint: z.url({ protocol: /^https$/ }).max(LIMITS.PUSH_ENDPOINT),
+    p256dh: limitedText('Key', LIMITS.PUSH_KEY),
+    auth: limitedText('Key', LIMITS.PUSH_KEY),
+});
+
+export type PushSubscriptionRecord = z.infer<typeof pushSubscriptionRecordSchema>;
+export const pushSubscriptionRecordSchema = recordModelSchema.extend(pushSubscriptionSchema.shape).extend({ owner: idSchema });
 
 export type LoginInput = z.infer<typeof loginInputSchema>;
 export const loginInputSchema = z.object({

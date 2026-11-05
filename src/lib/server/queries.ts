@@ -121,7 +121,7 @@ export async function updateSettings(settings: Record<string, unknown>) {
 
 
 // OWNED RECORDS =====================================================================
-type OwnedCollection = 'labels' | 'notes' | 'occurrences' | 'reminders' | 'views'
+type OwnedCollection = 'labels' | 'notes' | 'occurrences' | 'push_subscriptions' | 'reminders' | 'views'
 
 // Everything one user owns in a collection
 export async function getAllOwned<K extends OwnedCollection>(collectionName: K, owner: string, options?: Omit<FetchOptions, 'filter'>) {
@@ -178,6 +178,13 @@ export async function getDueReminders(now: Date) {
     const pb = await getPbAdminConnection()
     const filter = pb.filter('next != "" && next <= {:now}', { now })
     return await pbErrorHandler(pb.collection('reminders').getFullList({ filter, expand: 'note,owner' }) as Promise<Reminder[]>)
+}
+
+// What a device missed while it had no connection, newest first
+export async function getOccurrencesSince(owner: string, after: string, limit: number) {
+    const pb = await getPbAdminConnection()
+    const filter = pb.filter('owner = {:owner} && created > {:after}', { owner, after })
+    return await pbErrorHandler(pb.collection('occurrences').getList(1, limit, { filter, sort: '-created', expand: 'note', skipTotal: true }) as Promise<ListResult<Occurrence>>)
 }
 
 // HISTORY | newest first, one page at a time since a minute reminder logs a lot

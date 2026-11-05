@@ -1,10 +1,12 @@
 import { getRequestEvent } from '$app/server';
 import { firstOccurrence } from '#lib/reminders.ts';
 import { idSchema, LIMITS } from '#lib/schema_limits.ts';
-import { ntfyTopicSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
-import { publish } from '#lib/server/ntfy.ts';
-import { countOpenOccurrences, deleteOne, findOne, getAllOwned, getNoteFor, getOccurrences, getOpenOccurrences, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { ntfyTopicSchema, pushSubscriptionSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
+import { streamSubject } from '#lib/server/app_stream.ts';
+import { deliver } from '#lib/server/delivery.ts';
+import { countOpenOccurrences, deleteOne, findOne, getAllOwned, getNoteFor, getOccurrences, getOne, getOpenOccurrences, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
+import { sign } from '#lib/server/server_auth.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';
@@ -141,15 +143,62 @@ export const setNtfyTopic = command(ntfyTopicSchema, async (topic) => {
 
 });
 
+export const setNtfyPaused = command(z.boolean(), async (paused) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    unwrap(await updateOnePartial('users', locals.user.id, { ntfyPaused: paused }), 'Could not save the setting.')
+    return paused
+
+});
+
+// Tries every way this account gets reminders right now
 export const sendTestReminder = command(async () => {
 
     const { locals } = getRequestEvent()
     restrictAccess(locals.user, 'user')
-    if(!locals.user.ntfyTopic) error(400, 'Set a topic first.')
 
-    const result = await publish({ topic: locals.user.ntfyTopic, title: 'notifica-ex', message: 'Reminders reach this device.', tags: ['bell'] })
-    if(!result.success) error(502, result.error)
+    const results = await deliver(locals.user, { id: crypto.randomUUID(), title: 'notifica-ex', message: 'Reminders reach this device.', task: false, cursor: '' })
+    if(!results.length) error(400, 'Turn on a way to get reminders first.')
+
+    const reached = results.filter((result) => result.success).length
+    if(!reached) error(502, results[0].error ?? 'Could not send the test.')
+    return { reached, tried: results.length }
+
+});
+
+// Browsers register here to get reminders while closed | a second account in the same browser takes it over
+export const addPushSubscription = command(pushSubscriptionSchema, async (subscription) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+
+    const known = await findOne('push_subscriptions', 'endpoint = {:endpoint}', undefined, { endpoint: subscription.endpoint })
+    const saved = known.success
+        ? await updateOnePartial('push_subscriptions', known.data.id, { ...subscription, owner: locals.user.id })
+        : await insertOnePartial('push_subscriptions', { ...subscription, owner: locals.user.id })
+    unwrap(saved, 'Could not turn on notifications.')
     return true
+
+});
+
+export const removePushSubscription = command(pushSubscriptionSchema.shape.endpoint, async (endpoint) => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+
+    const known = await findOne('push_subscriptions', 'endpoint = {:endpoint} && owner = {:owner}', undefined, { endpoint, owner: locals.user.id })
+    if(known.success) unwrap(await deleteOne('push_subscriptions', known.data.id), 'Could not turn off notifications.')
+    return true
+
+});
+
+// Address the Android app listens on, a query so only the app ever asks for it
+export const getAppStream = query(async () => {
+
+    const { locals } = getRequestEvent()
+    restrictAccess(locals.user, 'user')
+    return `/api/app-stream/${locals.user.id}?key=${sign(streamSubject(locals.user.id))}`
 
 });
 

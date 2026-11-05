@@ -1,6 +1,6 @@
 import { isId } from '#lib/schema_limits.ts';
 import { countOpenOccurrences, getOne, updateOnePartial } from '#lib/server/queries.ts';
-import { doneSubject } from '#lib/server/reminders.ts';
+import { doneSubject } from '#lib/server/delivery.ts';
 import { hasValidSignature } from '#lib/server/server_auth.ts';
 import { error } from '@sveltejs/kit';
 import { z } from 'zod';

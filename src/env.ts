@@ -31,7 +31,7 @@ export const variables = defineEnvVars({
         description: 'Shared with the migration and cron containers to call the internal endpoints',
     },
 
-    // NTFY | optional until reminders exist
+    // NTFY | optional, the other ways to get reminders work without it
     NTFY_URL: {
         schema: z.url().optional(),
     },
@@ -43,6 +43,16 @@ export const variables = defineEnvVars({
         public: true,
         schema: z.url().optional(),
         description: 'ntfy as the phone app reaches it, shown in the settings for subscribing',
+    },
+
+    // WEB PUSH | optional, browser notifications stay off without them | bunx web-push generate-vapid-keys
+    PUBLIC_VAPID_KEY: {
+        public: true,
+        schema: z.string().optional(),
+        description: 'Public key browsers subscribe with',
+    },
+    VAPID_PRIVATE_KEY: {
+        schema: z.string().optional(),
     },
 
     // POCKETBASE SETTINGS | applied on every start when set, otherwise managed in the PocketBase admin UI

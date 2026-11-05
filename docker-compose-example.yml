@@ -18,6 +18,8 @@ services:
       - "NTFY_URL=http://ntfy:80" # internal ntfy access, do not change!
       - "NTFY_TOKEN=<NTFY_TOKEN_HERE>" # token of an ntfy user allowed to publish, see README
       - "PUBLIC_NTFY_URL=http://localhost:8092" # same as NTFY_BASE_URL below, shown in the settings for subscribing
+      - "PUBLIC_VAPID_KEY=" # browser notifications stay off while empty, bunx web-push generate-vapid-keys
+      - "VAPID_PRIVATE_KEY="
       - "TZ=Europe/Berlin" # force docker timezone
 
       # PocketBase settings, force applied on every start. Omit lines to manage them in the PocketBase admin UI instead.

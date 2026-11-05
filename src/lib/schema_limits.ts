@@ -19,6 +19,8 @@ export const LIMITS = {
     VIEW_NAME: 64,
     VIEW_ICON: 64,                      // a lucide icon name
     NTFY_TOPIC: 64,                     // ntfy rejects longer topics
+    PUSH_ENDPOINT: 1024,                // address a browser hands out for web push
+    PUSH_KEY: 256,                      // keys of a web push subscription
     FILE_NAME: 128,                     // pocketbase stores a sanitized name plus a random suffix
     TIMEZONE: 64,                       // iana zone name like America/Argentina/Buenos_Aires
 
