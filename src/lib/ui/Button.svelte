@@ -28,7 +28,7 @@
     // STYLES
     type ButtonStyle = 'primary' | 'secondary' | 'ghost'
     const styles: Record<ButtonStyle, string> = {
-        primary:   'bg-accent text-on-accent hover:brightness-110',
+        primary:   'bg-accent text-on-accent hover:opacity-90',
         secondary: 'bg-raised text-ink border border-line hover:border-line-strong',
         ghost:     'text-ink-muted hover:text-ink hover:bg-accent-soft',
     }

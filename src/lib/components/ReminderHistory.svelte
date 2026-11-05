@@ -364,10 +364,10 @@
         border-radius: calc(var(--layout-radius-control) - 0.25rem);
         background: var(--theme-accent);
         color: var(--theme-on-accent);
-        transition: filter var(--duration-fast) var(--ease-out), scale var(--duration-fast) var(--ease-out);
+        transition: opacity var(--duration-fast) var(--ease-out), scale var(--duration-fast) var(--ease-out);
     }
 
-    .ok:hover { filter: brightness(1.08); }
+    .ok:hover { opacity: 0.9; }
     .ok:active { scale: 0.92; }
 
     /* A quote line, its text where the field's text sits */

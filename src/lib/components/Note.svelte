@@ -603,7 +603,7 @@
     }
 
     @keyframes breathe {
-        50% { filter: opacity(0.45); }
+        50% { opacity: 0.08; }
     }
 
     @media (prefers-reduced-motion: reduce) {

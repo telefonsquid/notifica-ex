@@ -19,7 +19,7 @@
 </script>
 
 <!-- The one Done pill, on the card and in the history alike -->
-<button type="button" class={['done type-meta motion-interactive relative flex shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-on-accent hover:brightness-110 disabled:opacity-60', pulse && 'pulse', className]} {...rest}>
+<button type="button" class={['done type-meta motion-interactive relative flex shrink-0 items-center gap-1 rounded-full bg-accent px-2.5 py-1 text-on-accent hover:opacity-90 disabled:opacity-60', pulse && 'pulse', className]} {...rest}>
     <Icon class="size-3" /> {label}
     {#if count > 1}
         <span class="badge" aria-hidden="true">{count > 99 ? '99+' : count}</span>
