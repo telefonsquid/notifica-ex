@@ -17,14 +17,7 @@
 	}
 </script>
 
-{#snippet headline()}Welcome<br />back.{/snippet}
-
-{#snippet emailField()}
+<AuthPage title="Login" action="Log in" onsubmit={login}>
 	<Input id="email" label="Email" type="email" autocomplete="email" required bind:value={email} />
-{/snippet}
-
-{#snippet passwordField()}
 	<Input id="password" label="Password" type="password" autocomplete="current-password" required bind:value={password} />
-{/snippet}
-
-<AuthPage title="Login" {headline} intro="Log in to pick up where you left off." fields={[emailField, passwordField]} action="Log in" onsubmit={login} />
+</AuthPage>

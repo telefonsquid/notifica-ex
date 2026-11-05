@@ -19,14 +19,7 @@
 	}
 </script>
 
-{#snippet headline()}Pick a<br />password.{/snippet}
-
-{#snippet passwordField()}
-	<Input id="password" label="New password" type="password" autocomplete="new-password" minlength={8} required bind:value={password} />
-{/snippet}
-
-{#snippet confirmField()}
+<AuthPage title="Set password" action="Set password" onsubmit={submit}>
+	<Input id="password" label="New password, at least 8 characters" type="password" autocomplete="new-password" minlength={8} required bind:value={password} />
 	<Input id="password-confirm" label="Repeat password" type="password" autocomplete="new-password" required bind:value={passwordConfirm} />
-{/snippet}
-
-<AuthPage title="Set password" {headline} intro="At least 8 characters. You log in with it and your email from then on." fields={[passwordField, confirmField]} action="Set password" onsubmit={submit} />
+</AuthPage>
