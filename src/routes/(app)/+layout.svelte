@@ -1,27 +1,27 @@
 <script lang="ts">
-	import { browser } from '$app/env';
-	import { invalidateAll } from '$app/navigation';
-	import ReminderHistory from '#lib/components/ReminderHistory.svelte';
-	import Rail from '#lib/components/Rail.svelte';
-	import { startDeviceNotifications } from '#lib/device_notifications.ts';
-	import { safeAction } from '#lib/pocketbase.ts';
-	import { connectRealtime, onRecordChange } from '#lib/realtime.ts';
-	import { onDestroy, onMount } from 'svelte';
-	import type { LayoutProps } from './$types';
+    import { browser } from '$app/env'
+    import { invalidateAll } from '$app/navigation'
+    import ReminderHistory from '#lib/components/ReminderHistory.svelte'
+    import Rail from '#lib/components/Rail.svelte'
+    import { startDeviceNotifications } from '#lib/device_notifications.ts'
+    import { safeAction } from '#lib/pocketbase.ts'
+    import { connectRealtime, onRecordChange } from '#lib/realtime.ts'
+    import { onDestroy, onMount } from 'svelte'
+    import type { LayoutProps } from './$types';
 
-	// PROPS
-	let { data, children }: LayoutProps = $props();
+    // PROPS
+    let { data, children }: LayoutProps = $props();
 
-	// REALTIME CONNECTION | set up during init, child pages subscribe as soon as they mount
-	if (browser && data.realtimeToken) onDestroy(connectRealtime(data.realtimeToken));
+    // REALTIME CONNECTION | set up during init, child pages subscribe as soon as they mount
+    if (browser && data.realtimeToken) onDestroy(connectRealtime(data.realtimeToken));
 
-	// DEVICE NOTIFICATIONS | the Android app gets its stream address, a renewed browser subscription gets told
-	onMount(() => { safeAction(startDeviceNotifications(data.user.id)); });
+    // DEVICE NOTIFICATIONS | the Android app gets its stream address, a renewed browser subscription gets told
+    onMount(() => { safeAction(startDeviceNotifications(data.user.id)); });
 
-	// OWN ACCOUNT | name, role or deactivation changed elsewhere shows up here at once
-	$effect(() => {
-		return onRecordChange('users', () => invalidateAll(), data.user.id);
-	});
+    // OWN ACCOUNT | name, role or deactivation changed elsewhere shows up here at once
+    $effect(() => {
+        return onRecordChange('users', () => invalidateAll(), data.user.id)
+    })
 </script>
 
 <!-- NAVIGATION -->
@@ -29,9 +29,9 @@
 
 <!-- CONTENT -->
 <div class="sm:pl-rail">
-	<main class="vt-page flex min-h-dvh flex-col px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-24 sm:pt-[calc(3rem+env(safe-area-inset-top))] sm:pb-12">
-		{@render children()}
-	</main>
+    <main class="vt-page flex min-h-dvh flex-col px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-24 sm:pt-[calc(3rem+env(safe-area-inset-top))] sm:pb-12">
+        {@render children()}
+    </main>
 </div>
 
 <!-- GLOBAL DIALOGS -->

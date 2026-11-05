@@ -1,33 +1,33 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 
-import type { ImageFit, LabelPosition } from '#lib/preferences.ts';
-import type { User } from '#lib/schemas.ts';
-import type { ThemeName } from '#lib/themes/index.ts';
-import type PocketBase from 'pocketbase';
+import type { ImageFit, LabelPosition } from '#lib/preferences.ts'
+import type { User } from '#lib/schemas.ts'
+import type { ThemeName } from '#lib/themes/index.ts'
+import type PocketBase from 'pocketbase'
 
 declare global {
-	namespace App {
+    namespace App {
 
-		interface Locals {
+        interface Locals {
 
-			// AUTHENTICATION & DB ACCESS
-			pb: PocketBase
-			user: undefined | User
-			serverDown?: boolean
+            // AUTHENTICATION & DB ACCESS
+            pb: PocketBase
+            user: undefined | User
+            serverDown?: boolean
 
-			// APPEARANCE
-			theme: ThemeName
-			labelPosition: LabelPosition
-			imageFit: ImageFit
+            // APPEARANCE
+            theme: ThemeName
+            labelPosition: LabelPosition
+            imageFit: ImageFit
 
-		}
+        }
 
-		interface Error {
-			message: string;
-			details?: string;
-		}
+        interface Error {
+            message: string
+            details?: string
+        }
 
-	}
+    }
 }
 
-export { };
+export { }
