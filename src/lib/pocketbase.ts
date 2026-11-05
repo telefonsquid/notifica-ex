@@ -22,23 +22,9 @@ export async function safeAction<T>(promise: Promise<T>): Promise<T | null> {
         // SERVER GONE | the banner says so, a toast per failed call would only pile up
         if((err?.status === undefined || err.status >= 500) && !(await checkServer())) return null;
 
-        // CUSTOM DETAILS OBJECT ATTACHED TO ERROR
-        if(err?.body?.message && err?.body?.details){
-            notify(`${err.body.message}\n(${err.body.details})`, { type: 'error' });
-        }
-        // STANDARD SVELTEKIT HTTP ERRORS
-        else if(err?.body?.message){
-            notify(err.body.message, { type: 'error' });
-        }
-        // BROWSER/NETWORK ERRORS
-        else if(err?.message){
-            notify(err.message, { type: 'error' });
-        }
-        // FALLBACK
-        else {
-            notify('An unexpected error occurred.', { type: 'error' });
-        }
-
+        const message = err?.body?.message ?? err?.message ?? 'An unexpected error occurred.';
+        notify(err?.body?.details ? `${message}
+(${err.body.details})` : message, { type: 'error' });
         return null;
     }
 }
