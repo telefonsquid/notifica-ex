@@ -5,11 +5,7 @@ export const LIMITS = {
 
     // TEXT => IDENTIFIERS
     ID: 64,                             // pocketbase ids are 15 chars, client generated ones are uuids at 36
-    TIMESTAMP: 64,
-    MIGRATION_VERSION: 32,              // semver of the app release a migration belongs to
-    TOKEN_KEY: 128,                     // pocketbase auth token
     RESET_TOKEN: 2048,                  // jwt from the set password link
-    EXPAND_KEY: 128,                    // relation name pocketbase expanded into a record
 
     // TEXT => NAMES
     USER_NAME: 128,
@@ -33,13 +29,7 @@ export const LIMITS = {
     VIEW_WORDS: 200,                    // words a view looks for or leaves out
     VIEW_DATE: 10,                      // YYYY-MM-DD
 
-    // TEXT => FETCH OPTIONS
-    FETCH_FILTER: 2048,
-    FETCH_SORT: 256,
-    FETCH_EXPAND: 256,
-
     // COLLECTION SIZES
-    EXPAND_KEYS: 32,                    // relations pocketbase may expand into one record
     NOTE_LABELS: 50,
     NOTE_IMAGES: 12,                    // matches maxSelect of the images field
     NOTE_SHARES: 20,                    // matches maxSelect of the shared field
@@ -47,12 +37,10 @@ export const LIMITS = {
     VIEWS: 50,                          // views per user, the rail has to fit them
 
     // NUMBERS
-    PAGE_NUMBER: 100000,
     PAGE_SIZE: 200,                     // records one fetch may pull
     REMINDER_EVERY: 999,                // largest step between two reminders, in the chosen unit
     REMINDER_RULES: 20,                 // only and except limits on one reminder
     VIEW_AMOUNT: 999,                   // days, weeks or months a date filter reaches back or ahead
-    VIEW_POSITION: 10000,
     NOTE_POSITION: 1e15,                // a timestamp in ms or between two of them
     IMAGE_BYTES: 15 * 1024 * 1024,      // one uploaded image, matches maxSize of the images field
 
@@ -75,5 +63,3 @@ export const idSchema = limitedText('Id', LIMITS.ID)
     .regex(/^[A-Za-z0-9_-]*$/, 'Id may only contain letters, numbers, underscores and dashes.');
 
 export function isId(value: unknown): value is string { return idSchema.safeParse(value).success }
-
-export const timestampSchema = limitedText('Timestamp', LIMITS.TIMESTAMP);
