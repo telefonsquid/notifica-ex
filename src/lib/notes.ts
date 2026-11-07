@@ -1,4 +1,5 @@
 import { parseTimestamp } from '#lib/reminders.ts';
+import { LIMITS } from '#lib/schema_limits.ts';
 import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS } from '#lib/note_colors.ts';
 import type { Note, NoteColor, NoteContent, Reminder } from '#lib/schemas.ts';
 
@@ -47,6 +48,11 @@ export function colorName(color: NoteColor): string {
 // CONTENT ====================================================================================================
 export function emptyNote(): NoteContent {
     return { title: '', body: '', color: '', labels: [], pinned: false, archived: false }
+}
+
+// Text from another app | other apps know nothing of the size caps
+export function sharedContent(title: string, text: string): Partial<NoteContent> {
+    return { title: title.trim().slice(0, LIMITS.NOTE_TITLE), body: text.trim().slice(0, LIMITS.NOTE_BODY) }
 }
 
 export function isEmpty(note: NoteContent): boolean {

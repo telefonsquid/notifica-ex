@@ -16,6 +16,7 @@ description: The Android app, a Tauri 2 mobile shell in src-tauri that opens the
 - Status bar icons follow the theme, not the phone's dark mode: `MainActivity` exposes `window.NotificaAndroid.statusBar(light)`, `syncStatusBar()` in `#lib/android.ts` calls it on load and on every theme switch.
 - Overlays with a dark backdrop of their own pass `syncStatusBar('dark')` while open (image viewer). Fixed bars at the top of an overlay pad with the inset too, the strip sits at z 35, below dialogs and the viewer.
 - Launcher icon is an adaptive vector (`res/drawable*/ic_launcher_*.xml`), the start window takes the canvas colour of Platinum or Charcoal in `res/values*/themes.xml`.
+- Share target: `MainActivity` keeps what another app sent until a page takes it through the bridge (`hasShare`, `takeShare`, `sharedImage`, images as data addresses up to 30 MB). The `(app)` layout walks to the notes page, which opens a new note with it (`incoming` on `Note`). It saves without a keystroke.
 - Identifier `ex.notifica.app`. Changing it later means a new app on the phone, not an update.
 
 ## Notifications

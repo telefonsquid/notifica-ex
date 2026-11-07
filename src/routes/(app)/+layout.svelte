@@ -1,6 +1,9 @@
 <script lang="ts">
     import { browser } from '$app/env'
-    import { invalidateAll } from '$app/navigation'
+    import { goto, invalidateAll } from '$app/navigation'
+    import { resolve } from '$app/paths'
+    import { page } from '$app/state'
+    import { hasShare } from '#lib/android.ts'
     import ReminderHistory from '#lib/components/ReminderHistory.svelte'
     import Rail from '#lib/components/Rail.svelte'
     import { startDeviceNotifications } from '#lib/device_notifications.ts'
@@ -17,6 +20,17 @@
 
     // DEVICE NOTIFICATIONS | the Android app gets its stream address, a renewed browser subscription gets told
     onMount(() => { safeAction(startDeviceNotifications(data.user.id)); });
+
+    // SHARED FROM ANOTHER APP | only the notes page takes it
+    function followShare() {
+        if (hasShare() && page.route.id !== '/(app)/[[view]]') goto(resolve('/(app)/[[view]]', {}))
+    }
+
+    onMount(() => {
+        followShare()
+        window.addEventListener('notifica-android', followShare)
+        return () => window.removeEventListener('notifica-android', followShare)
+    })
 
     // OWN ACCOUNT | name, role or deactivation changed elsewhere shows up here at once
     $effect(() => {

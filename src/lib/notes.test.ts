@@ -1,10 +1,18 @@
 import { describe, expect, test } from 'bun:test';
-import { colorName, formatDistance, mergeNotes } from '#lib/notes.ts';
+import { colorName, formatDistance, mergeNotes, sharedContent } from '#lib/notes.ts';
 import type { Note } from '#lib/schemas.ts';
 
 const NOW = Date.parse('2026-10-15T12:00:00Z')
 const later = (ms: number) => new Date(NOW + ms).toISOString()
 const MINUTE = 60_000, HOUR = 60 * MINUTE, DAY = 24 * HOUR
+
+describe('sharedContent', () => {
+    test('trims and keeps to the size caps', () => {
+        const shared = sharedContent(` ${'t'.repeat(500)} `, ' body\n')
+        expect(shared.title).toHaveLength(200)
+        expect(shared.body).toBe('body')
+    })
+})
 
 describe('mergeNotes', () => {
     const note = (id: string, updated: string, title = '') => ({ id, updated, title }) as Note

@@ -9,15 +9,22 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
+import android.util.Base64
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.IntentCompat
 import androidx.core.view.WindowCompat
+import java.io.IOException
+import org.json.JSONObject
 
 // Origin of the bundled connect page
 private const val LOCAL = "http://tauri.localhost"
+
+// The bridge hands images over as text, far bigger ones would run the webview out of memory
+private const val SHARED_IMAGE_MAX = 30L * 1024 * 1024
 
 class MainActivity : TauriActivity() {
   // Back is handled below instead
@@ -29,6 +36,10 @@ class MainActivity : TauriActivity() {
   // Where a tapped notification wants to go, while no page of the server is up yet
   private var pendingLink: String? = null
 
+  // What another app shared, until a page of the server takes it
+  private var pendingShare: Intent? = null
+  private var sharedImages: List<Uri> = emptyList()
+
   private val askNotifications = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
     tellPage()
     askBatteryExemption()
@@ -39,10 +50,35 @@ class MainActivity : TauriActivity() {
     super.onCreate(savedInstanceState)
     prefs = ReminderPrefs(this)
     pendingLink = intent.getStringExtra(EXTRA_LINK)
+    if (savedInstanceState == null) receiveShare(intent)
+  }
+
+  private fun receiveShare(intent: Intent) {
+    if (intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE) pendingShare = intent
+  }
+
+  private fun imagesIn(intent: Intent): List<Uri> {
+    if (intent.action == Intent.ACTION_SEND) return listOfNotNull(IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java))
+    return IntentCompat.getParcelableArrayListExtra(intent, Intent.EXTRA_STREAM, Uri::class.java).orEmpty()
+  }
+
+  // As a data address, null when the other app no longer hands it out or it is too big
+  private fun readImage(uri: Uri): String? {
+    return try {
+      val size = contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length } ?: return null
+      if (size > SHARED_IMAGE_MAX) return null
+      val bytes = contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+      "data:${contentResolver.getType(uri)};base64,${Base64.encodeToString(bytes, Base64.NO_WRAP)}"
+    } catch (_: IOException) {
+      null
+    } catch (_: SecurityException) {
+      null
+    }
   }
 
   override fun onNewIntent(intent: Intent) {
     super.onNewIntent(intent)
+    receiveShare(intent)
     val link = intent.getStringExtra(EXTRA_LINK) ?: return
     val view = webView
     if (view == null || view.url.orEmpty().startsWith(LOCAL)) pendingLink = link
@@ -141,6 +177,25 @@ class MainActivity : TauriActivity() {
         this@MainActivity.pendingLink = null
         return link
       }
+
+      @JavascriptInterface
+      fun hasShare() = pendingShare != null
+
+      // Handed out once, the images follow one by one through sharedImage
+      @JavascriptInterface
+      fun takeShare(): String? {
+        val shared = pendingShare ?: return null
+        pendingShare = null
+        sharedImages = imagesIn(shared)
+        return JSONObject()
+          .put("title", shared.getStringExtra(Intent.EXTRA_SUBJECT).orEmpty())
+          .put("text", shared.getCharSequenceExtra(Intent.EXTRA_TEXT)?.toString().orEmpty())
+          .put("images", sharedImages.size)
+          .toString()
+      }
+
+      @JavascriptInterface
+      fun sharedImage(index: Int) = sharedImages.getOrNull(index)?.let { readImage(it) }
     }, "NotificaAndroid")
 
     // BACK | closes an open overlay, else walks the server's pages, then hides the app

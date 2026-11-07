@@ -10,7 +10,9 @@
     import { masonry, pack } from '#lib/masonry.ts'
     import { cssEasing, duration, easing, glide, measure, offscreen, rise, stagger } from '#lib/motion.ts'
     import { removeNotes } from '#lib/deletions.ts'
+    import { takeShare, type SharedNote } from '#lib/android.ts'
     import { keepEvents, kept } from '#lib/note_list.ts'
+    import { notify } from '#lib/notifications.svelte.ts'
     import { safeAction } from '#lib/pocketbase.ts'
     import { onCollectionChange } from '#lib/realtime.ts'
     import { Selection, typing } from '#lib/selection.svelte.ts'
@@ -18,7 +20,7 @@
     import { defaultSort, emptyFilter, groupReminders, matchesView, noteDefaults, noteText, positionBetween, sortNotes, wordsOf } from '#lib/views.ts'
     import { X } from '@lucide/svelte'
     import { ContextMenu } from 'bits-ui'
-    import { flushSync, tick, untrack } from 'svelte'
+    import { flushSync, onMount, tick, untrack } from 'svelte'
     import type { TransitionConfig } from 'svelte/transition'
     import { getLabels } from '../../api/labels.remote'
     import { getNotes, moveNote, updateNote } from '../../api/notes.remote'
@@ -91,9 +93,11 @@
     let origin: DOMRect | null = null
     let handover: string | null = null
     let returning = false
+    let incoming = $state<SharedNote | null>(null)
 
-    function edit(note: Note | null, focus?: string) {
+    function edit(note: Note | null, focus?: string, shared: SharedNote | null = null) {
         busy = busy.then(async () => {
+            incoming = shared
             if (note && editing?.id === note.id) return
             await fold()
             await editor.load(); // One glide only, a late editor would move the grid a second time | touch screens never preload it
@@ -106,6 +110,20 @@
             reveal(document.querySelector('.note.open')?.closest<HTMLElement>('[data-flip]'))
         })
     }
+
+    // SHARED FROM ANOTHER APP | waits in the Android app until this page is up
+    function takeShared() {
+        const shared = takeShare()
+        if (!shared) return
+        if (shared.unread) notify('Some of the shared images could not be read.', { type: 'error' })
+        edit(null, undefined, shared)
+    }
+
+    onMount(() => {
+        takeShared()
+        window.addEventListener('notifica-android', takeShared)
+        return () => window.removeEventListener('notifica-android', takeShared)
+    })
 
     // Brings the whole open note into view, its top first when it is taller than the screen
     // The cell already has the size and spot the glide ends with
@@ -446,6 +464,7 @@
                             bind:this={freshNote}
                             note={null}
                             defaults={noteDefaults(filter)}
+                            {incoming}
                             open
                             {closing}
                             {labels}

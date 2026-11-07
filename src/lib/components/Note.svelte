@@ -28,6 +28,7 @@
     import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
     import { confirmNoteRemoval } from '#lib/deletions.ts';
+    import type { SharedNote } from '#lib/android.ts';
     import { kept } from '#lib/note_list.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
     import { notify } from '#lib/notifications.svelte.ts';
@@ -51,6 +52,7 @@
     let {
         note,
         defaults,
+        incoming,
         open = false,
         closing = false,
         labels,
@@ -68,6 +70,7 @@
     }: {
         note: Note | null                                       // null starts a new note, which comes open
         defaults?: Partial<NoteContent>                         // what a new note begins with, like the labels its view asks for
+        incoming?: SharedNote | null                            // shared from another app, saved without a keystroke
         open?: boolean
         closing?: boolean                                       // the controls fade out before the card shrinks
         labels: Label[]
@@ -87,8 +90,8 @@
     // DRAFT | edited freely while open, follows the stored note while closed
     const initial = untrack(() => note)
     let id = $state(initial?.id)
-    let draft = $state<NoteContent>(initial ? contentOf(initial) : { ...emptyNote(), ...untrack(() => defaults) })
-    let saved = $state(untrack(() => JSON.stringify(draft)))
+    let draft = $state<NoteContent>(initial ? contentOf(initial) : { ...emptyNote(), ...untrack(() => defaults), ...untrack(() => incoming?.content) })
+    let saved = $state(untrack(() => incoming ? '' : JSON.stringify(draft)))             // Empty, a shared note has unsaved content from the start
     let savedAt = initial?.updated ?? ''
     let deleted = false
     let root = $state<HTMLElement>()
@@ -225,6 +228,10 @@
             uploads = uploads.filter((upload) => upload.key !== queued[index].key)
         }
     }
+
+    $effect(() => {
+        untrack(() => { if(incoming?.files.length) addImages(incoming.files) })
+    })
 
     async function dropImage(name: string){
         if(!id) return
