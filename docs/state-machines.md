@@ -367,7 +367,7 @@ Sorted by impact. Each groups what one fix covers.
 | [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere) | Saves overwrite changes made elsewhere | Silent data loss | Fixed |
 | [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Fixed |
 | [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Fixed |
-| [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Open |
+| [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Fixed |
 | [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Open |
 | [SM-6](#sm-6-drafts-that-can-never-be-saved) | Drafts that can never be saved | Repeating errors, restores blocked | Open |
 | [SM-7](#sm-7-removals-that-come-back-or-offer-a-dead-undo) | Removals that come back or offer a dead Undo | Wrong screen, false promise | Open |
@@ -439,7 +439,9 @@ So a snooze pressed while a run is going, or an edit in the form, is undone, a o
 
 Related, by reading: a failed log still pushes (a button free notification, and the history misses it). An inactive owner's reminders keep logging. `describeRule` has no bound while `occurrences.rule` allows 200 characters, a reminder with many rules fails the log every time.
 
-**Fix:** not yet. **Test:** not yet.
+**Fix:** each reminder is read again right before it goes off and before it moves on, deleted ones are skipped and a `next` changed meanwhile stands (`movedOn`). A failed log stays due without a push for the hour, an inactive owner's reminder moves on without a log, the rule line is cut to its field. **Test:** `reminders.test.ts`, "a reminder changed during a dispatch run".
+
+**Left as it is:** milliseconds remain between the last read and the write, PocketBase has no conditional update. A snooze has to land exactly there to get lost.
 
 ## SM-5 Logout stuck on an unsaved card
 

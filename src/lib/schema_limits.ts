@@ -22,6 +22,7 @@ export const LIMITS = {
     NOTE_TITLE: 200,
     NOTE_BODY: 20000,
     OCCURRENCE_COMMENT: 500,            // a note on one check in the reminder history
+    OCCURRENCE_RULE: 200,               // the rule line as it read then, many rules run longer
 
     // TEXT => VIEWS
     VIEW_WORDS: 200,                    // words a view looks for or leaves out

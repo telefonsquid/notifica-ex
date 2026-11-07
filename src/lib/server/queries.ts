@@ -173,7 +173,15 @@ export async function leaveNote(id: string, user: string) {
 export async function getDueReminders(now: Date) {
     return run((pb) => {
         const filter = pb.filter('next != "" && next <= {:now}', { now })
-        return pb.collection('reminders').getFullList({ filter, expand: 'note,owner' }) as Promise<Reminder[]>
+        return pb.collection('reminders').getFullList<Pick<Reminder, 'id'>>({ filter, fields: 'id' })
+    })
+}
+
+// As it stands right now, null once deleted
+export async function getReminderNow(id: string) {
+    return run(async (pb) => {
+        const found = await pb.collection('reminders').getList<Reminder>(1, 1, { filter: pb.filter('id = {:id}', { id }), expand: 'note,owner', skipTotal: true })
+        return found.items[0] ?? null
     })
 }
 

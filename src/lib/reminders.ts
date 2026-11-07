@@ -27,6 +27,22 @@ export function parseTimestamp(value: string | undefined | null): Date | null {
 
 
 
+// DISPATCH ====================================================================================================
+
+// Still waiting to go off at this moment
+export function isDue(reminder: { next: string }, now: Date) {
+    const next = parseTimestamp(reminder.next)
+    return !!next && next <= now
+}
+
+// The next time to store once a reminder went off, null leaves the row alone | a run takes minutes, a snooze or edit may have landed meanwhile
+export function movedOn(wentOff: { next: string }, latest: (Rule & { next: string }) | null, now: Date): string | null {
+    if(!latest || latest.next !== wentOff.next) return null
+    return occurrenceAfter(latest, now)?.toISOString() ?? ''
+}
+
+
+
 // RECURRENCE ====================================================================================================
 
 // First time the rule goes off after the given moment, null once it is over

@@ -1,10 +1,45 @@
 import { describe, expect, test } from 'bun:test';
-import { describeRule, firstOccurrence, occurrenceAfter, snoozeUntil } from '#lib/reminders.ts';
+import { describeRule, firstOccurrence, isDue, movedOn, occurrenceAfter, snoozeUntil } from '#lib/reminders.ts';
 
 // Rules as the form stores them, in Berlin unless a test says otherwise
 const rule = (overrides: Partial<Parameters<typeof occurrenceAfter>[0]>) => ({ at: '2026-10-20T07:00:00.000Z', repeat: 'days' as const, every: 1, weekdays: [], until: '', timezone: 'Europe/Berlin', ...overrides })
 const after = (iso: string) => new Date(iso)
 const iso = (date: Date | null) => date?.toISOString() ?? null
+
+
+
+// DISPATCH ====================================================================================================
+describe('a reminder changed during a dispatch run', () => {
+    const now = after('2026-10-20T07:00:30Z')
+    const wentOff = { next: '2026-10-20 07:00:00.000Z' }
+
+    test('moves on when nothing happened meanwhile', () => {
+        expect(movedOn(wentOff, { ...rule({}), ...wentOff }, now)).toBe('2026-10-21T07:00:00.000Z')
+    })
+
+    test('a once reminder finishes', () => {
+        expect(movedOn(wentOff, { ...rule({ repeat: 'never' }), ...wentOff }, now)).toBe('')
+    })
+
+    test('a snooze or edit stands, also on a once reminder', () => {
+        expect(movedOn(wentOff, { ...rule({}), next: '2026-10-20 08:00:00.000Z' }, now)).toBeNull()
+        expect(movedOn(wentOff, { ...rule({ repeat: 'never' }), next: '2026-10-20 08:00:00.000Z' }, now)).toBeNull()
+    })
+
+    test('a deleted one writes nothing', () => {
+        expect(movedOn(wentOff, null, now)).toBeNull()
+    })
+
+    test('a changed rule counts from the new rule', () => {
+        expect(movedOn(wentOff, { ...rule({ every: 2 }), ...wentOff }, now)).toBe('2026-10-22T07:00:00.000Z')
+    })
+
+    test('one moved to later or finished is no longer due', () => {
+        expect(isDue({ next: '2026-10-20 08:00:00.000Z' }, now)).toBe(false)
+        expect(isDue({ next: '' }, now)).toBe(false)
+        expect(isDue(wentOff, now)).toBe(true)
+    })
+})
 
 
 
