@@ -18,6 +18,10 @@ async function currentSubscription() {
     return await registration?.pushManager.getSubscription() ?? null;
 }
 
+export async function browserPushEndpoint() {
+    return (await currentSubscription())?.endpoint;
+}
+
 export async function browserPushOn() {
     return Notification.permission === 'granted' && !!(await currentSubscription());
 }

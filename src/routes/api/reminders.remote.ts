@@ -2,7 +2,7 @@ import { firstOccurrence } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { idSchema, ntfyTopicSchema, pushSubscriptionSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
 import { streamSubject } from '#lib/server/app_stream.ts';
-import { deliver } from '#lib/server/delivery.ts';
+import { deliverTest } from '#lib/server/delivery.ts';
 import { countOpenOccurrences, deleteOne, findOne, getAllOwned, getNoteFor, getOccurrences, getOpenOccurrences, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
@@ -160,17 +160,19 @@ export const setNtfyPaused = command(z.boolean(), async (paused) => {
 
 });
 
-// Tries every way this account gets reminders right now
-export const sendTestReminder = command(async () => {
+const testSchema = z.object({ channel: z.enum(['phone', 'browser', 'ntfy']), endpoint: pushSubscriptionSchema.shape.endpoint.optional() })
+
+export const sendTestReminder = command(testSchema, async ({ channel, endpoint }) => {
 
     const me = signedIn()
 
-    const results = await deliver(me, { id: crypto.randomUUID(), title: 'notifica-ex', message: 'Reminders reach this device.', task: false, cursor: '' })
-    if(!results.length) error(400, 'Turn on a way to get reminders first.')
+    const results = await deliverTest(me, channel, endpoint)
+    if(!results.length) error(400, 'Nothing is listening there right now.')
 
-    const reached = results.filter((result) => result.success).length
-    if(!reached) error(502, results[0].error ?? 'Could not send the test.')
-    return { reached, tried: results.length }
+    const failed = results.find((result) => !result.success)
+    if(failed) error(502, failed.error ?? 'Could not send the test.')
+
+    return true
 
 });
 

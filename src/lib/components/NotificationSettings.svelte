@@ -1,11 +1,12 @@
 <script lang="ts">
     import { PUBLIC_NTFY_URL } from '$app/env/public';
     import { invalidateAll } from '$app/navigation';
-    import { androidApp, browserPushBlocker, browserPushOn, disableBrowserPush, enableBrowserPush } from '#lib/device_notifications.ts';
+    import { androidApp, browserPushBlocker, browserPushEndpoint, browserPushOn, disableBrowserPush, enableBrowserPush } from '#lib/device_notifications.ts';
     import { unfold } from '#lib/motion.ts';
     import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import type { User } from '#lib/schemas.ts';
+    import { tip } from '#lib/tooltip.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
     import Switch from '#lib/ui/Switch.svelte';
     import { Check, Dices, Send } from '@lucide/svelte';
@@ -91,13 +92,13 @@
     }
 
     // TEST
-    let testing = $state(false)
+    let testing = $state<'phone' | 'browser' | 'ntfy' | null>(null)
 
-    async function test() {
-        testing = true
-        const result = await safeAction(sendTestReminder())
-        if(result) notify(`Sent to ${result.reached} of ${result.tried}.`)
-        testing = false
+    async function test(channel: 'phone' | 'browser' | 'ntfy') {
+        testing = channel
+        const endpoint = channel === 'browser' ? await browserPushEndpoint() : undefined
+        if(await safeAction(sendTestReminder({ channel, endpoint }))) notify('Test sent.')
+        testing = null
     }
 </script>
 
@@ -106,6 +107,7 @@
         {#if app}
             <li class="row">
                 <span class="text-ink">This phone</span>
+                {#if phoneOn && phoneAllowed}{@render testButton('phone')}{/if}
                 {#if phoneOn && !phoneAllowed}
                     <Button style="ghost" onclick={() => app?.openNotificationSettings?.()}>Allow</Button>
                 {/if}
@@ -115,6 +117,7 @@
             <li class="row">
                 <span class="text-ink">This browser</span>
                 {#if browserBlocker}<span class="text-ink-faint">{browserBlocker}</span>{/if}
+                {#if browserOn}{@render testButton('browser')}{/if}
                 <Switch checked={browserOn} label="Reminders in this browser" disabled={!!browserBlocker || browserBusy} onchange={setBrowser} />
             </li>
         {/if}
@@ -123,6 +126,7 @@
             <li class="grid bg-card">
                 <div class="row">
                     <span class="text-ink">ntfy</span>
+                    {#if stored && !user.ntfyPaused}{@render testButton('ntfy')}{/if}
                     <Switch checked={ntfyOpen} label="Reminders through ntfy" onchange={setNtfy} />
                 </div>
 
@@ -141,11 +145,11 @@
             </li>
         {/if}
     </ul>
-
-    <div class="flex justify-end">
-        <Button style="secondary" icon={Send} loading={testing} onclick={test}>Send a test</Button>
-    </div>
 </div>
+
+{#snippet testButton(channel: 'phone' | 'browser' | 'ntfy')}
+    <Button style="ghost" class="w-11 px-0!" icon={Send} loading={testing === channel} aria-label="Send a test" onclick={() => test(channel)} {@attach tip('Send a test')} />
+{/snippet}
 
 <style>
     .row {

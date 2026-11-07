@@ -33,6 +33,8 @@ Runs on server and client: `occurrenceAfter()` computes the next occurrence, `pa
 - **Browser**: Web Push through `#lib/server/web_push.ts` to `push_subscriptions`, keys from `PUBLIC_VAPID_KEY` and `VAPID_PRIVATE_KEY`, off while those are empty. `static/push-worker.js` shows them. It registers only once someone turns them on and caches nothing, plain JS since SvelteKit's own service worker build adds a top level import that needs a module worker. A subscription the browser dropped (404, 410) is deleted.
 - **ntfy**: bundled as its own compose service (port 8092), `#lib/server/ntfy.ts` `publish()` to the owner's `ntfyTopic`, unless `ntfyPaused`. The click target is `${ORIGIN}/?note=<id>`, tasks add a Done `http` action.
 
+Each row in Notifications settings has its own test button (`deliverTest()`), a browser tests only itself.
+
 ## Done links
 
 - The signature is an HMAC over the occurrence id with `SERVER_AUTH_SECRET` (`sign(doneSubject(id))`). No login on the phone needed.

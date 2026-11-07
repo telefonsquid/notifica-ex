@@ -10,13 +10,15 @@ const TTL = 12 * 60 * 60
 // Push services want an address to reach the sender, and refuse anything but https or mail
 const subject = ORIGIN?.startsWith('https:') ? ORIGIN : 'mailto:reminders@notifica.invalid'
 
-export async function sendWebPush(user: string, push: Push): Promise<Result<true>[]> {
+// Every browser of the user, or just the one with this endpoint
+export async function sendWebPush(user: string, push: Push, only?: string): Promise<Result<true>[]> {
     if(!PUBLIC_VAPID_KEY || !VAPID_PRIVATE_KEY) return []
 
     const subscriptions = await getAllOwned('push_subscriptions', user)
     if(!subscriptions.success) return [subscriptions]
 
-    return await Promise.all(subscriptions.data.map(async ({ id, endpoint, p256dh, auth }) => {
+    const targets = only ? subscriptions.data.filter(({ endpoint }) => endpoint === only) : subscriptions.data
+    return await Promise.all(targets.map(async ({ id, endpoint, p256dh, auth }) => {
         try {
             await webpush.sendNotification({ endpoint, keys: { p256dh, auth } }, JSON.stringify(push), {
                 TTL,
