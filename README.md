@@ -26,7 +26,7 @@ curl -X POST -H "Authorization: Bearer <SERVER_AUTH_SECRET>" http://localhost:55
 For actual pushes, run an open ntfy on port 8092 and read a topic with `curl "http://localhost:8092/<TOPIC>/json?poll=1"`:
 
 ```bash
-docker run -d --name notifica-ex-ntfy -p 8092:80 binwiederhier/ntfy:v2.11.0 serve
+docker run -d --name notifica-ex-ntfy --restart unless-stopped -p 8092:80 binwiederhier/ntfy:v2.11.0 serve
 ```
 
 Checks: `bun run check` for types, `bun run lint` for eslint, `bun run test` for the unit tests next to the code (`*.test.ts`).
