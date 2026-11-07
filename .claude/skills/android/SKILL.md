@@ -25,6 +25,7 @@ description: The Android app, a Tauri 2 mobile shell in src-tauri that opens the
 - `ReminderNotifier` shows the pushes. A tap opens the note through `MainActivity` (`EXTRA_LINK`), Done posts the signed link from `ActionReceiver`, no login needed. `StartReceiver` restarts the service after a reboot or an app update.
 - `ReminderPrefs` keeps the address, the on switch (default on), the replay cursor and whether permissions were asked.
 - Bridge in `window.NotificaAndroid`: `listen`, `stopListening`, `notificationsOn`, `notificationsAllowed`, `setNotifications`, `openNotificationSettings`, `pendingLink`. `#lib/device_notifications.ts` and `NotificationSettings.svelte` use them. Optional in the types, an older app lacks them. `MainActivity` sends a `notifica-android` window event when permissions may have changed.
+- The switch in settings is stored on the account (`appPaused`), the same row in a browser and in the app. `followAppPause()` in the `(app)` layout brings the phone's own `ReminderPrefs` switch in line on every page load. So turning on from a browser only starts a stopped service once the app next opens, and turning off silences at once on the server while the silent service notification stays until then.
 - The first `listen` asks for the notification permission, then for the battery exemption, once.
 - To test: `adb shell dumpsys activity services ex.notifica.app` shows the service, Send a test in settings should show a notification.
 

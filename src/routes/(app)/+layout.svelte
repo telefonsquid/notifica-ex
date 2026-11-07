@@ -6,7 +6,7 @@
     import { hasShare } from '#lib/android.ts'
     import ReminderHistory from '#lib/components/ReminderHistory.svelte'
     import Rail from '#lib/components/Rail.svelte'
-    import { startDeviceNotifications } from '#lib/device_notifications.ts'
+    import { followAppPause, startDeviceNotifications } from '#lib/device_notifications.ts'
     import { safeAction } from '#lib/pocketbase.ts'
     import { connectRealtime, onRecordChange } from '#lib/realtime.ts'
     import { onDestroy, onMount } from 'svelte'
@@ -20,6 +20,7 @@
 
     // DEVICE NOTIFICATIONS | the Android app gets its stream address, a renewed browser subscription gets told
     onMount(() => { safeAction(startDeviceNotifications(data.user.id)); });
+    $effect(() => followAppPause(!!data.user.appPaused));
 
     // SHARED FROM ANOTHER APP | only the notes page takes it
     function followShare() {

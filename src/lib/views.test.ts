@@ -6,7 +6,7 @@ import { countActive, defaultSort, emptyFilter, groupReminders, matchesView, not
 // A note as pocketbase returns it, with only what a test cares about changed
 const note = (overrides: Partial<Note>): Note => ({
     id: 'n', collectionId: 'c', collectionName: 'notes', created: '2026-10-01 10:00:00.000Z', updated: '2026-10-01 10:00:00.000Z',
-    owner: 'me', shared: [], position: 0, images: [], title: '', body: '', color: '', labels: [], pinned: false, archived: false, ...overrides
+    owner: 'me', shared: [], position: 0, images: [], attachments: [], fileInfo: null, title: '', body: '', color: '', labels: [], pinned: false, archived: false, ...overrides
 })
 
 const reminder = (overrides: Partial<Reminder>): Reminder => ({

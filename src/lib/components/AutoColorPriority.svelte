@@ -38,7 +38,7 @@
     }
 </script>
 
-{#if chart.length}
+{#if chart.length > 1}
     <div class="pt-8" transition:unfold>
         <h3 class="type-meta mb-4 text-ink-faint">Auto color priority</h3>
         <ol class="grid grid-cols-1 gap-1.5 select-none" {@attach sortable(drop)}>

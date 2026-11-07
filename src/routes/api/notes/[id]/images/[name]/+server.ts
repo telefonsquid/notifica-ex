@@ -1,5 +1,5 @@
 import { fileNameSchema, isId } from '#lib/schemas.ts';
-import { fetchNoteImage, getNoteFor } from '#lib/server/queries.ts';
+import { fetchNoteFile, getNoteFor } from '#lib/server/queries.ts';
 import { restrictAccess } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
 
@@ -18,7 +18,7 @@ export async function GET({ params, url, locals }) {
     if(!note.success || !note.data.images.includes(params.name)) error(404, 'Image not found.')
 
     // STREAM | names never get reused, so the browser may keep it for good
-    const file = await fetchNoteImage(params.id, params.name, thumb)
+    const file = await fetchNoteFile(params.id, params.name, thumb)
     if(!file.ok || !file.body) error(file.status === 404 ? 404 : 502, 'Could not load the image.')
 
     return new Response(file.body, {

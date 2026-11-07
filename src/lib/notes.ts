@@ -157,9 +157,9 @@ export function formatDistance(value: string, now: number): string {
 }
 
 // A closed card's height before it was ever on screen | a rough guess is enough, the real one replaces it long before it shows
-export function estimatedHeight(note: Pick<Note, 'title' | 'body' | 'images'>): number {
+export function estimatedHeight(note: Pick<Note, 'title' | 'body' | 'images'> & Partial<Pick<Note, 'attachments'>>): number {
     const lines = note.body.split('\n').reduce((sum, line) => sum + Math.max(1, Math.ceil(line.length / 40)), 0)
-    return 48 + (note.title ? 28 : 0) + (note.body ? Math.min(lines, 12) * 22 : 0) + (note.images?.length ? 180 : 0)
+    return 48 + (note.title ? 28 : 0) + (note.body ? Math.min(lines, 12) * 22 : 0) + (note.images?.length ? 180 : 0) + (note.attachments?.length ? 28 : 0)
 }
 
 // A task with times that went off but were not checked off yet

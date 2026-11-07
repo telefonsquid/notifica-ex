@@ -19,12 +19,16 @@
 
 <script lang="ts">
     import { beforeNavigate, goto } from '$app/navigation';
+    import { page } from '$app/state';
+    import { uploadAttachment } from '#lib/attachments.ts';
     import ColorPicker from '#lib/components/ColorPicker.svelte';
     import ReminderList from '#lib/components/ReminderList.svelte';
+    import NoteAttachments from '#lib/components/NoteAttachments.svelte';
     import NoteImages from '#lib/components/NoteImages.svelte';
     import NoteTabs from '#lib/components/NoteTabs.svelte';
     import ShareEditor from '#lib/components/ShareEditor.svelte';
     import { IMAGE_TYPES, imagesIn, shrink, uploadImage } from '#lib/images.ts';
+    import { DEFAULT_LIMITS, formatBytes, type FileInfo } from '#lib/limits.ts';
     import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
     import { offerArchiveUndo, removeNotes } from '#lib/deletions.ts';
@@ -40,9 +44,9 @@
     import { serverStatus } from '#lib/singletons/server_status.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pin, Trash2 } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Paperclip, Pin, Trash2 } from '@lucide/svelte';
     import { untrack } from 'svelte';
-    import { createNote, removeImage, shareNote, updateNote } from '../../routes/api/notes.remote';
+    import { createNote, removeAttachment, removeImage, shareNote, updateNote } from '../../routes/api/notes.remote';
 
     /*
         One note, closed as a card in the grid or open for editing. Opening keeps every element
@@ -238,22 +242,31 @@
         if(open) loadEditor()
     })
 
-    // IMAGES AND PEOPLE | stored apart from the draft, uploads show as local previews until they're through
+    // FILES AND PEOPLE | stored apart from the draft, uploads show as local previews or rows until they're through
+    let limits = $derived(page.data.limits ?? DEFAULT_LIMITS)
     let images = $state(initial?.images ?? [])
+    let attachments = $state(initial?.attachments ?? [])
+    let fileInfo = $state.raw<FileInfo | null>(initial?.fileInfo ?? null)
     let shared = $state(initial?.shared ?? [])
     let extrasAt = initial?.updated ?? ''
     let uploads = $state<{ key: string, url: string }[]>([])
+    let sending = $state<{ key: string, name: string, bytes: number, share: number }[]>([])
     let picker = $state<HTMLInputElement>()
+    let filePicker = $state<HTMLInputElement>()
 
     // A copy older than the last change made here is stale
     $effect.pre(() => {
         if(!note || note.updated < extrasAt) return
         if(!uploads.length) images = note.images ?? []
+        if(!sending.length) attachments = note.attachments ?? []
+        if(!uploads.length && !sending.length) fileInfo = note.fileInfo ?? null
         shared = note.shared ?? []
     })
 
     function stored(result: Note){
         images = result.images
+        attachments = result.attachments
+        fileInfo = result.fileInfo
         shared = result.shared
         extrasAt = result.updated
     }
@@ -269,7 +282,7 @@
 
         const noteId = await save(true)
         for(const [index, file] of files.entries()){
-            const result = noteId && await safeAction(shrink(file).then((small) => uploadImage(noteId, small)))
+            const result = noteId && await safeAction(shrink(file).then((small) => uploadImage(noteId, small, limits.imageBytes)))
             if(result) stored(result)
             URL.revokeObjectURL(queued[index].url)
             uploads = uploads.filter((upload) => upload.key !== queued[index].key)
@@ -287,6 +300,38 @@
         if(result) stored(result)
     }
 
+    // Too large ones get named and left out, the rest goes up one after the other
+    async function addAttachments(files: File[]){
+        const room = LIMITS.NOTE_ATTACHMENTS - attachments.length - sending.length
+        if(files.length > room) notify(`A note holds at most ${LIMITS.NOTE_ATTACHMENTS} files.`, { type: 'error' })
+        const { attachmentBytes } = limits
+        for(const file of files.slice(0, Math.max(room, 0))){
+            if(file.size > attachmentBytes) notify(`${file.name} is larger than ${formatBytes(attachmentBytes)}.`, { type: 'error' })
+        }
+        const fitting = files.slice(0, Math.max(room, 0)).filter((file) => file.size <= attachmentBytes)
+        if(!fitting.length) return
+
+        const queued = fitting.map((file) => ({ key: crypto.randomUUID(), name: file.name, bytes: file.size, share: 0 }))
+        sending = [...sending, ...queued]
+
+        const noteId = await save(true)
+        for(const [index, file] of fitting.entries()){
+            const { key } = queued[index]
+            const result = noteId && await safeAction(uploadAttachment(noteId, file, (share) => {
+                sending = sending.map((entry) => entry.key === key ? { ...entry, share } : entry)
+            }))
+            if(result) stored(result)
+            sending = sending.filter((entry) => entry.key !== key)
+        }
+    }
+
+    async function dropAttachment(name: string){
+        if(!id) return
+        attachments = attachments.filter((attachment) => attachment !== name)
+        const result = await safeAction(kept(removeAttachment({ id, name })))
+        if(result) stored(result)
+    }
+
     // SHARING | the owner picks who else sees the note, the others see whose it is
     let owned = $derived(!note || note.owner === me)
     let names = $derived(new Map(people.map((person) => [person.id, person.name])))
@@ -301,12 +346,16 @@
     }
 
     // Pasted or dropped onto the open note | caught before the editor, which would ignore them or paste a file name
-    function catchImages(event: Event, list?: FileList | null){
-        const files = imagesIn(list)
-        if(!open || !files.length) return
+    function catchFiles(event: Event, list?: FileList | null){
+        const files = [...list ?? []]
+        const pictures = imagesIn(files)
+        const others = limits.attachments ? files.filter((file) => !pictures.includes(file)) : []
+        if(!open || (!pictures.length && !others.length)) return
+
         event.preventDefault()
         event.stopPropagation()
-        addImages(files)
+        if(pictures.length) addImages(pictures)
+        if(others.length) addAttachments(others)
     }
 
     function dragOver(event: DragEvent){
@@ -424,6 +473,11 @@
     <button class="icon-button" aria-label="Add images" onclick={() => picker?.click()} {@attach tip('Add images')}>
         <ImagePlus class="size-4" />
     </button>
+    {#if limits.attachments}
+        <button class="icon-button" aria-label="Attach files" onclick={() => filePicker?.click()} {@attach tip('Attach files')}>
+            <Paperclip class="size-4" />
+        </button>
+    {/if}
     {#if owned}
         <ShareEditor people={people.filter((person) => person.id !== me)} {shared} onchange={share} />
     {/if}
@@ -457,18 +511,22 @@
         data-note={shown || undefined}
         aria-label={open ? (id ? 'Edit note' : 'New note') : undefined}
         {@attach longPress(() => !open, () => onlongpress?.())}
-        onpastecapture={(event) => catchImages(event, event.clipboardData?.files)}
+        onpastecapture={(event) => catchFiles(event, event.clipboardData?.files)}
         ondragovercapture={dragOver}
-        ondropcapture={(event) => catchImages(event, event.dataTransfer?.files)}
+        ondropcapture={(event) => catchFiles(event, event.dataTransfer?.files)}
     >
         {#if !open}
             <button class="cover absolute inset-0 rounded-card" aria-label={`Open ${draft.title || 'note'}`} aria-pressed={selected || undefined} onpointerenter={loadEditor} onfocus={loadEditor} onclick={onopen}></button>
         {/if}
 
-        <!-- IMAGES | on top, edge to edge, the picker sits hidden for the button among the actions -->
-        <NoteImages note={id} {images} {uploads} editable={open} alone={!open && !draft.title && !draft.body && !draft.pinned && !reminders.length} onremove={dropImage} />
+        <!-- IMAGES | on top, edge to edge, the pickers sit hidden for the buttons among the actions -->
+        <NoteImages note={id} {images} {uploads} editable={open} alone={!open && !draft.title && !draft.body && !draft.pinned && !reminders.length && !attachments.length} onremove={dropImage} />
         <input bind:this={picker} type="file" accept={IMAGE_TYPES.join(',')} multiple hidden onchange={(event) => {
             addImages(imagesIn(event.currentTarget.files))
+            event.currentTarget.value = ''
+        }} />
+        <input bind:this={filePicker} type="file" multiple hidden onchange={(event) => {
+            addAttachments([...event.currentTarget.files ?? []])
             event.currentTarget.value = ''
         }} />
 
@@ -535,6 +593,11 @@
                     {/if}
                 {/if}
             </div>
+        {/if}
+
+        <!-- ATTACHMENTS -->
+        {#if attachments.length || sending.length}
+            <NoteAttachments note={id} {attachments} {fileInfo} {sending} {open} onremove={dropAttachment} />
         {/if}
 
         <!-- ACTIONS | their own row below the text while the note is narrow -->

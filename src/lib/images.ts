@@ -1,5 +1,5 @@
 import { resolve } from '$app/paths';
-import { LIMITS } from '#lib/schema_limits.ts';
+import { formatBytes } from '#lib/limits.ts';
 import type { Note } from '#lib/schemas.ts';
 
 // URLS ====================================================================================================
@@ -48,8 +48,8 @@ export async function shrink(file: File): Promise<File> {
 }
 
 // One file per request keeps each one well below the server's body limit
-export async function uploadImage(note: string, file: File): Promise<Note> {
-    if(file.size > LIMITS.IMAGE_BYTES) throw new Error(`${file.name} is larger than ${LIMITS.IMAGE_BYTES / 1024 / 1024} MB.`)
+export async function uploadImage(note: string, file: File, maxBytes: number): Promise<Note> {
+    if(file.size > maxBytes) throw new Error(`${file.name} is larger than ${formatBytes(maxBytes)}.`)
 
     const form = new FormData()
     form.append('images', file)

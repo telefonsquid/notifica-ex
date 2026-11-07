@@ -57,6 +57,12 @@ export function androidApp() {
     return window.NotificaAndroid?.listen ? window.NotificaAndroid : null;
 }
 
+// The account's switch can change from a browser, the phone's service follows it
+export function followAppPause(paused: boolean) {
+    const app = androidApp();
+    if(app?.notificationsOn?.() === paused) app.setNotifications?.(!paused);
+}
+
 // EVERY START ================================================================================================
 // The app connects itself once it knows the address | browsers can renew a subscription on their own
 export async function startDeviceNotifications(user: string) {

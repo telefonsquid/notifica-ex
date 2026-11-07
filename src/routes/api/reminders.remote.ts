@@ -156,7 +156,17 @@ export const setNtfyPaused = command(z.boolean(), async (paused) => {
 
     const me = signedIn()
     unwrap(await updateOnePartial('users', me.id, { ntfyPaused: paused }), 'Could not save the setting.')
-    return paused
+    return true
+
+});
+
+// Holds for the whole account, so a browser can silence the phones too
+export const setAppPaused = command(z.boolean(), async (paused) => {
+
+    const me = signedIn()
+    const changes = paused ? { appPaused: true } : { appPaused: false, appResumed: new Date().toISOString() }
+    unwrap(await updateOnePartial('users', me.id, changes), 'Could not save the setting.')
+    return true
 
 });
 

@@ -13,7 +13,7 @@
     class={['icon-button', label.autoColor && 'bg-accent-soft text-ink']}
     aria-label={`Auto color notes with ${label.name}`}
     aria-pressed={label.autoColor}
-    {@attach tip(label.autoColor ? 'Colors its notes' : 'Color its notes')}
+    {@attach tip('Auto color')}
     onclick={() => safeAction(updateLabel({ id: label.id, autoColor: !label.autoColor }))}
 >
     <PaintBucket class="size-4" />

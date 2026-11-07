@@ -17,6 +17,7 @@ export const LIMITS = {
     PUSH_ENDPOINT: 1024,                // address a browser hands out for web push
     PUSH_KEY: 256,                      // keys of a web push subscription
     FILE_NAME: 128,                     // pocketbase stores a sanitized name plus a random suffix
+    ATTACHMENT_NAME: 200,               // the name an attachment came with
     TIMEZONE: 64,                       // iana zone name like America/Argentina/Buenos_Aires
 
     // TEXT => NOTES
@@ -32,6 +33,7 @@ export const LIMITS = {
     // COLLECTION SIZES
     NOTE_LABELS: 50,
     NOTE_IMAGES: 12,                    // matches maxSelect of the images field
+    NOTE_ATTACHMENTS: 20,               // matches maxSelect of the attachments field
     NOTE_SHARES: 20,                    // matches maxSelect of the shared field
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them
@@ -42,7 +44,8 @@ export const LIMITS = {
     REMINDER_RULES: 20,                 // only and except limits on one reminder
     VIEW_AMOUNT: 999,                   // days, weeks or months a date filter reaches back or ahead
     NOTE_POSITION: 1e15,                // a timestamp in ms or between two of them
-    IMAGE_BYTES: 15 * 1024 * 1024,      // one uploaded image, matches maxSize of the images field
+    UPLOAD_BYTES: 100 * 1024 * 1024,    // most any one file may be, matches maxSize of both file fields and BODY_SIZE_LIMIT
+    STORAGE_BYTES: 100 * 1024 ** 4,     // most an admin can grant one account
 
 } as const;
 

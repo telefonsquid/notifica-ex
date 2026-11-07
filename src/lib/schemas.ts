@@ -1,3 +1,4 @@
+import type { FileInfo, FileLimits, LimitOverrides } from '#lib/limits.ts';
 import { NOTE_COLORS } from '#lib/note_colors.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import type { RecordAuthResponse } from 'pocketbase';
@@ -32,6 +33,7 @@ export type CollectionMap = {
     'occurrences': Occurrence;
     'views': View;
     'push_subscriptions': PushSubscriptionRecord;
+    'app_settings': AppSettings;
     '_superusers': RecordAuthResponse<RecordModel>;
 }
 
@@ -63,6 +65,30 @@ export type Migration = RecordModel & {
     version: string; // app release this migration belongs to
     completed: boolean;
 }
+
+
+
+// TYPES => FILE LIMITS =============================================
+const uploadBytesSchema = z.number().int().min(1024 * 1024, 'A size limit must be at least 1 MB.').max(LIMITS.UPLOAD_BYTES, 'A file must not be larger than 100 MB.');
+const storageBytesSchema = z.number().int().min(0).max(LIMITS.STORAGE_BYTES);
+
+export const defaultLimitChangesSchema = z.object({
+    attachments: z.boolean(),
+    attachmentBytes: uploadBytesSchema,
+    imageBytes: uploadBytesSchema,
+    storageBytes: storageBytesSchema
+}).partial();
+
+// Null hands that limit back to the default
+export const userLimitChangesSchema = z.object({
+    attachments: z.boolean().nullable(),
+    attachmentBytes: uploadBytesSchema.nullable(),
+    imageBytes: uploadBytesSchema.nullable(),
+    storageBytes: storageBytesSchema.nullable()
+}).partial();
+
+// The one record holding what an admin set for everyone
+export type AppSettings = RecordModel & { limits: Partial<FileLimits> | null }
 
 
 
@@ -100,6 +126,9 @@ export type User = RecordModel & z.infer<typeof userInputSchema> & {
     'tokenKey:autogenerate'?: string;
     ntfyTopic?: string;
     ntfyPaused?: boolean;
+    appPaused?: boolean;
+    appResumed?: string;        // what the phones missed before this stays missed
+    limits?: LimitOverrides | null;
     streamEpoch?: number;
 }
 
@@ -172,6 +201,8 @@ export type Note = RecordModel & NoteContent & {
     owner: string;
     position: number; // order in a manual sort
     images: string[]; // uploaded through /api/notes/[id]/images, never part of a draft
+    attachments: string[]; // uploaded through /api/notes/[id]/attachments, likewise
+    fileInfo: FileInfo | null; // Sizes of both, what storage limits count
     shared: string[]; // people who may see and edit it besides the owner
 }
 

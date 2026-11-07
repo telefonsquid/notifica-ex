@@ -1,7 +1,8 @@
 import z from 'zod';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { fileNameSchema, idSchema, noteContentSchema, notePositionSchema, type Note } from '#lib/schemas.ts';
-import { addNoteImages, deleteOne, deleteRemindersOn, fetchNoteImage, getAll, getAllNotesFor, getAllOwned, getNoteFor, getOwned, insertOnePartial, leaveNote as leave, removeNoteImage, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { duplicateWithFiles, removeNoteFile } from '#lib/server/note_files.ts';
+import { deleteOne, deleteRemindersOn, getAll, getAllNotesFor, getAllOwned, getNoteFor, getOwned, insertOnePartial, leaveNote as leave, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
 import { error } from '@sveltejs/kit';
@@ -31,22 +32,9 @@ export const duplicateNote = command(idSchema, async (id) => {
     const me = signedIn()
     const stored = unwrap(await getNoteFor(id, me.id), 'Note not found.')
 
-    // COPY THE CONTENT
     const { title, body, color, pinned, archived } = stored
     const labels = await ownLabels(me.id, stored.labels)
-    let note = unwrap(await insertOnePartial('notes', { title, body, color, pinned, archived, labels, owner: me.id }), 'Could not duplicate the note.')
-
-    // COPY THE IMAGES | pocketbase appends a fresh suffix, so the old one is dropped first
-    if(stored.images.length){
-        const files = await Promise.all(stored.images.map(async (name) => {
-            const response = await fetchNoteImage(stored.id, name)
-            if(!response.ok) error(502, 'Could not copy the images.')
-            return new File([await response.blob()], name.replace(/_[a-z0-9]{10}(?=\.\w+$)/i, ''), { type: response.headers.get('content-type') ?? undefined })
-        }))
-        note = unwrap(await addNoteImages(note.id, files), 'Could not copy the images.')
-    }
-
-    return note
+    return await duplicateWithFiles(stored, { title, body, color, pinned, archived, labels, owner: me.id })
 
 });
 
@@ -82,8 +70,17 @@ export const moveNote = command(z.object({ id: idSchema, position: notePositionS
 export const removeImage = command(z.object({ id: idSchema, name: fileNameSchema }), async ({ id, name }) => {
 
     const me = signedIn()
-    unwrap(await getNoteFor(id, me.id), 'Note not found.')
-    return unwrap(await removeNoteImage(id, name), 'Could not remove the image.')
+    const note = unwrap(await getNoteFor(id, me.id), 'Note not found.')
+    return await removeNoteFile(note, 'images', name)
+
+});
+
+// Adding goes through POST /api/notes/[id]/attachments | stays possible with attachments turned off, to free storage
+export const removeAttachment = command(z.object({ id: idSchema, name: fileNameSchema }), async ({ id, name }) => {
+
+    const me = signedIn()
+    const note = unwrap(await getNoteFor(id, me.id), 'Note not found.')
+    return await removeNoteFile(note, 'attachments', name)
 
 });
 

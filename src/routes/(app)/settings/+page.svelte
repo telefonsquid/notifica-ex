@@ -1,6 +1,7 @@
 <script lang="ts">
     import { invalidateAll } from '$app/navigation'
     import { page } from '$app/state'
+    import Administration from '#lib/components/Administration.svelte'
     import AutoColorPriority from '#lib/components/AutoColorPriority.svelte'
     import AutoColorToggle from '#lib/components/AutoColorToggle.svelte'
     import ColorPicker from '#lib/components/ColorPicker.svelte'
@@ -22,7 +23,7 @@
     import { hasPermission } from '#lib/user.ts'
     import Button from '#lib/ui/Button.svelte'
     import InlineInput from '#lib/ui/InlineInput.svelte'
-    import { Bell, Check, CircleUserRound, KeyRound, Palette, PanelsTopLeft, Server, Tag, Trash2, Users } from '@lucide/svelte'
+    import { Bell, Check, CircleUserRound, KeyRound, Palette, PanelsTopLeft, Server, ShieldCheck, Tag, Trash2, Users } from '@lucide/svelte'
     import { onMount, untrack } from 'svelte'
     import { unfold } from '#lib/motion.ts'
     import { getLabels, updateLabel } from '../../api/labels.remote'
@@ -57,7 +58,8 @@
         { id: 'labels', label: 'Labels', icon: Tag },
         { id: 'notifications', label: 'Notifications', icon: Bell },
         { id: 'account', label: 'Account', icon: CircleUserRound },
-        { id: 'users', label: 'Users', icon: Users, admin: true }
+        { id: 'users', label: 'Users', icon: Users, admin: true },
+        { id: 'administration', label: 'Administration', icon: ShieldCheck, admin: true }
     ] as const
 
     type Tab = (typeof SECTIONS)[number]['id']
@@ -290,10 +292,13 @@
         </form>
     </SettingsSection>
 
-    <!-- USERS -->
+    <!-- USERS AND ADMINISTRATION -->
     {#if hasPermission(data.user, 'admin')}
     <SettingsSection {...stop('users')}>
         <UserAdmin userId={data.user.id} />
+    </SettingsSection>
+    <SettingsSection {...stop('administration')}>
+        <Administration />
     </SettingsSection>
     {/if}
 

@@ -95,8 +95,11 @@ export function sortable(commit: (from: number, to: number) => void) {
             const y = Math.min(Math.max(moved, tops[0] - tops[from]), bottoms[last] - bottoms[from])
             item.style.translate = `0 ${y}px`
 
-            const middle = (tops[from] + bottoms[from]) / 2 + y
-            const to = items.filter((row, index) => row !== item && (tops[index] + bottoms[index]) / 2 < middle).length
+            // A row gives way once the leading edge passes its middle, so the list's ends stay reachable when clamped
+            const middle = (index: number) => (tops[index] + bottoms[index]) / 2
+            const passedBelow = items.filter((_, index) => index > from && bottoms[from] + y > middle(index)).length
+            const passedAbove = items.filter((_, index) => index < from && tops[from] + y < middle(index)).length
+            const to = from + passedBelow - passedAbove
             if(to === drag.to) return
 
             drag.to = to

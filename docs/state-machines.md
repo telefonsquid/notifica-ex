@@ -29,7 +29,7 @@ Implicit, in `src/lib/components/Note.svelte`. Held by `open` (prop), `id`, `dra
 | Dirty | `draft` differs from `saved`, a save is due within 900 ms or waits for the server |
 | Saving | A run in `queue` is out |
 | Rejected | The server refused the last save, `draft` still differs |
-| Gone | `deleted` is set, nothing is sent any more, `save()` answers null so archive, delete, share and images stop there |
+| Gone | `deleted` is set, nothing is sent any more, `save()` answers null so archive, delete, share, images and attachments stop there |
 
 Invariants:
 

@@ -84,7 +84,7 @@ Task reminders carry a Done button that calls back into the app, so `ORIGIN` mus
 
 ### 4. Routing
 
-Put web, PocketBase and ntfy behind a reverse proxy with TLS, and make sure `ORIGIN`, `PUBLIC_POCKETBASE_URL`, `NTFY_BASE_URL` and `PUBLIC_NTFY_URL` match the public addresses. The app keeps every screen live over PocketBase realtime (server sent events), and the Android app holds a stream open to web, so the proxy must not buffer either. With nginx:
+Put web, PocketBase and ntfy behind a reverse proxy with TLS, and make sure `ORIGIN`, `PUBLIC_POCKETBASE_URL`, `NTFY_BASE_URL` and `PUBLIC_NTFY_URL` match the public addresses. The app keeps every screen live over PocketBase realtime (server sent events), and the Android app holds a stream open to web, so the proxy must not buffer either. File attachments go up to 100 MB, so its body limit has to allow that too (`client_max_body_size 101m;` in nginx). With nginx:
 
 ```nginx
 location / {

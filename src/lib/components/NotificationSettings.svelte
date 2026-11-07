@@ -11,7 +11,7 @@
     import Switch from '#lib/ui/Switch.svelte';
     import { Check, Dices, Send } from '@lucide/svelte';
     import { onMount, untrack } from 'svelte';
-    import { sendTestReminder, setNtfyPaused, setNtfyTopic } from '../../routes/api/reminders.remote';
+    import { sendTestReminder, setAppPaused, setNtfyPaused, setNtfyTopic } from '../../routes/api/reminders.remote';
 
     // PROPS
     let { user }: { user: User } = $props()
@@ -20,7 +20,7 @@
     let app = $state<ReturnType<typeof androidApp>>(null)
     let mounted = $state(false)
 
-    let phoneOn = $state(false)
+    let phoneOn = $derived(!user.appPaused)     // Stored on the account, so a browser switches the phones too
     let phoneAllowed = $state(true)
 
     let browserBlocker = $state<string | null>(null)
@@ -28,7 +28,6 @@
     let browserBusy = $state(false)
 
     function readPhone(){
-        phoneOn = app?.notificationsOn?.() ?? false
         phoneAllowed = app?.notificationsAllowed?.() ?? true
     }
 
@@ -45,9 +44,10 @@
         if(!browserBlocker) browserPushOn().then((on) => browserOn = on)
     })
 
-    function setPhone(on: boolean){
-        app?.setNotifications?.(on)
+    async function setPhone(on: boolean){
         phoneOn = on
+        if(await safeAction(setAppPaused(!on))) await invalidateAll()
+        else phoneOn = !on
     }
 
     async function setBrowser(on: boolean){
@@ -104,16 +104,15 @@
 
 <div class="grid gap-4">
     <ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
-        {#if app}
-            <li class="row">
-                <span class="text-ink">This phone</span>
-                {#if phoneOn && phoneAllowed}{@render testButton('phone')}{/if}
-                {#if phoneOn && !phoneAllowed}
-                    <Button style="ghost" onclick={() => app?.openNotificationSettings?.()}>Allow</Button>
-                {/if}
-                <Switch checked={phoneOn} label="Reminders on this phone" onchange={setPhone} />
-            </li>
-        {:else if mounted}
+        <li class="row">
+            <span class="text-ink">Android app</span>
+            {#if phoneOn && phoneAllowed}{@render testButton('phone')}{/if}
+            {#if phoneOn && !phoneAllowed}
+                <Button style="ghost" onclick={() => app?.openNotificationSettings?.()}>Allow</Button>
+            {/if}
+            <Switch checked={phoneOn} label="Reminders in the Android app" onchange={setPhone} />
+        </li>
+        {#if mounted && !app}
             <li class="row">
                 <span class="text-ink">This browser</span>
                 {#if browserBlocker}<span class="text-ink-faint">{browserBlocker}</span>{/if}

@@ -61,6 +61,7 @@ export async function deliverTest(user: User, channel: 'phone' | 'browser' | 'nt
 }
 
 function toPhones(user: User, push: Push): Result<true>[] {
+    if(user.appPaused) return []
     return Array.from({ length: broadcast(user.id, push) }, () => ({ success: true as const, data: true as const, error: null }))
 }
 

@@ -1,7 +1,7 @@
 import { dev } from '$app/env';
 import * as env from '$app/env/private';
 import type { CollectionMap } from '#lib/schemas.ts';
-import { findOne, getCollection, importCollections, insertOnePartial, unwrap, updateCollection, updateSettings } from '#lib/server/queries.ts';
+import { fetchNoteFile, findOne, getAll, getCollection, importCollections, insertOnePartial, unwrap, updateCollection, updateOnePartial, updateSettings } from '#lib/server/queries.ts';
 import type { CollectionModel } from 'pocketbase';
 import pbSchema from '../../../pocketbase/pb_schema.json';
 
@@ -18,6 +18,7 @@ export async function bootstrap(){ // setup for a fresh pocketbase install
     else if(dev){
         await createSchema() // no versioned migrations before the first release, local dev follows pb_schema.json
         await dropRetiredFields()
+        await fillFileSizes()
     }
 
     // CREATE REQUIRED DATABASE ENTRIES
@@ -45,6 +46,22 @@ async function dropRetiredFields(){
         const fields = existing.fields.filter((field) => kept.has(field.name))
         if(fields.length === existing.fields.length){ continue }
         unwrap(await updateCollection(collection.name, { fields }))
+    }
+}
+
+// Dev one off, images from before storage limits have no size on record | delete once every dev database ran it
+async function fillFileSizes(){
+    for(const note of unwrap(await getAll('notes', { fields: 'id,images,fileInfo' }))){
+        const missing = note.images.filter((name) => !note.fileInfo?.[name])
+        if(!missing.length){ continue }
+
+        const fileInfo = { ...note.fileInfo }
+        for(const name of missing){
+            const file = await fetchNoteFile(note.id, name)
+            await file.body?.cancel()
+            fileInfo[name] = { bytes: Number(file.headers.get('content-length')) || 0 }
+        }
+        unwrap(await updateOnePartial('notes', note.id, { fileInfo }))
     }
 }
 

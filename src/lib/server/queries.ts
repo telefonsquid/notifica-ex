@@ -1,4 +1,5 @@
 import { getRequestEvent } from '$app/server';
+import type { FileInfo } from '#lib/limits.ts';
 import type { CollectionMap, FetchOptions, Occurrence, Reminder } from '#lib/schemas.ts';
 import { isOutage, outage } from '#lib/server/outage.ts';
 import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
@@ -218,10 +219,10 @@ export async function countOpenOccurrences(reminder: string) {
     })
 }
 
-// IMAGES | the files are protected, so every fetch needs a short lived token
+// NOTE FILES | protected, so every fetch needs a short lived token
 let fileToken: { value: string, expires: number } | null = null
 
-export async function fetchNoteImage(id: string, name: string, thumb?: string) {
+export async function fetchNoteFile(id: string, name: string, thumb?: string) {
     const pb = await getPbAdminConnection()
     if(!fileToken || fileToken.expires < Date.now()){
         fileToken = { value: await pb.files.getToken(), expires: Date.now() + 60_000 } // pocketbase keeps it valid for a few minutes
@@ -234,14 +235,14 @@ export async function fetchNoteImage(id: string, name: string, thumb?: string) {
 }
 
 // Appends to what the note already holds
-export async function addNoteImages(id: string, files: File[]) {
+export async function appendNoteFile(id: string, field: 'images' | 'attachments', file: File) {
     const form = new FormData()
-    files.forEach((file) => form.append('images+', file))
+    form.append(`${field}+`, file)
     return run((pb) => pb.collection('notes').update(id, form) as Promise<CollectionMap['notes']>)
 }
 
-export async function removeNoteImage(id: string, name: string) {
-    return run((pb) => pb.collection('notes').update(id, { 'images-': [name] }) as Promise<CollectionMap['notes']>)
+export async function dropNoteFile(id: string, field: 'images' | 'attachments', name: string, fileInfo: FileInfo) {
+    return run((pb) => pb.collection('notes').update(id, { [`${field}-`]: [name], fileInfo }) as Promise<CollectionMap['notes']>)
 }
 
 // Sends the set password mail, the same one invites use

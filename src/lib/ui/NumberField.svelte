@@ -8,17 +8,20 @@
         min = 1,
         max = 999,
         label,
-        class: className = ''
+        class: className = '',
+        onchange
     }: {
         value?: number
         min?: number
         max?: number
         label: string
         class?: ClassValue
+        onchange?: (value: number) => void      // an arrow or leaving the field, not every keystroke
     } = $props()
 
     function step(by: number){
         value = Math.min(max, Math.max(min, (Number(value) || min) + by))
+        onchange?.(value)
     }
 
     // A cleared or out of range field falls back once it loses focus

@@ -11,13 +11,14 @@ Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas.ts` holds zod for wha
 
 | Collection | Fields | List/view rule |
 |---|---|---|
-| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it) | own record, admins all (names for sharing come from `getPeople()` on the server) |
+| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it), appPaused, appResumed (phone reminders, see the `reminders` skill), limits (json, per user overrides) | own record, admins all (names for sharing come from `getPeople()` on the server) |
 | `labels` | owner, name, color, autoColor, colorPriority (order in the auto color chart, lowest first) | owner |
-| `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images (protected file), shared (users, max 20) | `owner = @request.auth.id \|\| shared.id ?= @request.auth.id` (a multi relation needs `.id ?=`, plain `?=` silently matches nothing) |
+| `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images and attachments (protected files), fileInfo (json, original name and size per file), shared (users, max 20) | `owner = @request.auth.id \|\| shared.id ?= @request.auth.id` (a multi relation needs `.id ?=`, plain `?=` silently matches nothing) |
 | `reminders` | note, owner, at, repeat, weekdays, until, every, timezone, task, next, open | owner, so a collaborator's reminders stay private |
 | `occurrences` | owner, note, reminder, at, rule, timezone, task, done, comment | owner, the reminder history |
 | `views` | owner, name, icon (lucide name, text), position, filter (json), sort (json) | owner |
 | `push_subscriptions` | owner, endpoint (unique), p256dh, auth | superuser only, one per browser |
+| `app_settings` | limits (json, server defaults, one row, none until first changed) | superuser only |
 | `migrations` | bookkeeping | superuser only |
 
 Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
@@ -31,7 +32,7 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 ## Sharing
 
 - The owner picks people in `ShareEditor`, stored in `notes.shared`.
-- Collaborators edit title, body, colour and images and add their own reminders. Pin, archive, labels, manual order and delete stay with the owner, the server strips those fields from a collaborator's update.
+- Collaborators edit title, body, colour, images and attachments and add their own reminders. Pin, archive, labels, manual order and delete stay with the owner, the server strips those fields from a collaborator's update.
 - For a collaborator, delete becomes `leaveNote` (removes them from `shared`). Duplicating someone else's note drops their labels.
 - Leaving, or being taken off a note, deletes that person's reminders on it (`deleteRemindersOn`), and dispatch drops any reminder whose owner lost the note. Their history stays.
 - UI: `owned = note.owner === me` decides which actions show.
@@ -41,6 +42,14 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 - Protected `images` file field, since PocketBase is public for realtime.
 - Upload through `POST /api/notes/[id]/images`, one file per request (files don't fit remote functions, `BODY_SIZE_LIMIT` raised in the Dockerfile). `shrink()` turns big photos into WebP in the browser first.
 - Served through `/api/notes/[id]/images/[name]`, which checks access with `getNoteFor` and fetches with a file token. Names never repeat, so it caches immutable.
+
+## Attachments and limits
+
+- Protected `attachments` file field, same shape as images: `POST /api/notes/[id]/attachments`, one file per request, served through `/api/notes/[id]/attachments/[name]` as a forced download (`nosniff`, octet stream, original name from `fileInfo`).
+- `#lib/server/limits.ts` resolves `limitsFor(user)`: the user's overrides over `app_settings` over `DEFAULT_LIMITS` (`#lib/limits.ts`). The browser gets them as `page.data.limits` to refuse early, the routes check again.
+- On/off and per file size follow the uploader, storage the note's owner, so a collaborator spends the owner's quota. Usage is summed from `fileInfo`, deleting a note frees it, duplicating charges the copy.
+- Administration settings go through `administration.remote.ts`, admin only. A null in an override takes that limit back to the default.
+- `BODY_SIZE_LIMIT` in the Dockerfile and a reverse proxy's `client_max_body_size` must stay above the largest allowed file (`LIMITS.UPLOAD_BYTES`), see the README.
 
 ## Server layers
 

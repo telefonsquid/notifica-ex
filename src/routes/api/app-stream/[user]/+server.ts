@@ -28,10 +28,13 @@ async function loadUser(id: string): Promise<User> {
     return found
 }
 
-// What a phone missed while it was away, oldest first
-async function missedSince(user: string, since: string) {
+// What a phone missed while it was away, oldest first | a time the account had the app paused stays silent
+async function missedSince(user: User, since: string) {
+    if(user.appPaused) return []
+
     const oldest = pbTime(new Date(Date.now() - CATCH_UP_WINDOW))
-    const missed = await getOccurrencesSince(user, since > oldest ? since : oldest, CATCH_UP_MAX)
+    const start = [since, oldest, user.appResumed ?? ''].reduce((latest, time) => time > latest ? time : latest)
+    const missed = await getOccurrencesSince(user.id, start, CATCH_UP_MAX)
     if(!missed.success) return []
 
     return missed.data.items.toReversed().flatMap((occurrence) => {
@@ -48,7 +51,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
 
     // A first connection starts now, instead of with everything from before the install
     const since = url.searchParams.get('since') ?? ''
-    const stream = streamFor(user.id, since || pbTime(new Date()), async () => since ? missedSince(user.id, since) : [])
+    const stream = streamFor(user.id, since || pbTime(new Date()), async () => since ? missedSince(user, since) : [])
 
     return new Response(stream, {
         headers: {
