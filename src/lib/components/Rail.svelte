@@ -13,15 +13,32 @@
     import { finishRemovals } from '#lib/deletions.ts';
     import { saveOpenNotes } from '#lib/drafts.ts';
     import { logoutUser } from '../../routes/api/auth.remote';
-    import { getViews } from '../../routes/api/views.remote';
+    import { sortable } from '#lib/drag_list.ts';
+    import { getViews, reorderViews } from '../../routes/api/views.remote';
 
     // VIEWS | set up in settings, the first one lives at the root
-    let views = $derived(await getViews())
+    let saved = $derived(await getViews())
+
+    // A move shows at once, the saved order takes over once the server has it
+    let order = $state.raw<string[] | null>(null)
+    let views = $derived(order ? order.map((id) => saved.find((view) => view.id === id)).filter((view) => !!view) : saved)
 
     $effect(() => onCollectionChange('views', () => getViews().refresh()))
 
     let openView = $derived(page.route.id === '/(app)/[[view]]' ? (page.params.view ?? views[0]?.id) : null)
     let inSettings = $derived(page.url.pathname.startsWith(resolve('/(app)/settings')))
+
+    // The root shows whichever view is first, the open one moves to its own address so it stays on screen
+    async function moveView(from: number, to: number){
+        const ids = views.map((view) => view.id)
+        ids.splice(to, 0, ...ids.splice(from, 1))
+
+        if(openView && !page.params.view && ids[0] !== openView) goto(resolve('/(app)/[[view]]', { view: openView }), { replace: true, reset: false })
+
+        order = ids
+        await safeAction(reorderViews(ids))
+        if(order === ids) order = null
+    }
 
     // TOOLTIP | fixed to the window, so the scrolling view list never clips it
     function tipAnchor(node: HTMLElement){
@@ -147,7 +164,7 @@
     </Dialog.Root>
 
     <!-- VIEWS | scroll once there are more than fit -->
-    <div class="views hidden min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto sm:flex">
+    <div class="views hidden min-h-0 w-full flex-1 flex-col items-center gap-2 overflow-x-hidden overflow-y-auto sm:flex" {@attach sortable(moveView)}>
         <!-- Unkeyed on purpose, a keyed list froze the page on its second reorder -->
         <!-- eslint-disable-next-line svelte/require-each-key -->
         {#each views as view, index}
@@ -263,6 +280,19 @@
 
     .item:active :global(.icon) {
         scale: 0.88;
+    }
+
+    /* DRAGGING | the icon stays big in the hand, a moved item would misplace its fixed label */
+    .item:global([data-lifted]) {
+        background: var(--theme-raised);
+    }
+
+    .item:global([data-lifted]) :global(.icon) {
+        scale: 1.08;
+    }
+
+    :global([data-sorting]) .tip {
+        display: none;
     }
 
     /* LABEL | slides out of the rail on hover, phones have no hover and never show it */
