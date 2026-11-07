@@ -41,7 +41,7 @@ Invariants:
 6. A save never writes a field the person did not change here (see [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere)).
 
 | From | Event | To | Notes |
-|---|---|---|---|
+|---|---|---|---|---|
 | Fresh | typing | Dirty | Empty stays Fresh, nothing gets created |
 | Fresh | close while empty | removed | Shrinks into the create button |
 | Fresh | `save(true)` | Saving | Images and sharing need a stored note |
@@ -129,7 +129,7 @@ Archive has no state of its own: `offerArchiveUndo` stores at once, Undo writes 
 `notes.shared` on the note. A person is owner, collaborator or nobody.
 
 | From | Event | To | Notes |
-|---|---|---|---|
+|---|---|---|---|---|
 | Nobody | owner adds them | Collaborator | |
 | Collaborator | owner removes them, or `leaveNote` | Nobody | Their reminders go (`deleteRemindersOn`), history stays |
 | Collaborator | note deleted | Nobody | Cascade |
@@ -194,7 +194,7 @@ One row per time a reminder went off.
 Invariants: never pruned. Done keeps the first press. A signature covers the id, so a button needs no login.
 
 | From | Event | To | Notes |
-|---|---|---|---|
+|---|---|---|---|---|
 | Open | Done button, history tick | Done | |
 | Open | snooze button | Snoozed | Reminder `next` moves too |
 | Done | Done button again | Done | "Already done" |
@@ -280,7 +280,7 @@ Doubles get dropped by `seen`, the cursor only moves forward. Unverified race: `
 | Deleted | Row gone, notes and reminders cascade |
 
 | From | Event | To | Effect |
-|---|---|---|---|
+|---|---|---|---|---|
 | Invited | sets password | Active | |
 | Active | admin deactivates | Inactive | `tokenKey` rotates, streams end (see [SM-3](#sm-3-stream-can-crash-the-server)) |
 | Inactive | admin reactivates | Active | Stream key stays good, the phone has to retry |
@@ -362,16 +362,16 @@ Invariant: logout always reaches the login page when the server answered, unsave
 
 Sorted by impact. Each groups what one fix covers.
 
-| Issue | What goes wrong | Impact | Status |
-|---|---|---|---|
-| [SM-8](#sm-8-a-built-app-refuses-its-own-cron) | A built app refuses its own cron and setup | No reminders at all on a real install | Fixed |
-| [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere) | Saves overwrite changes made elsewhere | Silent data loss | Fixed |
-| [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Fixed |
-| [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Fixed |
-| [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Fixed |
-| [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Fixed |
-| [SM-6](#sm-6-drafts-that-can-never-be-saved) | Drafts that can never be saved | Repeating errors, restores blocked | Fixed |
-| [SM-7](#sm-7-removals-that-come-back-or-offer-a-dead-undo) | Removals that come back or offer a dead Undo | Wrong screen, false promise | Fixed |
+| Issue | What goes wrong | Impact | Status | Fix commit |
+|---|---|---|---|---|
+| [SM-8](#sm-8-a-built-app-refuses-its-own-cron) | A built app refuses its own cron and setup | No reminders at all on a real install | Fixed | `8023d8c` |
+| [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere) | Saves overwrite changes made elsewhere | Silent data loss | Fixed | `0d05671` |
+| [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Fixed | `f870ba2` |
+| [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Fixed | `b850138` |
+| [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Fixed | `2bf8872` |
+| [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Fixed | `9ede739` |
+| [SM-6](#sm-6-drafts-that-can-never-be-saved) | Drafts that can never be saved | Repeating errors, restores blocked | Fixed | `9ede739` |
+| [SM-7](#sm-7-removals-that-come-back-or-offer-a-dead-undo) | Removals that come back or offer a dead Undo | Wrong screen, false promise | Fixed | `aeb6c03` |
 
 ## SM-8 A built app refuses its own cron and setup
 
