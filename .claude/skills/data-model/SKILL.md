@@ -50,7 +50,9 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 
 ## Realtime
 
-The root layout hands the auth token to the browser (the cookie stays httpOnly), the `(app)` layout connects once. Pages subscribe with `onCollectionChange()` from `#lib/realtime.ts` (bursts coalesce into one refresh) and react with `query().refresh()` for remote queries, `invalidateAll()` for load data. Commands already refresh what they change, so the notes page skips events that only echo what it shows (a third argument to `onCollectionChange`), an autosave would otherwise fetch every note twice. After a reconnect everything is invalidated once.
+The root layout hands the auth token to the browser (the cookie stays httpOnly), the `(app)` layout connects once. Pages subscribe with `onCollectionChange()` from `#lib/realtime.ts` (bursts coalesce, the third argument marks events the page already shows, the callback gets the others) and react with `query().refresh()` for remote queries, `invalidateAll()` for load data. After a reconnect everything is invalidated once.
+
+Notes are the exception, with 500 of them a refresh weighs 270 KB: commands answer with their one note and `kept()` from `#lib/note_list.ts` merges it into `getNotes()`, realtime events go in the same way through `keepEvents()`. Whatever isn't about one note (deleting a label, leaving) still refreshes.
 
 ## Ordering
 
