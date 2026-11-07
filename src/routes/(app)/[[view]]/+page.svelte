@@ -12,6 +12,7 @@
     import { cssEasing, duration, easing, glide, measure, offscreen, rise, stagger } from '#lib/motion.ts'
     import { hiddenNotes, removeNotes } from '#lib/deletions.ts'
     import { takeShare, type SharedNote } from '#lib/android.ts'
+    import { restoreDrafts } from '#lib/draft_restore.ts'
     import { keepEvents, kept } from '#lib/note_list.ts'
     import { notify } from '#lib/notifications.svelte.ts'
     import { safeAction } from '#lib/pocketbase.ts'
@@ -126,6 +127,7 @@
     }
 
     onMount(() => {
+        restoreDrafts(() => notes, me)
         takeShared()
         window.addEventListener('notifica-android', takeShared)
         return () => window.removeEventListener('notifica-android', takeShared)

@@ -28,6 +28,7 @@
     import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
     import { offerArchiveUndo, removeNotes } from '#lib/deletions.ts';
+    import { forgetDraft, keepDraft } from '#lib/drafts.ts';
     import type { SharedNote } from '#lib/android.ts';
     import { kept } from '#lib/note_list.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
@@ -142,6 +143,7 @@
                 id = result.id
                 savedAt = result.updated
                 saved = snapshot
+                if(!leaving && JSON.stringify(draft) === snapshot) forgetDraft(backupKey)   // The card may be gone by now, its effect below with it
             }
             return id ?? null
         })
@@ -153,9 +155,25 @@
     function gone(err: { status?: number }): null {
         if(err?.status !== 404) throw err
         deleted = true
+        forgetDraft(backupKey)
         notify('This note was deleted or is no longer shared with you.', { type: 'info' })
         return null
     }
+
+    // BACKUP | whatever isn't stored yet also waits in this browser, see #lib/drafts.ts
+    const backupKey = initial?.id ?? `new-${Math.random().toString(36).slice(2)}`
+
+    // The next page may read its list before the last save lands, so the backup stays for it to compare
+    let leaving = false
+
+    $effect(() => {
+        if(!open && !edited) return
+        const snapshot = JSON.stringify(draft)
+        if(deleted || snapshot === saved || (!id && isEmpty(draft))){
+            if(!leaving) forgetDraft(backupKey)
+        }
+        else keepDraft(backupKey, { owner: me, id, base: saved ? JSON.parse(saved) : undefined, content: JSON.parse(snapshot) })
+    })
 
     // For the page, which waits on a new note before it hands the card over
     export function flush(): Promise<string | null> {
@@ -266,15 +284,22 @@
         if(open && event.dataTransfer?.types.includes('Files')) event.preventDefault()
     }
 
+    // A page still here after this long stayed, a download link for example
+    const LEAVE_GRACE = 10_000
+
     // NAVIGATION | waits for unsaved changes, then goes where it was headed | back only closes the card, the root layout asks for that
     beforeNavigate(({ cancel, to, type, willUnload }) => {
         if(!open || type === 'popstate' || JSON.stringify(draft) === saved) return
-        cancel()
+
+        // Closing or reloading goes through | a new note waits for the backup, sent now it could land twice
         if(type === 'leave') {
-            save()
+            leaving = true
+            setTimeout(() => leaving = false, LEAVE_GRACE)
+            if(id) save()
             return
         }
 
+        cancel()
         save().then(() => {
             if(JSON.stringify(draft) !== saved || !to) return
             if(willUnload) location.href = to.url.href
@@ -298,6 +323,7 @@
     async function remove(){
         const noteId = await save()
         deleted = true
+        forgetDraft(backupKey)
         if(noteId) removeNotes([{ id: noteId, owner: note?.owner ?? me }], me)
         onclose?.()
     }
