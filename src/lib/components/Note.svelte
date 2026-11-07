@@ -28,7 +28,7 @@
     import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
     import { offerArchiveUndo, removeNotes } from '#lib/deletions.ts';
-    import { afterSave, changedFields, forgetDraft, keepDraft, rescued } from '#lib/drafts.ts';
+    import { afterSave, changedFields, fitted, forgetDraft, holdSave, keepDraft, rescued, thisTab } from '#lib/drafts.ts';
     import type { SharedNote } from '#lib/android.ts';
     import { keepEvents, kept } from '#lib/note_list.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
@@ -95,6 +95,7 @@
     let saved = $state(untrack(() => incoming ? '' : JSON.stringify(draft)))             // Empty, a shared note has unsaved content from the start
     let savedAt = initial?.updated ?? ''
     let deleted = false
+    let signedOut = false
     let root = $state<HTMLElement>()
     let card = $state<HTMLElement>()
 
@@ -132,8 +133,10 @@
         if(!edited && !force) return Promise.resolve(id ?? null)
 
         const run = queue.then(async () => {
+            if(deleted || signedOut) return null
+            if(!open) fitClosed()
+
             const snapshot = JSON.stringify(draft)
-            if(deleted) return null
             if(snapshot === saved && (id || !force)) return id ?? null
             if(!id && isEmpty(draft) && !force) return null
 
@@ -157,6 +160,14 @@
         return run
     }
 
+    // Nobody can correct a closed card, what the server refuses would stay refused
+    function fitClosed(){
+        const fit = fitted($state.snapshot(draft))
+        if(fit.title === draft.title && fit.body === draft.body) return
+        Object.assign(draft, fit)
+        notify('This note was too long and got shortened.', { type: 'info' })
+    }
+
     // Deleted elsewhere, or no longer shared with this user | the card goes, typed text lives on as a note of its own, the rest of the errors go on
     async function gone(err: { status?: number }, content: NoteContent, sent: Partial<NoteContent>): Promise<null> {
         if(err?.status !== 404) throw err
@@ -172,7 +183,7 @@
     }
 
     // BACKUP | whatever isn't stored yet also waits in this browser, see #lib/drafts.ts
-    const backupKey = initial?.id ?? `new-${Math.random().toString(36).slice(2)}`
+    const backupKey = `${initial?.id ?? `new-${Math.random().toString(36).slice(2)}`}.${thisTab}`     // Per tab, a save in one must not drop what another still holds
 
     // The next page may read its list before the last save lands, so the backup stays for it to compare
     let leaving = false
@@ -184,6 +195,11 @@
             if(!leaving) forgetDraft(backupKey)
         }
         else keepDraft(backupKey, { owner: me, id, base: saved ? JSON.parse(saved) : undefined, content: JSON.parse(snapshot) })
+    })
+
+    // Logout saves first
+    $effect(() => {
+        if(open) return holdSave(save)
     })
 
     // For the page, which waits on a new note before it hands the card over
@@ -300,6 +316,13 @@
 
     // NAVIGATION | waits for unsaved changes, then goes where it was headed | back only closes the card, the root layout asks for that
     beforeNavigate(({ cancel, to, type, willUnload }) => {
+
+        // The session ended, a save has no way in anymore | what is left waits in the backup
+        if(to?.route.id === '/login'){
+            signedOut = true
+            return
+        }
+
         if(!open || type === 'popstate' || JSON.stringify(draft) === saved) return
 
         // Closing or reloading goes through | a new note waits for the backup, sent now it could land twice

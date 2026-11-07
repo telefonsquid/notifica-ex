@@ -1,9 +1,63 @@
-import { afterSave, changedFields, rescued, restoreOf, sameContent } from '#lib/drafts.ts';
+import { afterSave, changedFields, fitted, holdSave, parseDraft, rescued, restoreOf, sameContent, saveOpenNotes } from '#lib/drafts.ts';
+import { LIMITS } from '#lib/schema_limits.ts';
 import type { Note, NoteContent } from '#lib/schemas.ts';
 import { describe, expect, test } from 'bun:test';
 
 const content = (title: string, body = ''): NoteContent => ({ title, body, color: '', labels: [], pinned: false, archived: false })
 const note = (id: string, title: string, body = '') => ({ id, ...content(title, body) }) as Note
+
+describe('a draft the server would refuse', () => {
+    test('a title running over moves into the text', () => {
+        const fit = fitted(content('x'.repeat(LIMITS.NOTE_TITLE) + 'more', 'text'))
+        expect(fit.title.length).toBe(LIMITS.NOTE_TITLE)
+        expect(fit.body).toBe('more\n\ntext')
+    })
+
+    test('an overlong text loses its end', () => {
+        const fit = fitted(content('t', 'x'.repeat(LIMITS.NOTE_BODY + 5)))
+        expect(fit.body.length).toBe(LIMITS.NOTE_BODY)
+    })
+
+    test('labels gone meanwhile come off, without a list all of them stay', () => {
+        const labelled = { ...content('t'), labels: ['a', 'gone'] }
+        expect(fitted(labelled, ['a']).labels).toEqual(['a'])
+        expect(fitted(labelled).labels).toEqual(['a', 'gone'])
+    })
+
+    test('one that fits stays the same', () => {
+        expect(sameContent(fitted(content('t', 'b'), []), content('t', 'b'))).toBe(true)
+    })
+})
+
+describe('a stored draft', () => {
+    const good = { owner: 'me', tab: 'a', content: content('t') }
+
+    test('reads back', () => {
+        expect(parseDraft(JSON.stringify(good))).toEqual(good)
+    })
+
+    test('anything else counts as broken', () => {
+        for(const raw of [null, '', '{"owner"', '{}', '[]', 'null', '{"owner":"me","tab":"a"}', '{"owner":"me","tab":"a","content":{"title":1}}', JSON.stringify({ ...good, base: {} })]){
+            expect(parseDraft(raw)).toBeNull()
+        }
+    })
+})
+
+describe('logging out', () => {
+    test('waits for every open card, a closed one is out of it', async () => {
+        const saved: string[] = []
+        const leave = holdSave(async () => {
+            await Bun.sleep(1)
+            saved.push('open')
+        })
+        holdSave(async () => { saved.push('closed') })()
+
+        await saveOpenNotes()
+        leave()
+        await saveOpenNotes()
+        expect(saved).toEqual(['open'])
+    })
+})
 
 describe('restoring a draft', () => {
     test('a new note gets created', () => {

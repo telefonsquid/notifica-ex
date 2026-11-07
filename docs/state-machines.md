@@ -369,8 +369,8 @@ Sorted by impact. Each groups what one fix covers.
 | [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Fixed |
 | [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Fixed |
 | [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Fixed |
-| [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Open |
-| [SM-6](#sm-6-drafts-that-can-never-be-saved) | Drafts that can never be saved | Repeating errors, restores blocked | Open |
+| [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Fixed |
+| [SM-6](#sm-6-drafts-that-can-never-be-saved) | Drafts that can never be saved | Repeating errors, restores blocked | Fixed |
 | [SM-7](#sm-7-removals-that-come-back-or-offer-a-dead-undo) | Removals that come back or offer a dead Undo | Wrong screen, false promise | Fixed |
 
 ## SM-8 A built app refuses its own cron and setup
@@ -465,7 +465,7 @@ N stored title AUDIT N
 
 The person stays on a dead page, the save never lands.
 
-**Fix:** not yet. **Test:** not yet.
+**Fix:** logout saves open cards first (`saveOpenNotes`). The way to `/login` never waits on a card, what still can't be saved stays in the backup for the next load. **Test:** `drafts.test.ts`, "logging out".
 
 ## SM-6 Drafts that can never be saved
 
@@ -488,7 +488,7 @@ L corrupt entry beside a good one | good restored false | left broken,good | toa
 
 Two tabs on one note share a key, so one tab's successful save drops the other's backup (by reading).
 
-**Fix:** not yet. **Test:** not yet.
+**Fix:** a closed card and a restore store what fits (`fitted`) and say so, a title running over moves into the text, only the end of an overlong text gets lost. An open card keeps the toast, the person can still correct it. A restore drops labels gone meanwhile. A broken entry is removed (`parseDraft`), every tab keeps its own backup. **Test:** `drafts.test.ts`, "a draft the server would refuse" and "a stored draft".
 
 ## SM-7 Removals that come back or offer a dead Undo
 

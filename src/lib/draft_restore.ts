@@ -1,12 +1,12 @@
-import { claimTab, forgetDraft, oneAtATime, orphanedDrafts, rescued, restoreOf } from '#lib/drafts.ts';
+import { claimTab, fitted, forgetDraft, oneAtATime, orphanedDrafts, rescued, restoreOf } from '#lib/drafts.ts';
 import { kept } from '#lib/note_list.ts';
 import { notify } from '#lib/notifications.svelte.ts';
 import { safeAction } from '#lib/pocketbase.ts';
-import type { Note } from '#lib/schemas.ts';
+import type { Label, Note } from '#lib/schemas.ts';
 import { createNote, updateNote } from '../routes/api/notes.remote';
 
 // Hands what pages now gone left behind to the server | a failed one stays for the next load
-export async function restoreDrafts(notes: () => Note[], me: string){
+export async function restoreDrafts(notes: () => Note[], labels: () => Label[], me: string){
     claimTab()
 
     const restored = await oneAtATime(async () => {
@@ -20,9 +20,10 @@ export async function restoreDrafts(notes: () => Note[], me: string){
             }
 
             const owned = notes().find((note) => note.id === draft.id)?.owner === me
+            const known = labels().map((label) => label.id)
             const sent = action === 'update'
-                ? kept(updateNote({ id: draft.id!, ...draft.content }))
-                : kept(createNote(rescued(draft.content, draft.content, !draft.id || owned)!))
+                ? kept(updateNote({ id: draft.id!, ...fitted(draft.content, owned ? known : undefined) }))
+                : kept(createNote(fitted(rescued(draft.content, draft.content, !draft.id || owned)!, known)))
 
             if(await safeAction(sent)){
                 forgetDraft(key)

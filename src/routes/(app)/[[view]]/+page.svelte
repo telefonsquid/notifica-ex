@@ -127,7 +127,7 @@
     }
 
     onMount(() => {
-        restoreDrafts(() => notes, me)
+        restoreDrafts(() => notes, () => labels, me)
         takeShared()
         window.addEventListener('notifica-android', takeShared)
         return () => window.removeEventListener('notifica-android', takeShared)

@@ -1,3 +1,4 @@
+import { LIMITS } from '#lib/schema_limits.ts';
 import type { Note, NoteContent } from '#lib/schemas.ts';
 
 /*
@@ -67,6 +68,37 @@ export function rescued(content: NoteContent, sent: Partial<NoteContent>, owned:
 
 
 
+// What the server accepts, for a draft nobody can correct anymore | a title running over moves into the text, only the end of an overlong text gets lost
+export function fitted(content: NoteContent, known?: string[]): NoteContent {
+    const over = content.title.slice(LIMITS.NOTE_TITLE)
+    const body = over ? `${over}\n\n${content.body}` : content.body
+
+    return {
+        ...content,
+        title: content.title.slice(0, LIMITS.NOTE_TITLE),
+        body: body.slice(0, LIMITS.NOTE_BODY),
+        labels: known ? content.labels.filter((label) => known.includes(label)) : content.labels,
+    }
+}
+
+
+
+// LOGOUT ============================================================
+const openNotes = new Set<() => Promise<unknown>>()
+
+// A card that may hold unsaved text registers while it is open
+export function holdSave(save: () => Promise<unknown>){
+    openNotes.add(save)
+    return () => { openNotes.delete(save) }
+}
+
+// The session is about to end, a save after that has no way in
+export async function saveOpenNotes(){
+    await Promise.all([...openNotes].map((save) => save()))
+}
+
+
+
 // STORAGE ============================================================
 const PREFIX = 'note-draft:'
 const TAB_LOCK = 'note-tab:'
@@ -97,16 +129,27 @@ async function liveTabs(): Promise<Set<string>> {
     return new Set(held.map((lock) => lock.name?.slice(TAB_LOCK.length) ?? ''))
 }
 
+// Empty for anything a draft never looks like, cut off by a full disk for example
+export function parseDraft(raw: string | null): Draft | null {
+    try{
+        const draft = JSON.parse(raw ?? '')
+        const looksRight = (content: NoteContent) => typeof content?.title === 'string' && typeof content.body === 'string' && Array.isArray(content.labels)
+        return typeof draft?.owner === 'string' && typeof draft.tab === 'string' && looksRight(draft.content) && (!draft.base || looksRight(draft.base)) ? draft : null
+    }catch{
+        return null
+    }
+}
+
 // Drafts left behind by pages that are gone, this one's own don't count | the caller holds the lock of oneAtATime
 export async function orphanedDrafts(owner: string): Promise<{ key: string, draft: Draft }[]> {
     const live = await liveTabs()
     const found: { key: string, draft: Draft }[] = []
 
-    for(let index = 0; index < localStorage.length; index++){
-        const name = localStorage.key(index)
-        if(!name?.startsWith(PREFIX)) continue
-        const draft = JSON.parse(localStorage.getItem(name) ?? '{}') as Draft
-        if(draft.owner === owner && draft.tab !== thisTab && !live.has(draft.tab)) found.push({ key: name.slice(PREFIX.length), draft })
+    for(const name of Object.keys(localStorage)){
+        if(!name.startsWith(PREFIX)) continue
+        const draft = parseDraft(localStorage.getItem(name))
+        if(!draft) localStorage.removeItem(name)
+        else if(draft.owner === owner && draft.tab !== thisTab && !live.has(draft.tab)) found.push({ key: name.slice(PREFIX.length), draft })
     }
     return found
 }
