@@ -178,6 +178,18 @@ class MainActivity : TauriActivity() {
         return link
       }
 
+      // A fresh start, Tauri refuses the connect page's calls when it loads in place of a page of the server
+      @JavascriptInterface
+      fun changeServer() = runOnUiThread {
+        prefs.forgetServer()
+        ReminderService.stop(this@MainActivity)
+        startActivity(Intent.makeRestartActivityTask(packageManager.getLaunchIntentForPackage(packageName)!!.component))
+        Runtime.getRuntime().exit(0)
+      }
+
+      @JavascriptInterface
+      fun changingServer() = prefs.takeChanging()
+
       @JavascriptInterface
       fun hasShare() = pendingShare != null
 

@@ -15,6 +15,7 @@ declare global {
             setNotifications?(on: boolean): void
             openNotificationSettings?(): void
             pendingLink?(): string | null
+            changeServer?(): void
             hasShare?(): boolean
             takeShare?(): string | null
             sharedImage?(index: number): string | null

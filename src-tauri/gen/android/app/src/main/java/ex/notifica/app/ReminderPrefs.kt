@@ -1,5 +1,6 @@
 package ex.notifica.app
 
+import android.annotation.SuppressLint
 import android.content.Context
 
 // What the reminder service needs to survive a restart of the app or the phone
@@ -25,4 +26,17 @@ class ReminderPrefs(context: Context) {
   var asked: Boolean
     get() = prefs.getBoolean("asked", false)
     set(value) = prefs.edit().putBoolean("asked", value).apply()
+
+  // Written at once, the process ends right after this
+  @SuppressLint("ApplySharedPref")
+  fun forgetServer() {
+    prefs.edit().putString("url", "").putString("since", "").putBoolean("changing", true).commit()
+  }
+
+  // True once after forgetServer, so the connect page asks instead of opening the saved address
+  fun takeChanging(): Boolean {
+    val changing = prefs.getBoolean("changing", false)
+    if (changing) prefs.edit().putBoolean("changing", false).apply()
+    return changing
+  }
 }

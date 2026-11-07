@@ -160,8 +160,9 @@
 
 		// START | a saved server opens right away, the form only shows when there is none or it fails
 		invoke('saved_server').then((saved) => {
-			if (saved) {
-				input.value = saved;
+			if (saved) input.value = saved;
+
+			if (saved && !window.NotificaAndroid?.changingServer?.()) {
 				open(saved);
 			} else {
 				document.body.classList.remove('waiting');

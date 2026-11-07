@@ -10,16 +10,18 @@
     import UserAdmin from '#lib/components/UserAdmin.svelte'
     import ViewSettings from '#lib/components/ViewSettings.svelte'
     import { deleteLabelEverywhere } from '#lib/deletions.ts'
+    import { androidApp } from '#lib/device_notifications.ts'
     import { notify } from '#lib/notifications.svelte.ts'
     import { safeAction } from '#lib/pocketbase.ts'
     import { onCollectionChange } from '#lib/realtime.ts'
     import { LIMITS } from '#lib/schema_limits.ts'
+    import { confirmAction } from '#lib/singletons/confirm.svelte.ts'
     import { tip } from '#lib/tooltip.svelte.ts'
     import { hasPermission } from '#lib/user.ts'
     import Button from '#lib/ui/Button.svelte'
     import InlineInput from '#lib/ui/InlineInput.svelte'
-    import { Bell, Check, CircleUserRound, KeyRound, Palette, PanelsTopLeft, Tag, Trash2, Users } from '@lucide/svelte'
-    import { untrack } from 'svelte'
+    import { Bell, Check, CircleUserRound, KeyRound, Palette, PanelsTopLeft, Server, Tag, Trash2, Users } from '@lucide/svelte'
+    import { onMount, untrack } from 'svelte'
     import { unfold } from '#lib/motion.ts'
     import { getLabels, updateLabel } from '../../api/labels.remote'
     import { sendPasswordLink, updateProfile } from '../../api/users.remote'
@@ -27,6 +29,19 @@
 
     // PROPS
     let { data }: PageProps = $props();
+
+    // SERVER | only the Android app has a server to pick, known after the mount
+    let inApp = $state(false)
+    onMount(() => { inApp = !!androidApp()?.changeServer })
+
+    async function changeServer() {
+        const confirmed = await confirmAction({
+            title: 'Change server?',
+            message: 'The app restarts and asks for the address. Reminders pause on this phone until you are logged in again.',
+            action: 'Change server'
+        })
+        if (confirmed) androidApp()?.changeServer?.()
+    }
 
     // LABELS
     let labels = $derived(await getLabels())
@@ -255,6 +270,12 @@
                     <span class="text-ink-muted">Password</span>
                     <Button type="button" style="ghost" icon={KeyRound} loading={sendingLink} onclick={sendLink}>Mail me a new link</Button>
                 </div>
+                {#if inApp}
+                    <div class="flex items-center justify-between gap-4 bg-card py-3 pr-3 pl-card">
+                        <span class="min-w-0 truncate text-ink-muted">Server <span class="text-ink">{page.url.host}</span></span>
+                        <Button type="button" style="ghost" icon={Server} onclick={changeServer}>Change</Button>
+                    </div>
+                {/if}
             </dl>
             {#if profileChanged}
                 <div class="flex justify-end gap-2" transition:unfold>
