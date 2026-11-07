@@ -90,6 +90,7 @@ export const setUserState = command(z.object({ id: idSchema, state: userStateSch
 
     const changes = state === 'inactive' ? { state, 'tokenKey:autogenerate': '' } : { state }
     const user = unwrap(await updateOnePartial('users', id, changes), 'Could not change the user.')
+    if(state === 'inactive') endStreams(id)
 
     await getUsers().refresh()
     return summary(user)

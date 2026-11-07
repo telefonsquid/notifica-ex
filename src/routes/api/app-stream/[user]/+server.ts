@@ -1,6 +1,6 @@
 import { isId } from '#lib/schemas.ts';
-import { listen, streamSubject } from '#lib/server/app_stream.ts';
-import { pushFor, type Push } from '#lib/server/delivery.ts';
+import { streamFor, streamSubject } from '#lib/server/app_stream.ts';
+import { pushFor } from '#lib/server/delivery.ts';
 import { getPbAdminConnection } from '#lib/server/pocketbase_admin_connection.ts';
 import { getOccurrencesSince } from '#lib/server/queries.ts';
 import { hasValidSignature } from '#lib/server/server_auth.ts';
@@ -11,9 +11,6 @@ import type { RequestHandler } from './$types';
 // Older ones have gone stale when a phone comes back
 const CATCH_UP_WINDOW = 12 * 60 * 60 * 1000
 const CATCH_UP_MAX = 20
-
-// Below what phones and proxies tolerate as silence, a dead connection shows on the app's read timeout
-const HEARTBEAT = 55_000
 
 function pbTime(date: Date){
     return date.toISOString().replace('T', ' ')
@@ -31,52 +28,27 @@ async function loadUser(id: string): Promise<User> {
     return found
 }
 
-// One line of json per notification, held open for as long as the Android app stays connected
+// What a phone missed while it was away, oldest first
+async function missedSince(user: string, since: string) {
+    const oldest = pbTime(new Date(Date.now() - CATCH_UP_WINDOW))
+    const missed = await getOccurrencesSince(user, since > oldest ? since : oldest, CATCH_UP_MAX)
+    if(!missed.success) return []
+
+    return missed.data.items.toReversed().flatMap((occurrence) => {
+        const note = occurrence.expand?.note as Note | undefined
+        return note ? [pushFor(note, occurrence.task, occurrence)] : []
+    })
+}
+
 export const GET: RequestHandler = async ({ params, url }) => {
     if(!isId(params.user)) error(401, 'Unknown stream.')
 
     const user = await loadUser(params.user)
     if(user.state === 'inactive' || !hasValidSignature(streamSubject(user), url.searchParams.get('key') ?? '')) error(401, 'Unknown stream.')
 
+    // A first connection starts now, instead of with everything from before the install
     const since = url.searchParams.get('since') ?? ''
-    const encoder = new TextEncoder()
-    let stop = () => {}
-
-    const stream = new ReadableStream<Uint8Array>({
-        async start(controller) {
-            const send = (line: Push | { cursor: string }) => controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`))
-            const heartbeat = setInterval(() => controller.enqueue(encoder.encode('\n')), HEARTBEAT)
-
-            // Live pushes first, so none falls between the catch up and listening | the app drops doubles
-            const leave = listen(user.id, {
-                send,
-                end() {
-                    stop()
-                    controller.close()
-                },
-            })
-            stop = () => {
-                clearInterval(heartbeat)
-                leave()
-            }
-
-            // A first connection starts now, instead of with everything from before the install
-            send({ cursor: since || pbTime(new Date()) })
-            if(!since) return
-
-            const oldest = pbTime(new Date(Date.now() - CATCH_UP_WINDOW))
-            const missed = await getOccurrencesSince(user.id, since > oldest ? since : oldest, CATCH_UP_MAX)
-            if(!missed.success) return
-
-            for(const occurrence of missed.data.items.toReversed()){
-                const note = occurrence.expand?.note as Note | undefined
-                if(note) send(pushFor(note, occurrence.task, occurrence))
-            }
-        },
-        cancel() {
-            stop()
-        },
-    })
+    const stream = streamFor(user.id, since || pbTime(new Date()), async () => since ? missedSince(user.id, since) : [])
 
     return new Response(stream, {
         headers: {

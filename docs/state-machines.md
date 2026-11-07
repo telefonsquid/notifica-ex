@@ -366,7 +366,7 @@ Sorted by impact. Each groups what one fix covers.
 |---|---|---|---|
 | [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere) | Saves overwrite changes made elsewhere | Silent data loss | Fixed |
 | [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Fixed |
-| [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Open |
+| [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Fixed |
 | [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Open |
 | [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Open |
 | [SM-6](#sm-6-drafts-that-can-never-be-saved) | Drafts that can never be saved | Repeating errors, restores blocked | Open |
@@ -421,7 +421,7 @@ Same on Bun. The window is narrow: the key check must pass, then PocketBase must
 
 Related: `setUserState` to inactive doesn't call `endStreams` (`users.remote.ts:91`), the connection stays open, silently, until the phone reconnects. Catch up resends occurrences already done on another device (`getOccurrencesSince` has no `done` filter), so a checked task can pop up again on a phone back online.
 
-**Fix:** not yet. **Test:** not yet.
+**Fix:** `streamFor` in `app_stream.ts` holds the whole stream, a failed catch up ends it cleanly and no timer can throw. Deactivating ends running streams, catch up leaves out what is done. **Test:** `app_stream.test.ts`.
 
 ## SM-4 Dispatch acts on a stale list
 

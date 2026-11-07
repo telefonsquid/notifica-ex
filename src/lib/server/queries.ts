@@ -180,7 +180,7 @@ export async function getDueReminders(now: Date) {
 // What a device missed while it had no connection, newest first
 export async function getOccurrencesSince(owner: string, after: string, limit: number) {
     return run((pb) => {
-        const filter = pb.filter('owner = {:owner} && created > {:after}', { owner, after })
+        const filter = pb.filter('owner = {:owner} && created > {:after} && done = ""', { owner, after })   // What got checked off meanwhile stays quiet
         return pb.collection('occurrences').getList(1, limit, { filter, sort: '-created', expand: 'note', skipTotal: true }) as Promise<ListResult<Occurrence>>
     })
 }
