@@ -12,7 +12,7 @@ Needs [Bun](https://bun.sh) and a PocketBase on port 8091 (the compose `pocketba
 4. On a fresh PocketBase, create the collections and the first user once:
 
 ```bash
-curl -X POST -H "Authorization: Bearer <SERVER_AUTH_SECRET>" http://localhost:55560/api/migration
+curl -X POST -H "Authorization: Bearer <SERVER_AUTH_SECRET>" -H "Content-Type: application/json" http://localhost:55560/api/migration
 ```
 
 The first user logs in with the superuser email and password from `.env`. Until the first release, `pb_schema.json` is the only schema: in dev the same call imports it again, so run it after every schema change.
@@ -20,7 +20,7 @@ The first user logs in with the superuser email and password from `.env`. Until 
 Reminders go out when something calls the dispatch endpoint. In compose the PocketBase cron hook does that every minute; locally, either run PocketBase with `pocketbase/cronjobs` as hooks dir and `WEB_INTERNAL_URL` pointing at the dev server, or trigger it by hand:
 
 ```bash
-curl -X POST -H "Authorization: Bearer <SERVER_AUTH_SECRET>" http://localhost:55560/api/reminders/dispatch
+curl -X POST -H "Authorization: Bearer <SERVER_AUTH_SECRET>" -H "Content-Type: application/json" http://localhost:55560/api/reminders/dispatch
 ```
 
 For actual pushes, run an open ntfy on port 8092 and read a topic with `curl "http://localhost:8092/<TOPIC>/json?poll=1"`:

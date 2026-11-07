@@ -71,6 +71,7 @@ services:
       curl -sf -X POST
       --retry 60 --retry-delay 2 --retry-all-errors --retry-connrefused
       -H "Authorization: Bearer <SECRET_HERE>"
+      -H "Content-Type: application/json"
       http://web:3000/api/migration
 
   ntfy:

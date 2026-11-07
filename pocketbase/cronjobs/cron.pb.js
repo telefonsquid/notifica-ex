@@ -1,3 +1,4 @@
+// EVERY CALL NAMES A CONTENT TYPE | A POST WITHOUT ONE AND WITHOUT AN ORIGIN COUNTS AS A CROSS SITE FORM, A BUILT APP ANSWERS 403
 cronAdd("notifica-ex-maintenance", "0 3 * * *", () => { // daily at 3am
 
     // WEB CONTAINER AND SHARED SECRET FROM THE COMPOSE FILE
@@ -11,7 +12,7 @@ cronAdd("notifica-ex-maintenance", "0 3 * * *", () => { // daily at 3am
         const response = $http.send({
             url: targetUrl,
             method: "POST",
-            headers: { "Authorization": `Bearer ${secret}` },
+            headers: { "Authorization": `Bearer ${secret}`, "Content-Type": "application/json" },
             timeout: 30 // seconds
         });
 
@@ -38,7 +39,7 @@ cronAdd("notifica-ex-reminders", "* * * * *", () => { // every minute
         const response = $http.send({
             url: targetUrl,
             method: "POST",
-            headers: { "Authorization": `Bearer ${secret}` },
+            headers: { "Authorization": `Bearer ${secret}`, "Content-Type": "application/json" },
             timeout: 50 // seconds, ends before the next run starts
         });
 

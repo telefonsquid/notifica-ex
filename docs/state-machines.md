@@ -364,6 +364,7 @@ Sorted by impact. Each groups what one fix covers.
 
 | Issue | What goes wrong | Impact | Status |
 |---|---|---|---|
+| [SM-8](#sm-8-a-built-app-refuses-its-own-cron) | A built app refuses its own cron and setup | No reminders at all on a real install | Fixed |
 | [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere) | Saves overwrite changes made elsewhere | Silent data loss | Fixed |
 | [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Fixed |
 | [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Fixed |
@@ -371,6 +372,14 @@ Sorted by impact. Each groups what one fix covers.
 | [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Open |
 | [SM-6](#sm-6-drafts-that-can-never-be-saved) | Drafts that can never be saved | Repeating errors, restores blocked | Open |
 | [SM-7](#sm-7-removals-that-come-back-or-offer-a-dead-undo) | Removals that come back or offer a dead Undo | Wrong screen, false promise | Open |
+
+## SM-8 A built app refuses its own cron and setup
+
+Reached on every production install, every minute. SvelteKit treats a POST with no `Content-Type` and no `Origin` as a cross site form (`is_csrf_forbidden`), and the dev server doesn't enforce it. PocketBase's cron and the compose `migration` curl sent neither.
+
+**Evidence:** PocketBase's log against a production build, every minute: `Reminder dispatch .../api/reminders/dispatch - Status: 403 - Cross-site POST form submissions are forbidden`. `curl -X POST` with the bearer header on `/api/maintenance` answers 403, the same with `Content-Type: application/json` gets through. So reminders never fired, maintenance never ran, a fresh install never got its schema. The ntfy buttons and the Android app already send JSON.
+
+**Fix:** both cron calls, the compose `migration` and the README commands name a content type. The PocketBase image needs a rebuild. **Test:** `machine_calls.test.ts` checks every call in the cron file and the compose file. Checked live, the PocketBase log has no 403 anymore.
 
 ## SM-1 Saves overwrite changes made elsewhere
 
