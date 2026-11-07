@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
-import { colorName, estimatedHeight, formatDistance, mergeNotes, sharedContent } from '#lib/notes.ts';
-import type { Note } from '#lib/schemas.ts';
+import { autoColorOrder, colorName, estimatedHeight, formatDistance, lastPriority, mergeNotes, sharedContent, shownColor } from '#lib/notes.ts';
+import type { Label, Note, NoteColor } from '#lib/schemas.ts';
 
 const NOW = Date.parse('2026-10-15T12:00:00Z')
 const later = (ms: number) => new Date(NOW + ms).toISOString()
@@ -83,5 +83,38 @@ describe('colorName', () => {
     test('reads as words', () => {
         expect(colorName('')).toBe('Plain')
         expect(colorName('cobalt-solid')).toBe('Cobalt solid')
+    })
+})
+
+describe('auto colors', () => {
+    const label = (id: string, color: NoteColor, colorPriority: number, autoColor = true) => ({ id, name: id, color, autoColor, colorPriority }) as Label
+    const order = autoColorOrder([label('low', 'mint', 2), label('off', 'coral', 0, false), label('top', 'cobalt-solid', 1)])
+
+    test('the chart holds auto labels only, highest first', () => {
+        expect(order.map((entry) => entry.id)).toEqual(['top', 'low'])
+    })
+
+    test('the highest label on the note decides', () => {
+        expect(shownColor({ color: '', labels: ['low', 'top'] }, order)).toBe('cobalt-solid')
+        expect(shownColor({ color: '', labels: ['low'] }, order)).toBe('mint')
+    })
+
+    test('the note\'s own color wins', () => {
+        expect(shownColor({ color: 'rose', labels: ['top'] }, order)).toBe('rose')
+    })
+
+    test('labels that do not color leave it plain', () => {
+        expect(shownColor({ color: '', labels: ['off'] }, order)).toBe('')
+        expect(shownColor({ color: '', labels: ['someone elses'] }, order)).toBe('')
+    })
+
+    test('the highest decides even when it paints nothing', () => {
+        const plainFirst = autoColorOrder([label('plain', '', 0), label('low', 'mint', 1)])
+        expect(shownColor({ color: '', labels: ['plain', 'low'] }, plainFirst)).toBe('')
+    })
+
+    test('a new label joins below the last one', () => {
+        expect(lastPriority(order)).toBe(2)
+        expect(lastPriority([])).toBe(-1)
     })
 })

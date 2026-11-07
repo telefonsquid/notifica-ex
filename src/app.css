@@ -397,6 +397,22 @@
     }
 }
 
+/* SORTING | lists dragged through sortable() in drag_list.ts */
+body:has([data-sorting]) {
+    cursor: grabbing;
+    user-select: none;
+}
+
+body:has([data-sorting]) * {
+    cursor: inherit;
+}
+
+[data-lifted] {
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 1rem 2rem -0.75rem rgb(0 0 0 / 0.35);
+}
+
 /* MENU | floating panel for context and dropdown menus, rows light up under the pointer or keyboard */
 @utility menu {
     z-index: 60;

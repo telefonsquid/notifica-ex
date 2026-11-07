@@ -19,6 +19,7 @@
     import { onCollectionChange } from '#lib/realtime.ts'
     import { Selection, typing } from '#lib/selection.svelte.ts'
     import type { Note, Reminder, ViewFilter, ViewSort } from '#lib/schemas.ts'
+    import { autoColorOrder } from '#lib/notes.ts'
     import { defaultSort, emptyFilter, groupReminders, matchesView, noteDefaults, noteText, positionBetween, sortNotes, wordsOf } from '#lib/views.ts'
     import { X } from '@lucide/svelte'
     import { ContextMenu } from 'bits-ui'
@@ -72,7 +73,7 @@
     // The open note stays even once it stops matching, a new one keeps its blank card up front
     let visible = $derived.by(() => {
         if (!view) return []
-        const context = { reminders: remindersByNote, now: new Date() }
+        const context = { reminders: remindersByNote, now: new Date(), autoColors: autoColorOrder(labels) }
         const words = wordsOf(search)
         const shown = notes.filter((note) => {
             if (note.id === editing?.id) return !editing.fresh

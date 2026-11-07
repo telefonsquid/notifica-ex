@@ -10,13 +10,18 @@
         value,
         onpick,
         label = 'Color',
+        auto = '',
         class: className = ''
     }: {
         value: NoteColor
         onpick: (color: NoteColor) => void
         label?: string                          // what gets colored, for screen readers
+        auto?: NoteColor                        // what a label paints while no color is picked
         class?: string
     } = $props()
+
+    // No color of its own means the label's color when one applies
+    const nameOf = (color: NoteColor) => (!color && auto ? `From label: ${colorName(auto)}` : colorName(color))
 </script>
 
 <!-- Stays open while picking, so colors can be tried on the note behind it -->
@@ -24,10 +29,10 @@
 <Popover.Root>
     <Popover.Trigger
         class={['color-trigger motion-interactive grid size-7 shrink-0 place-items-center rounded-full hover:scale-110', className]}
-        aria-label={`${label}: ${colorName(value)}`}
-        {@attach tip(`${label}: ${colorName(value)}`)}
+        aria-label={`${label}: ${nameOf(value)}`}
+        {@attach tip(`${label}: ${nameOf(value)}`)}
     >
-        <span class="swatch note-surface size-full rounded-full border-2 border-raised" data-note={value || undefined}></span>
+        <span class="swatch note-surface size-full rounded-full border-2 border-raised" data-note={value || auto || undefined}></span>
     </Popover.Trigger>
     <Popover.Portal>
         <Popover.Content
@@ -45,11 +50,11 @@
                                 class={['motion-interactive size-7 rounded-full hover:scale-110', value === color && 'picked']}
                                 role="radio"
                                 aria-checked={value === color}
-                                aria-label={colorName(color)}
-                                {@attach tip(colorName(color))}
+                                aria-label={nameOf(color)}
+                                {@attach tip(nameOf(color))}
                                 onclick={() => onpick(color)}
                             >
-                                <span class="swatch note-surface grid size-full place-items-center rounded-full border border-line-strong text-ink" data-note={color || undefined}>
+                                <span class="swatch note-surface grid size-full place-items-center rounded-full border border-line-strong text-ink" data-note={color || auto || undefined}>
                                     {#if value === color}<Check class="size-3.5" strokeWidth={3} />{/if}
                                 </span>
                             </button>

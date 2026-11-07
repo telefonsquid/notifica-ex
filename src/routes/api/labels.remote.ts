@@ -1,3 +1,6 @@
+import { error } from '@sveltejs/kit';
+import { lastPriority } from '#lib/notes.ts';
+import { LIMITS } from '#lib/schema_limits.ts';
 import { idSchema, labelNameSchema, noteColorSchema } from '#lib/schemas.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
@@ -23,14 +26,34 @@ export const createLabel = command(z.object({ name: labelNameSchema, color: note
 
 });
 
-export const updateLabel = command(z.object({ id: idSchema, name: labelNameSchema.optional(), color: noteColorSchema.optional() }), async ({ id, ...changes }) => {
+export const updateLabel = command(z.object({ id: idSchema, name: labelNameSchema.optional(), color: noteColorSchema.optional(), autoColor: z.boolean().optional() }), async ({ id, ...changes }) => {
 
     const me = signedIn()
-    unwrap(await getOwned('labels', id, me.id), 'Label not found.')
-    const label = unwrap(await updateOnePartial('labels', id, changes), 'A label with that name already exists.')
+    const current = unwrap(await getOwned('labels', id, me.id), 'Label not found.')
+
+    // Switched on, it joins the priority chart at the bottom
+    const joining = changes.autoColor && !current.autoColor
+    const place = joining ? { colorPriority: lastPriority(unwrap(await getAllOwned('labels', me.id), 'Could not load labels.')) + 1 } : {}
+
+    const label = unwrap(await updateOnePartial('labels', id, { ...changes, ...place }), 'A label with that name already exists.')
 
     await getLabels().refresh()
     return label
+
+});
+
+// Takes every auto color label, highest priority first
+export const reorderAutoColors = command(z.array(idSchema).max(LIMITS.AUTO_COLORS), async (ids) => {
+
+    const me = signedIn()
+
+    const labels = unwrap(await getAllOwned('labels', me.id), 'Could not load labels.')
+    const auto = new Set(labels.filter((label) => label.autoColor).map((label) => label.id))
+    if(ids.length !== auto.size || !ids.every((id) => auto.has(id))) error(400, 'Labels changed meanwhile, try again.')
+    await Promise.all(ids.map((id, colorPriority) => updateOnePartial('labels', id, { colorPriority })))
+
+    await getLabels().refresh()
+    return true
 
 });
 

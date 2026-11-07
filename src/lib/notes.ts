@@ -1,7 +1,7 @@
 import { parseTimestamp } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS } from '#lib/note_colors.ts';
-import type { Note, NoteColor, NoteContent, Reminder } from '#lib/schemas.ts';
+import type { Label, Note, NoteColor, NoteContent, Reminder } from '#lib/schemas.ts';
 
 // LIST ======================================================================================================
 
@@ -41,6 +41,23 @@ export function colorName(color: NoteColor): string {
     if(!color) return 'Plain'
     const words = color.replace('-', ' ')
     return words[0].toUpperCase() + words.slice(1)
+}
+
+// The priority chart, highest first | ties fall back to the name so every browser agrees
+export function autoColorOrder(labels: Label[]): Label[] {
+    return labels
+        .filter((label) => label.autoColor)
+        .toSorted((a, b) => a.colorPriority - b.colorPriority || a.name.localeCompare(b.name))
+}
+
+export function lastPriority(labels: Label[]): number {
+    return Math.max(-1, ...autoColorOrder(labels).map((label) => label.colorPriority))
+}
+
+// What a note wears | its own color wins, without one the highest auto color label on it decides
+export function shownColor(note: Pick<NoteContent, 'color' | 'labels'>, order: Label[]): NoteColor {
+    if(note.color) return note.color
+    return order.find((label) => note.labels.includes(label.id))?.color ?? ''
 }
 
 

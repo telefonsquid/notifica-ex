@@ -1,7 +1,7 @@
 import { tasksOf } from '#lib/markdown.ts';
-import { isOpenTask } from '#lib/notes.ts';
+import { isOpenTask, shownColor } from '#lib/notes.ts';
 import { parseTimestamp } from '#lib/reminders.ts';
-import type { DateRange, Note, NoteContent, Reminder, ViewContent, ViewFilter, ViewSort } from '#lib/schemas.ts';
+import type { DateRange, Label, Note, NoteContent, Reminder, ViewContent, ViewFilter, ViewSort } from '#lib/schemas.ts';
 
 /*
     A view is a saved set of filters plus a sort order.
@@ -76,6 +76,7 @@ export function noteDefaults(filter: ViewFilter): Pick<NoteContent, 'color' | 'l
 type MatchContext = {
     reminders: Map<string, Reminder[]>  // keyed by note id
     now: Date
+    autoColors: Label[]                 // the auto color chart, highest first
 }
 
 // Soonest first, finished ones last
@@ -97,7 +98,7 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
     if(filter.archived === 'only' && !note.archived) return false
     if(filter.pinned === 'only' && !note.pinned) return false
     if(filter.pinned === 'hide' && note.pinned) return false
-    if(filter.colors.length && !filter.colors.includes(note.color)) return false
+    if(filter.colors.length && !filter.colors.includes(shownColor(note, context.autoColors))) return false
 
     // LABELS
     if(filter.labelled === 'with' && !note.labels.length) return false

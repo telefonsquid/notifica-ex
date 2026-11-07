@@ -1,4 +1,5 @@
 <script lang="ts">
+    import AutoColorToggle from '#lib/components/AutoColorToggle.svelte';
     import ColorPicker from '#lib/components/ColorPicker.svelte';
     import { deleteLabelEverywhere } from '#lib/deletions.ts';
     import { safeAction } from '#lib/pocketbase.ts';
@@ -53,6 +54,7 @@
                 onsave={(name) => safeAction(updateLabel({ id: label.id, name }))}
                 {@attach (node) => node.focus({ preventScroll: true })}
             />
+            <AutoColorToggle {label} />
             <button class="icon-button" aria-label={`Delete ${label.name}`} onclick={remove} {@attach tip('Delete label')}>
                 <Trash2 class="size-4" />
             </button>

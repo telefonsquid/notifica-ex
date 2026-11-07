@@ -31,7 +31,7 @@
     import { afterSave, changedFields, fitted, forgetDraft, holdSave, keepDraft, rescued, thisTab } from '#lib/drafts.ts';
     import type { SharedNote } from '#lib/android.ts';
     import { keepEvents, kept } from '#lib/note_list.ts';
-    import { emptyNote, isEmpty } from '#lib/notes.ts';
+    import { autoColorOrder, emptyNote, isEmpty, shownColor } from '#lib/notes.ts';
     import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
@@ -92,6 +92,8 @@
     const initial = untrack(() => note)
     let id = $state(initial?.id)
     let draft = $state<NoteContent>(initial ? contentOf(initial) : { ...emptyNote(), ...untrack(() => defaults), ...untrack(() => incoming?.content) })
+    let auto = $derived(shownColor({ color: '', labels: draft.labels }, autoColorOrder(labels)))
+    let shown = $derived(draft.color || auto)
     let saved = $state(untrack(() => incoming ? '' : JSON.stringify(draft)))             // Empty, a shared note has unsaved content from the start
     let savedAt = initial?.updated ?? ''
     let deleted = false
@@ -425,7 +427,7 @@
     {#if owned}
         <ShareEditor people={people.filter((person) => person.id !== me)} {shared} onchange={share} />
     {/if}
-    <ColorPicker value={draft.color} onpick={(color) => draft.color = color} label="Note color" class="ml-1 mr-2" />
+    <ColorPicker value={draft.color} {auto} onpick={(color) => draft.color = color} label="Note color" class="ml-1 mr-2" />
     {#if owned}
         <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
             {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
@@ -452,7 +454,7 @@
         bind:this={card}
         style:--breath-offset={breathOffset}
         class={['card note-surface relative flex flex-col gap-3 rounded-card border p-card text-ink', open ? 'border-line-strong shadow-2xl' : 'border-line hover:border-line-strong', selected && 'selected']}
-        data-note={draft.color || undefined}
+        data-note={shown || undefined}
         aria-label={open ? (id ? 'Edit note' : 'New note') : undefined}
         {@attach longPress(() => !open, () => onlongpress?.())}
         onpastecapture={(event) => catchImages(event, event.clipboardData?.files)}
@@ -541,7 +543,7 @@
         {/if}
 
         <!-- REMINDERS -->
-        <ReminderList {reminders} {ensureNote} focus={open ? focus : undefined} editable={open} {ondone} onhistory={(anchor) => note && showHistory({ id: note.id, title: draft.title, color: draft.color }, anchor)} />
+        <ReminderList {reminders} {ensureNote} focus={open ? focus : undefined} editable={open} {ondone} onhistory={(anchor) => note && showHistory({ id: note.id, title: draft.title, color: shown }, anchor)} />
     </article>
 </div>
 

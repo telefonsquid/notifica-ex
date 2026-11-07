@@ -1,6 +1,8 @@
 <script lang="ts">
     import { invalidateAll } from '$app/navigation'
     import { page } from '$app/state'
+    import AutoColorPriority from '#lib/components/AutoColorPriority.svelte'
+    import AutoColorToggle from '#lib/components/AutoColorToggle.svelte'
     import ColorPicker from '#lib/components/ColorPicker.svelte'
     import ImageFitPicker from '#lib/components/ImageFitPicker.svelte'
     import LabelPositionPicker from '#lib/components/LabelPositionPicker.svelte'
@@ -234,12 +236,14 @@
                     <li class="flex items-center gap-3 bg-card py-2 pr-2 pl-card">
                         <ColorPicker value={label.color} onpick={(color) => safeAction(updateLabel({ id: label.id, color }))} label={`Color of ${label.name}`} />
                         <InlineInput value={label.name} label={`Rename ${label.name}`} maxlength={LIMITS.LABEL_NAME} class="flex-1 py-1.5 text-ink" onsave={(name) => safeAction(updateLabel({ id: label.id, name }))} />
+                        <AutoColorToggle {label} />
                         <button class="icon-button" aria-label={`Delete ${label.name}`} onclick={() => deleteLabelEverywhere(label)} {@attach tip('Delete label')}>
                             <Trash2 class="size-4" />
                         </button>
                     </li>
                 {/each}
             </ul>
+            <AutoColorPriority {labels} />
         {:else}
             <p class="text-ink-faint">No labels yet. Add them right in a note.</p>
         {/if}

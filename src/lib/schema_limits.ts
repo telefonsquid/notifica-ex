@@ -10,6 +10,7 @@ export const LIMITS = {
     USER_EMAIL: 256,
     PASSWORD: 72,                       // bcrypt ignores anything past this
     LABEL_NAME: 64,
+    AUTO_COLORS: 500,                   // labels in the auto color chart
     VIEW_NAME: 64,
     VIEW_ICON: 64,                      // a lucide icon name
     NTFY_TOPIC: 64,                     // ntfy rejects longer topics

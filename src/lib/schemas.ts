@@ -145,6 +145,8 @@ export type Label = RecordModel & {
     owner: string;
     name: string;
     color: NoteColor;
+    autoColor: boolean;         // colors the notes it sits on
+    colorPriority: number;      // lowest wins among auto colors
 }
 
 

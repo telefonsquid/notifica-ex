@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { viewFilterSchema, viewSortSchema, type Note, type Reminder } from '#lib/schemas.ts';
+import { viewFilterSchema, viewSortSchema, type Label, type Note, type Reminder } from '#lib/schemas.ts';
 import { readFilter } from '#lib/server/views.ts';
 import { countActive, defaultSort, emptyFilter, groupReminders, matchesView, noteDefaults, positionBetween, positionOf, sortNotes } from '#lib/views.ts';
 
@@ -16,8 +16,8 @@ const reminder = (overrides: Partial<Reminder>): Reminder => ({
 })
 
 const NOW = new Date('2026-10-15T12:00:00Z')
-const matches = (item: Note, filter: Partial<ReturnType<typeof emptyFilter>>, reminders: Reminder[] = []) =>
-    matchesView(item, { ...emptyFilter(), ...filter }, { reminders: groupReminders(reminders), now: NOW })
+const matches = (item: Note, filter: Partial<ReturnType<typeof emptyFilter>>, reminders: Reminder[] = [], autoColors: Label[] = []) =>
+    matchesView(item, { ...emptyFilter(), ...filter }, { reminders: groupReminders(reminders), now: NOW, autoColors })
 
 
 
@@ -41,6 +41,14 @@ describe('filters', () => {
         expect(matches(both, { include: ['a', 'c'] })).toBe(true)
         expect(matches(both, { include: ['a', 'c'], labelMatch: 'all' })).toBe(false)
         expect(matches(both, { include: ['a'], exclude: ['b'] })).toBe(false)
+    })
+
+    test('a color filter sees what the auto color label paints', () => {
+        const painted = note({ labels: ['a'] })
+        const chart = [{ id: 'a', color: 'mint' }] as Label[]
+        expect(matches(painted, { colors: ['mint'] }, [], chart)).toBe(true)
+        expect(matches(painted, { colors: ['mint'] })).toBe(false)
+        expect(matches(note({ color: 'rose', labels: ['a'] }), { colors: ['mint'] }, [], chart)).toBe(false)
     })
 
     test('checklist progress leaves out notes without one', () => {

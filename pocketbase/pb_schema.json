@@ -456,6 +456,27 @@
             },
             {
                 "hidden": false,
+                "id": "bool2718281828",
+                "name": "autoColor",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "bool"
+            },
+            {
+                "hidden": false,
+                "id": "number3141592653",
+                "max": 100000,
+                "min": 0,
+                "name": "colorPriority",
+                "onlyInt": true,
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "number"
+            },
+            {
+                "hidden": false,
                 "presentable": false,
                 "system": false,
                 "id": "autodate2990389176",
