@@ -25,6 +25,10 @@ Live in `.claude/skills/<name>/SKILL.md`. Status `planned` means the file doesn'
 | `reminders` | Recurrence model, scheduler, ntfy delivery and actions | available |
 | `android` | Tauri shell, connect page, toolchain, running on a phone | available |
 
+## State machines
+
+`docs/state-machines.md` lists every machine in the app, with states, invariants and transitions, and the issues the audit found. A change to a machine updates its table in the same commit.
+
 ## Stack
 
 Bun, SvelteKit 3 + adapter-node, Svelte 5 (runes, experimental remote functions and async), TypeScript 6, PocketBase, Tailwind 4, lucide, zod. bits-ui for dialogs and menus, marked renders notes (`#lib/markdown.ts` escapes raw HTML and filters link schemes), Tiptap edits them, web-push sends browser notifications. Docker compose for deployment.
