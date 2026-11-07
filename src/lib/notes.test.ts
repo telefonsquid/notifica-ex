@@ -1,10 +1,27 @@
 import { describe, expect, test } from 'bun:test';
-import { colorName, formatDistance, mergeNotes, sharedContent } from '#lib/notes.ts';
+import { colorName, estimatedHeight, formatDistance, mergeNotes, sharedContent } from '#lib/notes.ts';
 import type { Note } from '#lib/schemas.ts';
 
 const NOW = Date.parse('2026-10-15T12:00:00Z')
 const later = (ms: number) => new Date(NOW + ms).toISOString()
 const MINUTE = 60_000, HOUR = 60 * MINUTE, DAY = 24 * HOUR
+
+describe('estimatedHeight', () => {
+    test('grows with the text, up to the lines a closed card shows', () => {
+        const short = estimatedHeight({ title: '', body: 'one line', images: [] })
+        const long = estimatedHeight({ title: '', body: 'a\n'.repeat(11), images: [] })
+        const clamped = estimatedHeight({ title: '', body: 'a\n'.repeat(500), images: [] })
+        expect(long).toBeGreaterThan(short)
+        expect(clamped).toBe(estimatedHeight({ title: '', body: 'a\n'.repeat(11) + 'a', images: [] }))
+    })
+
+    test('counts wrapped lines, a title and images', () => {
+        const plain = estimatedHeight({ title: '', body: 'x', images: [] })
+        expect(estimatedHeight({ title: '', body: 'x'.repeat(100), images: [] })).toBeGreaterThan(plain)
+        expect(estimatedHeight({ title: 'T', body: 'x', images: [] })).toBeGreaterThan(plain)
+        expect(estimatedHeight({ title: '', body: 'x', images: ['a.webp'] })).toBeGreaterThan(plain)
+    })
+})
 
 describe('sharedContent', () => {
     test('trims and keeps to the size caps', () => {

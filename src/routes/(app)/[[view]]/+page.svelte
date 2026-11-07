@@ -2,6 +2,7 @@
     import { afterNavigate, goto, onNavigate } from '$app/navigation'
     import { resolve } from '$app/paths'
     import { page } from '$app/state'
+    import { CARD_WINDOW_FROM, CARDS_ALWAYS_SHOWN, CardWindow } from '#lib/card_window.svelte.ts'
     import NoteView, { editor } from '#lib/components/Note.svelte'
     import NoteMenu from '#lib/components/NoteMenu.svelte'
     import NotesEmpty from '#lib/components/NotesEmpty.svelte'
@@ -84,6 +85,10 @@
         const rank = new Map(frozen.map((id, index) => [id, index]))
         return sorted.toSorted((a, b) => (rank.get(a.id) ?? -1) - (rank.get(b.id) ?? -1))
     });
+
+    // LONG LISTS | cards far off screen wait as empty boxes
+    const cards = new CardWindow()
+    let windowed = $derived(visible.length > CARD_WINDOW_FROM)
 
     // EDITING | one card at a time opens in place, a new note grows out of the create button
     let closing = $state(false)
@@ -456,7 +461,7 @@
 <!-- NOTES | the open card counts twice, it spans two columns where they fit -->
 {#if visible.length || editing?.fresh}
     <div class="@container">
-        <div bind:this={grid} class="note-grid relative items-start" {@attach masonry} style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
+        <div bind:this={grid} class="note-grid relative items-start" {@attach masonry} {@attach windowed && cards.watch} style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
             {#if editing?.fresh}
                 {#key editing.key}
                     <div class="note-cell fresh wide @container/note" data-flip={editing.id ?? 'new'} out:retreat|global>
@@ -483,6 +488,7 @@
                 <!-- A finger opens the menu with a long press, selecting goes through it | the open note keeps the trigger but turns it off -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }} out:leave={note.id} onpointerdown={(event) => grab(event, note.id)} onclickcapture={(event) => swallowDrop(event) || modifiedClick(event, note.id)} onmousedown={(event) => holdTextSelection(event, note.id)} ondragstart={(event) => event.preventDefault()}>
+                    {#if !windowed || open || index < CARDS_ALWAYS_SHOWN || cards.shows(note.id)}
                     <ContextMenu.Root>
                         <ContextMenu.Trigger class="block" disabled={open}>
                             <NoteView
@@ -517,6 +523,9 @@
                             </ContextMenu.Content>
                         </ContextMenu.Portal>
                     </ContextMenu.Root>
+                    {:else}
+                        <div style:height="{cards.height(note)}px"></div>
+                    {/if}
                 </div>
             {/each}
         </div>

@@ -40,6 +40,10 @@ Motion is deliberate: everything that changes place or size glides, nothing pops
 
 An open card (`.wide`) keeps `--note-open-gap` from its neighbour on the side its label tabs show, above it only when a note sits there. `pack()` clears all placements to count the columns, so it holds the grid's height with `min-height` meanwhile: the collapsed page would clamp the scroll position to the top.
 
+## Long lists
+
+Above `CARD_WINDOW_FROM` (200) visible notes, `#lib/card_window.svelte.ts` keeps only cards within `REACH` of the screen. The others stay in the grid as empty boxes of their remembered height, `estimatedHeight()` until they were seen once, so masonry, `measure()` and `glide()` need no special case. The open card and the first `CARDS_ALWAYS_SHOWN` always render. Browser find only sees rendered cards, the app's search sees all.
+
 ## Page changes
 
 - View transitions from the root layout. `.vt-rail`, `.vt-page`, `.vt-rail-indicator` and `.vt-toolbar` name the moving parts. The indicator glides with in-out.
