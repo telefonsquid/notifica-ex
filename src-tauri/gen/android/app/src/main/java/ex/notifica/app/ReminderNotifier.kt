@@ -19,7 +19,7 @@ private const val CHANNEL_LISTENING = "listening"
 
 const val EXTRA_LINK = "link"
 private const val EXTRA_URL = "url"
-private const val EXTRA_SIGNATURE = "signature"
+private const val EXTRA_BODY = "body"
 private const val EXTRA_NOTIFICATION = "notification"
 
 private const val PENDING_FLAGS = PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -58,12 +58,21 @@ class ReminderNotifier(private val context: Context) {
       .setAutoCancel(true)
       .setContentIntent(open(click?.let { origin + it }, id))
 
-    push.optJSONObject("done")?.let { done ->
-      val intent = Intent(context, DoneReceiver::class.java)
-        .putExtra(EXTRA_URL, origin + done.getString("path"))
-        .putExtra(EXTRA_SIGNATURE, done.getString("signature"))
+    // The request code tells the buttons apart, Android treats intents differing only in extras as one
+    fun button(label: String, code: Int, link: JSONObject, until: String? = null) {
+      val body = JSONObject().put("signature", link.getString("signature"))
+      if (until != null) body.put("until", until)
+      val intent = Intent(context, ActionReceiver::class.java)
+        .putExtra(EXTRA_URL, origin + link.getString("path"))
+        .putExtra(EXTRA_BODY, body.toString())
         .putExtra(EXTRA_NOTIFICATION, id)
-      builder.addAction(0, "Done", PendingIntent.getBroadcast(context, id, intent, PENDING_FLAGS))
+      builder.addAction(0, label, PendingIntent.getBroadcast(context, code, intent, PENDING_FLAGS))
+    }
+
+    push.optJSONObject("done")?.let { button("Done", id, it) }
+    push.optJSONObject("snooze")?.let {
+      button("1 hour", id + 1, it, "hour")
+      button("Tomorrow", id + 2, it, "tomorrow")
     }
 
     manager.notify(id, builder.build())
@@ -77,24 +86,24 @@ class ReminderNotifier(private val context: Context) {
   }
 }
 
-// DONE BUTTON | the signed link needs no login, so this works with the app closed
-class DoneReceiver : BroadcastReceiver() {
+// DONE AND SNOOZE BUTTONS | the signed link needs no login, so this works with the app closed
+class ActionReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
     val url = intent.getStringExtra(EXTRA_URL) ?: return
-    val signature = intent.getStringExtra(EXTRA_SIGNATURE) ?: return
+    val body = intent.getStringExtra(EXTRA_BODY) ?: return
     val id = intent.getIntExtra(EXTRA_NOTIFICATION, 0)
     val pending = goAsync()
 
     thread {
       try {
-        if (post(url, signature)) context.getSystemService(NotificationManager::class.java).cancel(id) // Stays up when it failed, for another try
+        if (post(url, body)) context.getSystemService(NotificationManager::class.java).cancel(id) // Stays up when it failed, for another try
       } finally {
         pending.finish()
       }
     }
   }
 
-  private fun post(url: String, signature: String): Boolean {
+  private fun post(url: String, body: String): Boolean {
     return try {
       val connection = URL(url).openConnection() as HttpURLConnection
       connection.connectTimeout = 8_000
@@ -102,7 +111,7 @@ class DoneReceiver : BroadcastReceiver() {
       connection.requestMethod = "POST"
       connection.doOutput = true
       connection.setRequestProperty("Content-Type", "application/json")
-      connection.outputStream.use { it.write(JSONObject().put("signature", signature).toString().toByteArray()) }
+      connection.outputStream.use { it.write(body.toByteArray()) }
       connection.responseCode in 200..299
     } catch (_: IOException) {
       false

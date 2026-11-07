@@ -51,6 +51,15 @@ export function occurrenceAfter(rule: Rule, after: Date): Date | null {
     return null
 }
 
+// When a snoozed reminder goes off again | tomorrow means 9:00 on the clock of the reminder's own zone
+export type SnoozeChoice = 'hour' | 'tomorrow'
+
+export function snoozeUntil(choice: SnoozeChoice, now: Date, timezone: string): Date {
+    if(choice === 'hour') return new Date(now.getTime() + 60 * MINUTE)
+    const wall = wallClock(now, timezone)
+    return fromWallClock({ ...wall, day: wall.day + 1, hour: 9, minute: 0, second: 0 }, timezone)
+}
+
 // First time of a rule being saved now | the form picks whole minutes, so the current one still counts
 export function firstOccurrence(rule: Rule, now: Date): Date | null {
     return occurrenceAfter(rule, new Date(Math.floor(now.getTime() / MINUTE) * MINUTE - 1))

@@ -49,7 +49,7 @@
                 android:value="Self hosted reminders, no push service involved" />
         </service>
 
-        <receiver android:name=".DoneReceiver" android:exported="false" />
+        <receiver android:name=".ActionReceiver" android:exported="false" />
 
         <receiver android:name=".StartReceiver" android:exported="false">
             <intent-filter>

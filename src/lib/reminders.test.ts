@@ -1,10 +1,36 @@
 import { describe, expect, test } from 'bun:test';
-import { describeRule, firstOccurrence, occurrenceAfter } from '#lib/reminders.ts';
+import { describeRule, firstOccurrence, occurrenceAfter, snoozeUntil } from '#lib/reminders.ts';
 
 // Rules as the form stores them, in Berlin unless a test says otherwise
 const rule = (overrides: Partial<Parameters<typeof occurrenceAfter>[0]>) => ({ at: '2026-10-20T07:00:00.000Z', repeat: 'days' as const, every: 1, weekdays: [], until: '', timezone: 'Europe/Berlin', ...overrides })
 const after = (iso: string) => new Date(iso)
 const iso = (date: Date | null) => date?.toISOString() ?? null
+
+
+
+// SNOOZE ====================================================================================================
+describe('snooze', () => {
+    test('an hour is an hour, also across a clock change', () => {
+        expect(iso(snoozeUntil('hour', after('2026-10-25T00:30:00Z'), 'Europe/Berlin'))).toBe('2026-10-25T01:30:00.000Z')
+    })
+
+    test('tomorrow is 9:00 in the zone of the reminder', () => {
+        expect(iso(snoozeUntil('tomorrow', after('2026-11-07T12:00:00Z'), 'Europe/Berlin'))).toBe('2026-11-08T08:00:00.000Z')
+        expect(iso(snoozeUntil('tomorrow', after('2026-11-07T12:00:00Z'), 'America/New_York'))).toBe('2026-11-08T14:00:00.000Z')
+    })
+
+    test('the day counts in that zone, not in utc', () => {
+        expect(iso(snoozeUntil('tomorrow', after('2026-11-07T23:30:00Z'), 'Asia/Tokyo'))).toBe('2026-11-09T00:00:00.000Z')
+    })
+
+    test('tomorrow keeps 9:00 across a clock change', () => {
+        expect(iso(snoozeUntil('tomorrow', after('2026-10-24T12:00:00Z'), 'Europe/Berlin'))).toBe('2026-10-25T08:00:00.000Z')
+    })
+
+    test('rolls over the end of a month', () => {
+        expect(iso(snoozeUntil('tomorrow', after('2026-12-31T12:00:00Z'), 'UTC'))).toBe('2027-01-01T09:00:00.000Z')
+    })
+})
 
 
 

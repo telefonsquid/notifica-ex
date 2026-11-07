@@ -12,22 +12,31 @@ self.addEventListener('push', (event) => {
         tag: push.id,
         icon: '/favicon.svg',
         data: push,
-        actions: push.done ? [{ action: 'done', title: 'Done' }] : [],
+
+        // Browsers show as many as they can, Chrome two
+        actions: [
+            ...(push.done ? [{ action: 'done', title: 'Done' }] : []),
+            ...(push.snooze ? [{ action: 'hour', title: '1 hour' }, { action: 'tomorrow', title: 'Tomorrow' }] : []),
+        ],
     }));
 });
 
 self.addEventListener('notificationclick', (event) => {
     const push = event.notification.data;
     event.notification.close();
-    event.waitUntil(event.action === 'done' ? done(push) : open(push.click ?? '/'));
+    event.waitUntil(
+        event.action === 'done' ? post(push.done, {})
+        : event.action ? post(push.snooze, { until: event.action })
+        : open(push.click ?? '/')
+    );
 });
 
-async function done(push) {
-    if(!push.done) return;
-    await fetch(push.done.path, {
+async function post(link, body) {
+    if(!link) return;
+    await fetch(link.path, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ signature: push.done.signature }),
+        body: JSON.stringify({ ...body, signature: link.signature }),
     });
 }
 

@@ -40,6 +40,13 @@ Each row in Notifications settings has its own test button (`deliverTest()`), a 
 - The signature is an HMAC over the occurrence id with `SERVER_AUTH_SECRET` (`sign(doneSubject(id))`). No login on the phone needed.
 - Each button ticks off just its own occurrence, however late it gets pressed. A second press does nothing.
 
+## Snooze
+
+- Every push from a logged occurrence carries a `snooze` link beside `done`: buttons 1 hour and Tomorrow (9:00 in the reminder's timezone, `snoozeUntil()`), posted to `/api/occurrences/[id]/snooze` with `{signature, until}`. Signed like Done, its own subject.
+- Snoozing sets the reminder's `next`, whatever regular times lie before it get skipped, afterwards `occurrenceAfter()` resumes the rule. A finished reminder goes off once more.
+- A snoozed task occurrence counts as handled (`done` now, comment "Snoozed"), else the one it fires later would make two open ones.
+- Android and ntfy show all buttons (three at most on both), Chrome shows two: Done and 1 hour on tasks.
+
 ## UI
 
 - The reminder band on a card: the first line carries the History and add buttons, a full Add reminder row only while there are none.

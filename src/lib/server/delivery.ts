@@ -16,6 +16,7 @@ export type Push = {
     cursor: string                  // creation time of the occurrence, the phone resumes its stream from here
     click?: string                  // opened on a tap
     done?: { path: string, signature: string }
+    snooze?: { path: string, signature: string }    // Posted with the choice, see SnoozeChoice
 }
 
 export function pushFor(note: Note, task: boolean, occurrence: Occurrence | null): Push {
@@ -30,11 +31,16 @@ export function pushFor(note: Note, task: boolean, occurrence: Occurrence | null
 
         // Signed for this one occurrence, so it ticks off just that one however late it gets pressed
         done: task && occurrence ? { path: `/api/occurrences/${id}/done`, signature: sign(doneSubject(id)) } : undefined,
+        snooze: occurrence ? { path: `/api/occurrences/${id}/snooze`, signature: sign(snoozeSubject(id)) } : undefined,
     }
 }
 
 export function doneSubject(occurrence: string){
     return `occurrence-done:${occurrence}`
+}
+
+export function snoozeSubject(occurrence: string){
+    return `occurrence-snooze:${occurrence}`
 }
 
 // One result per place it tried, empty when the user has no way to get it
@@ -77,17 +83,24 @@ function ntfyMessage(topic: string, push: Push): NtfyMessage {
     const origin = ORIGIN.replace(/\/+$/, '')
 
     if(push.click) message.click = origin + push.click
-    if(push.done){
-        message.actions = [{
-            action: 'http',
-            label: 'Done',
-            url: origin + push.done.path,
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ signature: push.done.signature }),
-            clear: true,
-        }]
-    }
+
+    const action = (label: string, path: string, body: object) => ({
+        action: 'http' as const,
+        label,
+        url: origin + path,
+        method: 'POST' as const,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+        clear: true,
+    })
+    const { done, snooze } = push
+    message.actions = [
+        ...(done ? [action('Done', done.path, { signature: done.signature })] : []),
+        ...(snooze ? [
+            action('1 hour', snooze.path, { signature: snooze.signature, until: 'hour' }),
+            action('Tomorrow', snooze.path, { signature: snooze.signature, until: 'tomorrow' }),
+        ] : []),
+    ]
 
     return message
 }
