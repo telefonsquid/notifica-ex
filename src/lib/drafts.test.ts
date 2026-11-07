@@ -1,4 +1,4 @@
-import { afterSave, changedFields, restoreOf, sameContent } from '#lib/drafts.ts';
+import { afterSave, changedFields, rescued, restoreOf, sameContent } from '#lib/drafts.ts';
 import type { Note, NoteContent } from '#lib/schemas.ts';
 import { describe, expect, test } from 'bun:test';
 
@@ -66,6 +66,21 @@ describe('saving only what changed', () => {
         const current = content('a')
         const stored: NoteContent = { archived: false, pinned: false, labels: [], color: '', body: '', title: 'a' }
         expect(JSON.stringify(afterSave(current, {}, current, stored).saved)).toBe(JSON.stringify(current))
+    })
+})
+
+describe('edits on a note that is out of reach', () => {
+    test('typed text is kept', () => {
+        expect(rescued(content('typed'), { title: 'typed' }, true)).toEqual(content('typed'))
+    })
+
+    test('a copy of someone else\'s note leaves their labels and flags behind', () => {
+        const theirs = { ...content('typed'), labels: ['theirs'], archived: true, pinned: true }
+        expect(rescued(theirs, { body: 'typed' }, false)).toEqual(content('typed'))
+    })
+
+    test('a press on archive or a colour leaves nothing to keep', () => {
+        expect(rescued(content('title'), { archived: true }, true)).toBeNull()
     })
 })
 

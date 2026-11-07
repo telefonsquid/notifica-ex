@@ -29,7 +29,7 @@ Implicit, in `src/lib/components/Note.svelte`. Held by `open` (prop), `id`, `dra
 | Dirty | `draft` differs from `saved`, a save is due within 900 ms or waits for the server |
 | Saving | A run in `queue` is out |
 | Rejected | The server refused the last save, `draft` still differs |
-| Gone | `deleted` is set, nothing is sent any more |
+| Gone | `deleted` is set, nothing is sent any more, `save()` answers null so archive, delete, share and images stop there |
 
 Invariants:
 
@@ -51,7 +51,7 @@ Invariants:
 | Open, clean | newer note arrives | Open, clean | Not adopted yet, the next save or close brings it |
 | Dirty | 900 ms pause, close, unmount, server back | Saving | |
 | Saving | success | Clean or Dirty | Sends changed fields only, takes the others from the answer. Dirty when typing went on meanwhile |
-| Saving | 404 | Gone | |
+| Saving | 404 | Gone | The card leaves the list, typed text becomes a note of its own |
 | Saving | any other error | Rejected | `safeAction` toasts, the save resolves with `id` |
 | Saving | outage | Rejected | Sent again when `serverStatus.down` clears |
 | Rejected | typing | Dirty | |
@@ -365,7 +365,7 @@ Sorted by impact. Each groups what one fix covers.
 | Issue | What goes wrong | Impact | Status |
 |---|---|---|---|
 | [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere) | Saves overwrite changes made elsewhere | Silent data loss | Fixed |
-| [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Open |
+| [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Fixed |
 | [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Open |
 | [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Open |
 | [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Open |
@@ -401,7 +401,9 @@ E after reload, card false | typed text saved as a note of its own 0
 
 The same happens to a note deleted elsewhere while open.
 
-**Fix:** not yet. **Test:** not yet.
+**Fix:** a 404 takes the card off the list. If title or body were among the unsaved changes they become a note of their own (`rescued`), without someone else's labels and flags. A copy that fails stays in the backup. **Test:** `drafts.test.ts`, "edits on a note that is out of reach".
+
+**Left as it is:** a closed card of a note taken from you stays until the next load or until it gets opened and edited. PocketBase sends no event in that case, and a quick action on it answers with a toast.
 
 ## SM-3 Stream can crash the server
 

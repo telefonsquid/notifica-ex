@@ -28,9 +28,9 @@
     import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
     import { offerArchiveUndo, removeNotes } from '#lib/deletions.ts';
-    import { afterSave, changedFields, forgetDraft, keepDraft } from '#lib/drafts.ts';
+    import { afterSave, changedFields, forgetDraft, keepDraft, rescued } from '#lib/drafts.ts';
     import type { SharedNote } from '#lib/android.ts';
-    import { kept } from '#lib/note_list.ts';
+    import { keepEvents, kept } from '#lib/note_list.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
     import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
@@ -133,13 +133,14 @@
 
         const run = queue.then(async () => {
             const snapshot = JSON.stringify(draft)
-            if(deleted || (snapshot === saved && (id || !force))) return id ?? null
+            if(deleted) return null
+            if(snapshot === saved && (id || !force)) return id ?? null
             if(!id && isEmpty(draft) && !force) return null
 
             const content = $state.snapshot(draft)
             const base: NoteContent = id ? JSON.parse(saved) : content
             const sent = id ? changedFields(base, content) : content
-            const result = await safeAction(id ? kept(updateNote({ id, ...sent })).catch(gone) : kept(createNote(content)))
+            const result = await safeAction(id ? kept(updateNote({ id, ...sent })).catch((err) => gone(err, content, sent)) : kept(createNote(content)))
             if(result){
                 if(!id) oncreate?.(result.id)
                 id = result.id
@@ -150,18 +151,23 @@
                 saved = JSON.stringify(settled.saved)
                 if(!leaving && JSON.stringify(draft) === saved) forgetDraft(backupKey)      // The card may be gone by now, its effect below with it
             }
-            return id ?? null
+            return deleted ? null : id ?? null
         })
         queue = run
         return run
     }
 
-    // Deleted elsewhere, or no longer shared with this user | nothing left to save, the rest of the errors go on
-    function gone(err: { status?: number }): null {
+    // Deleted elsewhere, or no longer shared with this user | the card goes, typed text lives on as a note of its own, the rest of the errors go on
+    async function gone(err: { status?: number }, content: NoteContent, sent: Partial<NoteContent>): Promise<null> {
         if(err?.status !== 404) throw err
+        const rest = rescued(content, sent, owned)
         deleted = true
+        if(note) keepEvents([{ action: 'delete', record: note }])
+
+        // A copy that fails stays in the backup for the next page load
+        if(rest && !await safeAction(kept(createNote(rest)))) return null
         forgetDraft(backupKey)
-        notify('This note was deleted or is no longer shared with you.', { type: 'info' })
+        notify(rest ? 'This note is no longer available. Your edits became a note of their own.' : 'This note was deleted or is no longer shared with you.', { type: 'info' })
         return null
     }
 

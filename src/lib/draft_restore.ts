@@ -1,4 +1,4 @@
-import { claimTab, forgetDraft, oneAtATime, orphanedDrafts, restoreOf } from '#lib/drafts.ts';
+import { claimTab, forgetDraft, oneAtATime, orphanedDrafts, rescued, restoreOf } from '#lib/drafts.ts';
 import { kept } from '#lib/note_list.ts';
 import { notify } from '#lib/notifications.svelte.ts';
 import { safeAction } from '#lib/pocketbase.ts';
@@ -22,7 +22,7 @@ export async function restoreDrafts(notes: () => Note[], me: string){
             const owned = notes().find((note) => note.id === draft.id)?.owner === me
             const sent = action === 'update'
                 ? kept(updateNote({ id: draft.id!, ...draft.content }))
-                : kept(createNote({ ...draft.content, labels: draft.id && !owned ? [] : draft.content.labels }))
+                : kept(createNote(rescued(draft.content, draft.content, !draft.id || owned)!))
 
             if(await safeAction(sent)){
                 forgetDraft(key)

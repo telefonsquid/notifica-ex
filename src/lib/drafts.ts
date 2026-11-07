@@ -59,6 +59,14 @@ export function afterSave(base: NoteContent, sent: Partial<NoteContent>, current
 
 
 
+// Text worth keeping when its note is out of reach | what is left of someone else's note starts plain
+export function rescued(content: NoteContent, sent: Partial<NoteContent>, owned: boolean): NoteContent | null {
+    if(!('title' in sent) && !('body' in sent)) return null
+    return owned ? content : { ...content, labels: [], pinned: false, archived: false }
+}
+
+
+
 // STORAGE ============================================================
 const PREFIX = 'note-draft:'
 const TAB_LOCK = 'note-tab:'
