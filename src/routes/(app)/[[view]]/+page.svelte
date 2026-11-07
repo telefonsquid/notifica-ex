@@ -43,7 +43,7 @@
 
     // Own saves echo back through realtime, a second copy of every note would be wasted
     function shown({ action, record }: { action: string; record: Note }): boolean {
-        const note = notes.find((item) => item.id === record.id)
+        const note = stored.find((item) => item.id === record.id)
         return action === 'delete' ? !note : note?.updated === record.updated
     }
 

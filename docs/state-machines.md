@@ -371,7 +371,7 @@ Sorted by impact. Each groups what one fix covers.
 | [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Fixed |
 | [SM-5](#sm-5-logout-stuck-on-an-unsaved-card) | Logout stuck on an unsaved card | Stuck session | Open |
 | [SM-6](#sm-6-drafts-that-can-never-be-saved) | Drafts that can never be saved | Repeating errors, restores blocked | Open |
-| [SM-7](#sm-7-removals-that-come-back-or-offer-a-dead-undo) | Removals that come back or offer a dead Undo | Wrong screen, false promise | Open |
+| [SM-7](#sm-7-removals-that-come-back-or-offer-a-dead-undo) | Removals that come back or offer a dead Undo | Wrong screen, false promise | Fixed |
 
 ## SM-8 A built app refuses its own cron and setup
 
@@ -508,7 +508,7 @@ K persisted true | toast Note deleted Undo | note gone on the server
 
 The page's own realtime check (`shown` in `+page.svelte:45`) compares against the filtered list, so a delete event for a hidden note looks like its own echo and gets dropped, which is what keeps the ghost.
 
-**Fix:** not yet. **Test:** not yet.
+**Fix:** `removals.ts` holds the waiting list. A 404 counts as done, a finished removal also leaves the list, `shown` compares against the stored list. Coming back through bfcache ends the toast of what was sent, those notes stay gone. **Test:** `removals.test.ts`.
 
 ---
 

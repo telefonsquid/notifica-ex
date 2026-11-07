@@ -1,7 +1,8 @@
 import { browser } from '$app/env';
-import { kept } from '#lib/note_list.ts';
+import { keepEvents, kept } from '#lib/note_list.ts';
 import { dismiss, notify } from '#lib/notifications.svelte.ts';
 import { safeAction } from '#lib/pocketbase.ts';
+import { removalQueue, type RemovedNote } from '#lib/removals.ts';
 import type { Label, Note, View } from '#lib/schemas.ts';
 import { confirmAction } from '#lib/singletons/confirm.svelte.ts';
 import { deleteLabel } from '../routes/api/labels.remote';
@@ -39,68 +40,63 @@ export async function deleteSavedView(view: View){
 const UNDO_TIME = 7000
 const JUST_REMOVED = 'notes-just-removed'
 
-type Removal = { notes: Pick<Note, 'id' | 'owner'>[], me: string, toast: number }
-
 // Hidden from the page while their toast is up
 export const hiddenNotes = new SvelteSet<string>()
-const waiting = new Set<Removal>()
 
-// A note shared with you is only left, it stays with its owner
-export function removeNotes(notes: Pick<Note, 'id' | 'owner'>[], me: string){
-    if(!notes.length) return
-    for(const note of notes) hiddenNotes.add(note.id)
-
-    const owned = notes.filter((note) => note.owner === me).length
-    const what = notes.length === 1 ? 'Note' : `${notes.length} notes`
-    const removal: Removal = { notes, me, toast: 0 }
-    waiting.add(removal)
-
-    removal.toast = notify(owned === notes.length ? `${what} deleted` : owned ? `${what} deleted or left` : `${what} left`, {
-        type: 'info',
-        duration: UNDO_TIME,
-        action: { label: 'Undo', run: () => {
-            waiting.delete(removal)
-            for(const note of notes) hiddenNotes.delete(note.id)
-        } },
-        onend: () => finish(removal)
-    })
+// Gone already, deleted elsewhere or no longer shared, is what was asked for
+async function removed(asked: Promise<boolean>){
+    try{
+        return await asked
+    }catch(err){
+        if((err as { status?: number })?.status === 404) return true
+        throw err
+    }
 }
 
 // A note the server refused comes back, the toast says why
-async function finish(removal: Removal){
-    if(!waiting.delete(removal)) return
-    const { notes, me } = removal
-    await Promise.all(notes.map((note) => safeAction(note.owner === me ? deleteNote(note.id) : leaveNote(note.id))))
-    for(const note of notes) hiddenNotes.delete(note.id)
+const queue = removalQueue({
+    hidden: hiddenNotes,
+    toast(notes, me, undo, end){
+        const owned = notes.filter((note) => note.owner === me).length
+        const what = notes.length === 1 ? 'Note' : `${notes.length} notes`
+        return notify(owned === notes.length ? `${what} deleted` : owned ? `${what} deleted or left` : `${what} left`, {
+            type: 'info',
+            duration: UNDO_TIME,
+            action: { label: 'Undo', run: undo },
+            onend: end
+        })
+    },
+    dismiss,
+    remove: (note, me) => safeAction(removed(note.owner === me ? deleteNote(note.id) : leaveNote(note.id))),
+    drop: (notes) => keepEvents(notes.map((note) => ({ action: 'delete', record: note as Note }))),
+    send(notes){
+        const ids = notes.map((note) => note.id)
+        sessionStorage.setItem(JUST_REMOVED, JSON.stringify(ids))
+        fetch('/api/notes/removals', {
+            method: 'POST',
+            keepalive: true,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ids })
+        })
+    }
+})
+
+// A note shared with you is only left, it stays with its owner
+export function removeNotes(notes: RemovedNote[], me: string){
+    if(notes.length) queue.add(notes, me)
 }
 
 // Logging out ends the time for second thoughts
-export async function finishRemovals(){
-    const removals = [...waiting]
-    const done = removals.map(finish)
-    for(const removal of removals) dismiss(removal.toast)
-    await Promise.all(done)
-}
+export const finishRemovals = () => queue.finishAll()
 
-// A closing page can't wait for answers, only this request outlives it
-function finishOnLeave(){
-    const removals = [...waiting]
-    if(!removals.length) return
-    waiting.clear()
-
-    const ids = removals.flatMap((removal) => removal.notes.map((note) => note.id))
-    sessionStorage.setItem(JUST_REMOVED, JSON.stringify(ids))
-    fetch('/api/notes/removals', {
-        method: 'POST',
-        keepalive: true,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids })
-    })
-}
-
-// A reload can read the list before that request is through, the notes stay hidden on the new page
+// A reload can read the list before the closing page's request is through, the notes stay hidden on the new page
 if(browser){
-    addEventListener('pagehide', finishOnLeave)
+    addEventListener('pagehide', queue.leave)
+    addEventListener('pageshow', (event: PageTransitionEvent) => {
+        if(!event.persisted) return
+        sessionStorage.removeItem(JUST_REMOVED)
+        queue.back()
+    })
     for(const id of JSON.parse(sessionStorage.getItem(JUST_REMOVED) ?? '[]')) hiddenNotes.add(id)
     sessionStorage.removeItem(JUST_REMOVED)
 }

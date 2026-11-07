@@ -91,7 +91,8 @@ export const removeImage = command(z.object({ id: idSchema, name: fileNameSchema
 export const deleteNote = command(idSchema, async (id) => {
 
     const me = signedIn()
-    unwrap(await getOwned('notes', id, me.id), 'Note not found.')
+    const found = await getOwned('notes', id, me.id)
+    if(!found.success) error(404, 'Note not found.')  // Gone meanwhile, the removal counts as done
     unwrap(await deleteOne('notes', id), 'Could not delete the note.')
 
     await getNotes().refresh()
@@ -125,8 +126,9 @@ export const shareNote = command(z.object({ id: idSchema, people: z.array(idSche
 export const leaveNote = command(idSchema, async (id) => {
 
     const me = signedIn()
-    const note = unwrap(await getNoteFor(id, me.id), 'Note not found.')
-    if(note.owner === me.id) error(400, 'You own this note, delete it instead.')
+    const found = await getNoteFor(id, me.id)
+    if(!found.success) error(404, 'Note not found.')  // Gone meanwhile, the removal counts as done
+    if(found.data.owner === me.id) error(400, 'You own this note, delete it instead.')
     unwrap(await leave(id, me.id), 'Could not leave the note.')
     unwrap(await deleteRemindersOn(id, [me.id]), 'Could not remove your reminders on it.')
 
