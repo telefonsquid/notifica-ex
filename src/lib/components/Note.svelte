@@ -28,7 +28,7 @@
     import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
     import { offerArchiveUndo, removeNotes } from '#lib/deletions.ts';
-    import { forgetDraft, keepDraft } from '#lib/drafts.ts';
+    import { afterSave, changedFields, forgetDraft, keepDraft } from '#lib/drafts.ts';
     import type { SharedNote } from '#lib/android.ts';
     import { kept } from '#lib/note_list.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
@@ -137,13 +137,18 @@
             if(!id && isEmpty(draft) && !force) return null
 
             const content = $state.snapshot(draft)
-            const result = await safeAction(id ? kept(updateNote({ id, ...content })).catch(gone) : kept(createNote(content)))
+            const base: NoteContent = id ? JSON.parse(saved) : content
+            const sent = id ? changedFields(base, content) : content
+            const result = await safeAction(id ? kept(updateNote({ id, ...sent })).catch(gone) : kept(createNote(content)))
             if(result){
                 if(!id) oncreate?.(result.id)
                 id = result.id
                 savedAt = result.updated
-                saved = snapshot
-                if(!leaving && JSON.stringify(draft) === snapshot) forgetDraft(backupKey)   // The card may be gone by now, its effect below with it
+
+                const settled = afterSave(base, sent, $state.snapshot(draft), result)
+                Object.assign(draft, settled.adopted)
+                saved = JSON.stringify(settled.saved)
+                if(!leaving && JSON.stringify(draft) === saved) forgetDraft(backupKey)      // The card may be gone by now, its effect below with it
             }
             return id ?? null
         })

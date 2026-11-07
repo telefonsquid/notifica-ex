@@ -34,6 +34,31 @@ export function restoreOf(draft: Draft, notes: Note[]): Restore {
 
 
 
+// SAVING ============================================================
+function sameField(a: NoteContent[keyof NoteContent], b: NoteContent[keyof NoteContent]){
+    return Array.isArray(a) && Array.isArray(b) ? a.join() === b.join() : a === b
+}
+
+// What a save has to send | another device may have changed the rest since this card opened
+export function changedFields(base: NoteContent, draft: NoteContent): Partial<NoteContent> {
+    const keys = Object.keys(draft) as (keyof NoteContent)[]
+    return Object.fromEntries(keys.filter((key) => !sameField(base[key], draft[key])).map((key) => [key, draft[key]]))
+}
+
+// Where a card stands once a save came back | fields left alone take what is stored, unless typing went on meanwhile
+export function afterSave(base: NoteContent, sent: Partial<NoteContent>, current: NoteContent, stored: NoteContent) {
+    const saved: Record<string, unknown> = {}
+    const adopted: Record<string, unknown> = {}
+
+    for(const key of Object.keys(current) as (keyof NoteContent)[]){
+        saved[key] = key in sent ? sent[key] : stored[key]
+        if(!(key in sent) && sameField(current[key], base[key]) && !sameField(current[key], stored[key])) adopted[key] = stored[key]
+    }
+    return { saved: saved as NoteContent, adopted: adopted as Partial<NoteContent> }
+}
+
+
+
 // STORAGE ============================================================
 const PREFIX = 'note-draft:'
 const TAB_LOCK = 'note-tab:'

@@ -36,7 +36,7 @@ Invariants:
 1. `saved` is the JSON of the content the server is known to hold, as far as this card knows.
 2. One save at a time per card, a new note gets created exactly once (`queue`).
 3. A closed card only adopts the stored note when `draft` equals `saved` and the copy is newer than `savedAt`.
-4. A card that is open never changes under the person typing.
+4. A card that is open never changes under the person typing. A save brings along fields the card left alone, they show once the card closes where an editor holds its own text (Tiptap, a focused title).
 5. Every unsaved `draft` has a backup, see [Draft backup](#draft-backup).
 6. A save never writes a field the person did not change here (see [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere)).
 
@@ -48,9 +48,9 @@ Invariants:
 | Closed, clean | click | Open, clean | |
 | Closed, clean | newer note arrives | Closed, clean | Adopts it |
 | Open, clean | typing | Dirty | |
-| Open, clean | newer note arrives | Open, clean | Not adopted, `draft` keeps the older copy |
+| Open, clean | newer note arrives | Open, clean | Not adopted yet, the next save or close brings it |
 | Dirty | 900 ms pause, close, unmount, server back | Saving | |
-| Saving | success | Clean or Dirty | Dirty when typing went on meanwhile |
+| Saving | success | Clean or Dirty | Sends changed fields only, takes the others from the answer. Dirty when typing went on meanwhile |
 | Saving | 404 | Gone | |
 | Saving | any other error | Rejected | `safeAction` toasts, the save resolves with `id` |
 | Saving | outage | Rejected | Sent again when `serverStatus.down` clears |
@@ -364,7 +364,7 @@ Sorted by impact. Each groups what one fix covers.
 
 | Issue | What goes wrong | Impact | Status |
 |---|---|---|---|
-| [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere) | Saves overwrite changes made elsewhere | Silent data loss | Open |
+| [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere) | Saves overwrite changes made elsewhere | Silent data loss | Fixed |
 | [SM-2](#sm-2-losing-a-note-loses-what-was-typed) | Losing a note loses what was typed | Data loss | Open |
 | [SM-3](#sm-3-stream-can-crash-the-server) | A stream can crash the server, ended streams linger | Outage for everyone | Open |
 | [SM-4](#sm-4-dispatch-acts-on-a-stale-list) | Dispatch acts on a stale list | Lost snoozes and edits, wrong pushes | Open |
@@ -384,7 +384,7 @@ G title edit on an open card, other device pinned and changed the body | pinned 
 
 Pin and the other device's body were silently undone.
 
-**Fix:** not yet. **Test:** not yet.
+**Fix:** a save sends only the fields changed since the last save (`changedFields`), the answer fills in the rest (`afterSave`). **Test:** `drafts.test.ts`, "saving only what changed".
 
 ## SM-2 Losing a note loses what was typed
 
