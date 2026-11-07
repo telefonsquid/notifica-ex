@@ -28,6 +28,7 @@
     import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
     import { confirmNoteRemoval } from '#lib/deletions.ts';
+    import { kept } from '#lib/note_list.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
     import { notify } from '#lib/notifications.svelte.ts';
     import { safeAction } from '#lib/pocketbase.ts';
@@ -132,7 +133,7 @@
             if(!id && isEmpty(draft) && !force) return null
 
             const content = $state.snapshot(draft)
-            const result = await safeAction(id ? updateNote({ id, ...content }).catch(gone) : createNote(content))
+            const result = await safeAction(id ? kept(updateNote({ id, ...content })).catch(gone) : kept(createNote(content)))
             if(result){
                 if(!id) oncreate?.(result.id)
                 id = result.id
@@ -228,7 +229,7 @@
     async function dropImage(name: string){
         if(!id) return
         images = images.filter((image) => image !== name)
-        const result = await safeAction(removeImage({ id, name }))
+        const result = await safeAction(kept(removeImage({ id, name })))
         if(result) stored(result)
     }
 
@@ -241,7 +242,7 @@
     async function share(list: string[]){
         shared = list
         const noteId = await save(true)
-        const result = noteId && await safeAction(shareNote({ id: noteId, people: list }))
+        const result = noteId && await safeAction(kept(shareNote({ id: noteId, people: list })))
         if(result) stored(result)
     }
 

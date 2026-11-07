@@ -8,6 +8,7 @@ import { error } from '@sveltejs/kit';
 import { getReminders } from './reminders.remote.ts';
 
 // NOTES ============================================================
+// Commands on one note answer with that note, #lib/note_list.ts puts it into the list | the whole list would weigh hundreds of KB per save
 export const getNotes = query(async () => {
 
     const me = signedIn()
@@ -20,10 +21,7 @@ export const createNote = command(noteContentSchema, async (content) => {
     const me = signedIn()
 
     const labels = await ownLabels(me.id, content.labels)
-    const note = unwrap(await insertOnePartial('notes', { ...content, labels, owner: me.id }), 'Could not save the note.')
-
-    await getNotes().refresh()
-    return note
+    return unwrap(await insertOnePartial('notes', { ...content, labels, owner: me.id }), 'Could not save the note.')
 
 });
 
@@ -48,7 +46,6 @@ export const duplicateNote = command(idSchema, async (id) => {
         note = unwrap(await addNoteImages(note.id, files), 'Could not copy the images.')
     }
 
-    await getNotes().refresh()
     return note
 
 });
@@ -68,10 +65,7 @@ export const updateNote = command(noteContentSchema.partial().extend({ id: idSch
         delete update.labels
     }
     else if(changes.labels) update.labels = await ownLabels(me.id, changes.labels)
-    const note = unwrap(await updateOnePartial('notes', id, update), 'Could not save the note.')
-
-    await getNotes().refresh()
-    return note
+    return unwrap(await updateOnePartial('notes', id, update), 'Could not save the note.')
 
 });
 
@@ -80,10 +74,7 @@ export const moveNote = command(z.object({ id: idSchema, position: notePositionS
 
     const me = signedIn()
     unwrap(await getOwned('notes', id, me.id), 'Note not found.')
-    unwrap(await updateOnePartial('notes', id, { position }), 'Could not move the note.')
-
-    await getNotes().refresh()
-    return true
+    return unwrap(await updateOnePartial('notes', id, { position }), 'Could not move the note.')
 
 });
 
@@ -92,10 +83,7 @@ export const removeImage = command(z.object({ id: idSchema, name: fileNameSchema
 
     const me = signedIn()
     unwrap(await getNoteFor(id, me.id), 'Note not found.')
-    const note = unwrap(await removeNoteImage(id, name), 'Could not remove the image.')
-
-    await getNotes().refresh()
-    return note
+    return unwrap(await removeNoteImage(id, name), 'Could not remove the image.')
 
 });
 
@@ -129,7 +117,6 @@ export const shareNote = command(z.object({ id: idSchema, people: z.array(idSche
     const removed = stored.shared.filter((person) => !shared.includes(person))
     unwrap(await deleteRemindersOn(id, removed), 'Could not remove their reminders.')
 
-    await getNotes().refresh()
     return note
 
 });

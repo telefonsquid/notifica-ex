@@ -8,6 +8,7 @@
     import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
     import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, History, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
+    import { kept } from '#lib/note_list.ts';
     import { duplicateNote, updateNote } from '../../routes/api/notes.remote';
     import { removeReminder } from '../../routes/api/reminders.remote';
 
@@ -49,8 +50,8 @@
     let removeLabel = $derived(!owned.length ? 'Leave' : owned.length < notes.length ? 'Delete or leave' : 'Delete')
 
     // ACTIONS | every note gets its own update, the list stays short enough for that
-    async function each(change: (note: Note) => Promise<unknown>, among = notes){
-        await Promise.all(among.map((note) => safeAction(change(note))))
+    async function each(change: (note: Note) => Promise<Note>, among = notes){
+        await Promise.all(among.map((note) => safeAction(kept(change(note)))))
     }
 
     function paint(color: NoteColor){

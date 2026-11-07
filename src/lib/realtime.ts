@@ -65,10 +65,10 @@ export function onRecordChange<T extends RecordModel = RecordModel>(
 }
 
 // ON COLLECTION CHANGE | a burst of events, like a reorder touching every record, turns into one call
-// Known says the page already shows an event, like the echo of its own save, a burst of only those calls nothing
+// Known says the page already shows an event, like the echo of its own save | the call gets only the others, a burst of only those calls nothing
 export function onCollectionChange<T extends RecordModel = RecordModel>(
     collection: Collection,
-    callback: () => void,
+    callback: (events: RecordSubscription<T>[]) => void,
     known?: (event: RecordSubscription<T>) => boolean
 ): () => void {
     const WAIT = 60
@@ -78,9 +78,9 @@ export function onCollectionChange<T extends RecordModel = RecordModel>(
     const settle = () => {
         if(busy.actions){ timer = setTimeout(settle, WAIT); return } // A save on its way brings the fresh data along
 
-        const events = burst
+        const events = known ? burst.filter((event) => !known(event)) : burst
         burst = []
-        if(!known || !events.every(known)) callback()
+        if(events.length) callback(events)
     }
 
     const stop = onRecordChange<T>(collection, (event) => {

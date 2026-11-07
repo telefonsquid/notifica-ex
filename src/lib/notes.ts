@@ -1,6 +1,23 @@
 import { parseTimestamp } from '#lib/reminders.ts';
 import { NOTE_SOLIDS, NOTE_STICKIES, NOTE_TEXTURES, NOTE_TINTS } from '#lib/note_colors.ts';
-import type { NoteColor, NoteContent, Reminder } from '#lib/schemas.ts';
+import type { Note, NoteColor, NoteContent, Reminder } from '#lib/schemas.ts';
+
+// LIST ======================================================================================================
+
+export type NoteEvent = { action: string, record: Note }
+
+// Patch single notes into the list | an answer older than what the list holds changes nothing
+export function mergeNotes(list: Note[], events: NoteEvent[]): Note[] {
+    const merged = new Map(list.map((note) => [note.id, note]))
+
+    for(const { action, record } of events){
+        const held = merged.get(record.id)
+        if(action === 'delete') merged.delete(record.id)
+        else if(!held || record.updated >= held.updated) merged.set(record.id, record)
+    }
+
+    return [...merged.values()]
+}
 
 // COLORS ====================================================================================================
 

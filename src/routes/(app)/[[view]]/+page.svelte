@@ -10,6 +10,7 @@
     import { masonry, pack } from '#lib/masonry.ts'
     import { cssEasing, duration, easing, glide, measure, offscreen, rise, stagger } from '#lib/motion.ts'
     import { removeNotes } from '#lib/deletions.ts'
+    import { keepEvents, kept } from '#lib/note_list.ts'
     import { safeAction } from '#lib/pocketbase.ts'
     import { onCollectionChange } from '#lib/realtime.ts'
     import { Selection, typing } from '#lib/selection.svelte.ts'
@@ -25,13 +26,13 @@
     import { getPeople } from '../../api/users.remote'
     import { getViews } from '../../api/views.remote';
 
-    // DATA | refreshed by every command and by realtime events from other devices
+    // DATA | saves and realtime events merge single notes into the list, the rest refresh
     let [notes, labels, reminders, views, people] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews(), getPeople()]))
     let me = $derived(page.data.user?.id ?? '')
 
     let remindersByNote = $derived(groupReminders(reminders))
 
-    $effect(() => onCollectionChange<Note>('notes', () => getNotes().refresh(), shown))
+    $effect(() => onCollectionChange<Note>('notes', keepEvents, shown))
     $effect(() => onCollectionChange('labels', () => getLabels().refresh()))
     $effect(() => onCollectionChange('reminders', () => getReminders().refresh()));
 
@@ -313,7 +314,7 @@
 
     // QUICK ACTIONS ON CARDS
     function tickTask(note: Note, index: number) {
-        safeAction(updateNote({ id: note.id, body: toggleTask(note.body, index) }))
+        safeAction(kept(updateNote({ id: note.id, body: toggleTask(note.body, index) })))
     }
 
     function markDone(reminder: Reminder) {
@@ -412,7 +413,7 @@
         if (!note || from.indexOf(id) === index) return void (frozen = null)
 
         const neighbour = (other: Note | undefined) => (other && (!sort.pinnedFirst || other.pinned === note.pinned) ? other : undefined)
-        await safeAction(moveNote({ id, position: positionBetween(neighbour(visible[index - 1]), neighbour(visible[index + 1]), sort.direction) }))
+        await safeAction(kept(moveNote({ id, position: positionBetween(neighbour(visible[index - 1]), neighbour(visible[index + 1]), sort.direction) })))
         if (!editing) frozen = null
     }
 
