@@ -204,6 +204,6 @@ export const removePushSubscription = command(pushSubscriptionSchema.shape.endpo
 export const getAppStream = query(async () => {
 
     const me = signedIn()
-    return `/api/app-stream/${me.id}?key=${sign(streamSubject(me.id))}`
+    return `/api/app-stream/${me.id}?key=${sign(streamSubject(me))}`
 
 });

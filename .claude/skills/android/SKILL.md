@@ -21,7 +21,7 @@ description: The Android app, a Tauri 2 mobile shell in src-tauri that opens the
 
 ## Notifications
 
-- `ReminderService` is a foreground service with a small silent notification. It holds `/api/app-stream/<user>?key=...` open (newline separated JSON, signed key, with a heartbeat), retries with backoff from 2 s to 60 s, and resumes with `since` so pushes from a gap are replayed. A 401 means the account is gone: it forgets the address and stops.
+- `ReminderService` is a foreground service with a small silent notification. It holds `/api/app-stream/<user>?key=...` open (newline separated JSON, signed key, with a heartbeat), retries with backoff from 2 s to 60 s, and resumes with `since` so pushes from a gap are replayed. A 401 means the account is gone or its password changed (`streamEpoch` is part of the signed key, `setPassword` raises it and hangs up): it forgets the address and stops, the next app open registers a new key.
 - `ReminderNotifier` shows the pushes. A tap opens the note through `MainActivity` (`EXTRA_LINK`), Done posts the signed link from `DoneReceiver`, no login needed. `StartReceiver` restarts the service after a reboot or an app update.
 - `ReminderPrefs` keeps the address, the on switch (default on), the replay cursor and whether permissions were asked.
 - Bridge in `window.NotificaAndroid`: `listen`, `stopListening`, `notificationsOn`, `notificationsAllowed`, `setNotifications`, `openNotificationSettings`, `pendingLink`. `#lib/device_notifications.ts` and `NotificationSettings.svelte` use them. Optional in the types, an older app lacks them. `MainActivity` sends a `notifica-android` window event when permissions may have changed.

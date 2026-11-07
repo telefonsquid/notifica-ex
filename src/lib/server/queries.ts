@@ -245,6 +245,11 @@ export async function confirmPasswordReset(token: string, password: string, pass
     return run((pb) => pb.collection('users').confirmPasswordReset(token, password, passwordConfirm))
 }
 
+// Old stream keys stop working, the number is part of what they sign
+export async function renewStreamKey(user: string) {
+    return run((pb) => pb.collection('users').update(user, { 'streamEpoch+': 1 }))
+}
+
 export async function login(email: string, password: string) {
     const pb = getRequestEvent().locals.pb // the request's own connection, so the hook can export its auth as a cookie
     return pbErrorHandler(pb.collection('users').authWithPassword(email, password))

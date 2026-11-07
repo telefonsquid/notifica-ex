@@ -11,7 +11,7 @@ Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas.ts` holds zod for wha
 
 | Collection | Fields | List/view rule |
 |---|---|---|
-| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused | own record, admins all (names for sharing come from `getPeople()` on the server) |
+| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it) | own record, admins all (names for sharing come from `getPeople()` on the server) |
 | `labels` | owner, name, color | owner |
 | `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images (protected file), shared (users, max 20) | `owner = @request.auth.id \|\| shared.id ?= @request.auth.id` (a multi relation needs `.id ?=`, plain `?=` silently matches nothing) |
 | `reminders` | note, owner, at, repeat, weekdays, until, every, timezone, task, next, open | owner, so a collaborator's reminders stay private |

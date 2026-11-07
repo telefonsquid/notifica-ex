@@ -1,5 +1,6 @@
 import { idSchema, setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type Person, type User, type UserSummary } from '#lib/schemas.ts';
-import { confirmPasswordReset, findOne, getAll, getOne, insertOnePartial, requestPasswordReset, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { endStreams } from '#lib/server/app_stream.ts';
+import { confirmPasswordReset, findOne, getAll, getOne, insertOnePartial, renewStreamKey, requestPasswordReset, unwrap, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
 import { hasPermission } from '#lib/user.ts';
@@ -115,6 +116,12 @@ export const sendPasswordLink = command(idSchema, async (id) => {
 export const setPassword = command(setPasswordSchema, async ({ token, password, passwordConfirm }) => {
 
     unwrap(await confirmPasswordReset(token, password, passwordConfirm), 'This link has expired or was already used.')
+
+    // Phones that held the old password's key have to log in again | the token is proven by now
+    const user = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).id as string
+    unwrap(await renewStreamKey(user), 'The password changed, but phones stay connected. Try again later.')
+    endStreams(user)
+
     return true
 
 });

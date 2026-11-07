@@ -100,6 +100,7 @@ export type User = RecordModel & z.infer<typeof userInputSchema> & {
     'tokenKey:autogenerate'?: string;
     ntfyTopic?: string;
     ntfyPaused?: boolean;
+    streamEpoch?: number;
 }
 
 // What the user admin gets to see of every account

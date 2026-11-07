@@ -36,7 +36,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
     if(!isId(params.user)) error(401, 'Unknown stream.')
 
     const user = await loadUser(params.user)
-    if(user.state === 'inactive' || !hasValidSignature(streamSubject(user.id), url.searchParams.get('key') ?? '')) error(401, 'Unknown stream.')
+    if(user.state === 'inactive' || !hasValidSignature(streamSubject(user), url.searchParams.get('key') ?? '')) error(401, 'Unknown stream.')
 
     const since = url.searchParams.get('since') ?? ''
     const encoder = new TextEncoder()
@@ -48,7 +48,13 @@ export const GET: RequestHandler = async ({ params, url }) => {
             const heartbeat = setInterval(() => controller.enqueue(encoder.encode('\n')), HEARTBEAT)
 
             // Live pushes first, so none falls between the catch up and listening | the app drops doubles
-            const leave = listen(user.id, send)
+            const leave = listen(user.id, {
+                send,
+                end() {
+                    stop()
+                    controller.close()
+                },
+            })
             stop = () => {
                 clearInterval(heartbeat)
                 leave()
