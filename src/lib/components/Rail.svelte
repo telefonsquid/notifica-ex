@@ -10,6 +10,7 @@
     import { viewIcon } from '#lib/view_icons.ts';
     import { LogOut, Menu, Settings, X } from '@lucide/svelte';
     import { ContextMenu, Dialog } from 'bits-ui';
+    import { finishRemovals } from '#lib/deletions.ts';
     import { logoutUser } from '../../routes/api/auth.remote';
     import { getViews } from '../../routes/api/views.remote';
 
@@ -41,6 +42,7 @@
     async function logout(){
         loggingOut = true
         await safeAction(stopDeviceNotifications())
+        await finishRemovals()
         const done = await safeAction(logoutUser())
         if(done){
             disconnectRealtime()

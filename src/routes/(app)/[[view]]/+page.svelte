@@ -10,7 +10,7 @@
     import { toggleTask } from '#lib/markdown.ts'
     import { masonry, pack } from '#lib/masonry.ts'
     import { cssEasing, duration, easing, glide, measure, offscreen, rise, stagger } from '#lib/motion.ts'
-    import { removeNotes } from '#lib/deletions.ts'
+    import { hiddenNotes, removeNotes } from '#lib/deletions.ts'
     import { takeShare, type SharedNote } from '#lib/android.ts'
     import { keepEvents, kept } from '#lib/note_list.ts'
     import { notify } from '#lib/notifications.svelte.ts'
@@ -30,7 +30,8 @@
     import { getViews } from '../../api/views.remote';
 
     // DATA | saves and realtime events merge single notes into the list, the rest refresh
-    let [notes, labels, reminders, views, people] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews(), getPeople()]))
+    let [stored, labels, reminders, views, people] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews(), getPeople()]))
+    let notes = $derived(hiddenNotes.size ? stored.filter((note) => !hiddenNotes.has(note.id)) : stored)
     let me = $derived(page.data.user?.id ?? '')
 
     let remindersByNote = $derived(groupReminders(reminders))
@@ -318,12 +319,9 @@
         return selected.has(note.id) ? selection : [note]
     }
 
-    let removing = false; // A second Delete while the dialog asks opens no second one
-    async function removeSelection() {
-        if (removing) return
-        removing = true
-        if (await removeNotes(selection, me)) selected.clear()
-        removing = false
+    function removeSelection() {
+        removeNotes(selection, me)
+        selected.clear()
     }
 
     function onKey(event: KeyboardEvent) {
@@ -333,6 +331,10 @@
             selected.clear()
         }
         else if (event.key === 'Delete' && selection.length && !editing && !menuOpen && !typing(event)) removeSelection()
+        else if (event.key === 'n' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.repeat && !editing && !selection.length && !menuOpen && !typing(event) && !document.querySelector('[data-dialog-content]')) {
+            event.preventDefault()
+            edit(null)
+        }
     }
 
     // QUICK ACTIONS ON CARDS

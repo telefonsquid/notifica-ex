@@ -1,6 +1,6 @@
 <script lang="ts">
     import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
-    import { removeNotes } from '#lib/deletions.ts';
+    import { offerArchiveUndo, removeNotes } from '#lib/deletions.ts';
     import { safeAction } from '#lib/pocketbase.ts';
     import { describeRule } from '#lib/reminders.ts';
     import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
@@ -69,7 +69,10 @@
     }
 
     async function archive(){
-        await each((note) => updateNote({ id: note.id, archived: !allArchived, pinned: allArchived && note.pinned }), owned)
+        const before = owned.map(({ id, archived, pinned }) => ({ id, archived, pinned }))
+        const archiving = !allArchived
+        await each((note) => updateNote({ id: note.id, archived: archiving, pinned: !archiving && note.pinned }), owned)
+        offerArchiveUndo(before, archiving)
         onfinish?.()
     }
 
@@ -82,8 +85,9 @@
         Promise.all(attached.map((reminder) => safeAction(removeReminder(reminder.id))))
     }
 
-    async function remove(){
-        if(await removeNotes(notes, me)) onfinish?.()
+    function remove(){
+        removeNotes(notes, me)
+        onfinish?.()
     }
 </script>
 

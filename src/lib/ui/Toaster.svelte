@@ -1,6 +1,6 @@
 <script lang="ts">
     import { duration, easing, rise, sink } from '#lib/motion.ts';
-    import { dismiss, notifications } from '#lib/notifications.svelte.ts';
+    import { act, dismiss, notifications } from '#lib/notifications.svelte.ts';
     import { CircleAlert, CircleCheck, Info, X } from '@lucide/svelte';
     import { flip } from 'svelte/animate';
 
@@ -19,6 +19,11 @@
         >
             <Icon class={['mt-0.5 size-4 shrink-0', notification.type === 'error' ? 'text-accent' : 'text-secondary']} />
             <p class="flex-1 py-px whitespace-pre-line">{notification.content}</p>
+            {#if notification.action}
+                <button class="motion-interactive -my-1 rounded-control px-2 py-1 font-medium text-accent hover:bg-accent-soft" onclick={() => act(notification.id)}>
+                    {notification.action.label}
+                </button>
+            {/if}
             <button
                 class="motion-interactive -my-1 rounded-control p-1.5 text-ink-faint hover:bg-accent-soft hover:text-ink"
                 aria-label="Dismiss"

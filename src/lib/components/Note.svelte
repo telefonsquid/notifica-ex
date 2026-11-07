@@ -27,7 +27,7 @@
     import { IMAGE_TYPES, imagesIn, shrink, uploadImage } from '#lib/images.ts';
     import { longPress } from '#lib/long_press.ts';
     import { appear, rise, unfold } from '#lib/motion.ts';
-    import { confirmNoteRemoval } from '#lib/deletions.ts';
+    import { offerArchiveUndo, removeNotes } from '#lib/deletions.ts';
     import type { SharedNote } from '#lib/android.ts';
     import { kept } from '#lib/note_list.ts';
     import { emptyNote, isEmpty } from '#lib/notes.ts';
@@ -41,7 +41,7 @@
     import Markdown from '#lib/ui/Markdown.svelte';
     import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Pin, Trash2 } from '@lucide/svelte';
     import { untrack } from 'svelte';
-    import { createNote, deleteNote, leaveNote, removeImage, shareNote, updateNote } from '../../routes/api/notes.remote';
+    import { createNote, removeImage, shareNote, updateNote } from '../../routes/api/notes.remote';
 
     /*
         One note, closed as a card in the grid or open for editing. Opening keeps every element
@@ -284,17 +284,21 @@
     })
 
     // ACTIONS
-    function archive(){
-        draft.archived = !draft.archived
+    async function archive(){
+        const { archived, pinned } = draft
+        draft.archived = !archived
         if(draft.archived) draft.pinned = false     // pinned only matters among active notes
         onclose?.()
+
+        const noteId = await save()
+        if(noteId) offerArchiveUndo([{ id: noteId, archived, pinned }], !archived)
     }
 
+    // The edits land first, so an Undo brings them back too
     async function remove(){
-        if(!await confirmNoteRemoval(1, owned ? 1 : 0)) return
-        await queue
-        if(id && !await safeAction(owned ? deleteNote(id) : leaveNote(id))) return
+        const noteId = await save()
         deleted = true
+        if(noteId) removeNotes([{ id: noteId, owner: note?.owner ?? me }], me)
         onclose?.()
     }
 
