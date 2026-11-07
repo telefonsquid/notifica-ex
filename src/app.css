@@ -161,7 +161,6 @@
     --theme-signature: var(--theme-accent);
 
     /* NOTE SOLIDS | the same strong colors in every theme */
-    --theme-note-ochre-solid: var(--color-ochre-600);
     --theme-note-tangerine-solid: var(--color-tangerine-600);
     --theme-note-coral-solid: var(--color-coral-600);
     --theme-note-cherry-solid: var(--color-cherry-600);
@@ -178,7 +177,8 @@
     --theme-note-moss-solid: var(--color-moss-600);
     --theme-note-forest-solid: var(--color-forest-600);
     --theme-note-slate-solid: var(--color-slate-600);
-    --theme-note-platinum-solid: var(--color-platinum-700);
+    --theme-note-graphite-solid: var(--color-charcoal-900);
+    --theme-note-black-solid: #000;
 
     /* DENSITY | scales every Tailwind spacing utility at once */
     --spacing: 0.25rem;

@@ -20,8 +20,8 @@
     background-position: var(--note-texture-position);
 }
 
-/* A solid swatch is strong enough on its own, a ring in its own ink only blurs the edge */
-.swatch[data-note$='-solid'] {
+/* A solid swatch is strong enough on its own, a ring in its own ink only blurs the edge | the darkest would vanish on a dark theme without it */
+.swatch[data-note$='-solid']:not([data-note='graphite-solid'], [data-note='black-solid']) {
     border-color: transparent;
 }
 
@@ -67,7 +67,6 @@
 
 
 /* SOLIDS ==================================================================================================== */
-[data-note='ochre-solid'] { --note-bg: var(--theme-note-ochre-solid); }
 [data-note='tangerine-solid'] { --note-bg: var(--theme-note-tangerine-solid); }
 [data-note='coral-solid'] { --note-bg: var(--theme-note-coral-solid); }
 [data-note='cherry-solid'] { --note-bg: var(--theme-note-cherry-solid); }
@@ -84,7 +83,8 @@
 [data-note='moss-solid'] { --note-bg: var(--theme-note-moss-solid); }
 [data-note='forest-solid'] { --note-bg: var(--theme-note-forest-solid); }
 [data-note='slate-solid'] { --note-bg: var(--theme-note-slate-solid); }
-[data-note='platinum-solid'] { --note-bg: var(--theme-note-platinum-solid); }
+[data-note='graphite-solid'] { --note-bg: var(--theme-note-graphite-solid); }
+[data-note='black-solid'] { --note-bg: var(--theme-note-black-solid); }
 
 
 
