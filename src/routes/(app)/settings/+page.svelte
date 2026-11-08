@@ -199,8 +199,12 @@
         }
     }
 
+    /* The padding holds the sections' outset edge, which made the stage scroll sideways */
     .stage {
         min-height: 0;
+        margin-inline: -0.25rem;
+        padding-inline: 0.25rem;
+        overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior: contain;
         scroll-padding-top: var(--peek);
