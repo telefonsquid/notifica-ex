@@ -25,6 +25,16 @@ Live in `.claude/skills/<name>/SKILL.md`. Status `planned` means the file doesn'
 | `reminders` | Recurrence model, scheduler, ntfy delivery and actions | available |
 | `android` | Tauri shell, connect page, toolchain, running on a phone | available |
 
+## Releases
+
+The app is in use since 0.1.0. Never break an existing install: schema changes come with a versioned migration that keeps old data, new env vars are optional with a default, the Android app keeps working against an older server.
+
+Servers deploy only tagged releases (`vX.Y.Z`), not master. A release:
+
+1. Add a section on top of `CHANGELOG.md`: `## X.Y.Z · YYYY-MM-DD`, one bullet per commit subject part since the last tag (split at ` | `), worded as in the commits.
+2. Set the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`.
+3. Commit as `released X.Y.Z`, tag `vX.Y.Z` on it, push the commit and the tag.
+
 ## State machines
 
 `docs/state-machines.md` lists every machine in the app, with states, invariants and transitions, and the issues the audit found. A change to a machine updates its table in the same commit.
