@@ -104,7 +104,8 @@
 		<svg class="logo" viewBox="0 0 32 32" aria-label="notifica-ex"><rect width="32" height="32" rx="9" fill="#161616"/><path d="M9 23V9l14 14V9" fill="none" stroke="#ff5b19" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
 		<form>
 			<label for="server">Server</label>
-			<input id="server" type="url" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="notes.example.com" required />
+			<!-- Text, not url: the url type rejects a bare host before withScheme() can add https -->
+			<input id="server" type="text" inputmode="url" autocomplete="url" autocapitalize="off" spellcheck="false" placeholder="notes.example.com" required />
 			<button type="submit">Connect</button>
 			<p class="status" role="status"></p>
 		</form>

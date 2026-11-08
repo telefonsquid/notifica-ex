@@ -45,7 +45,7 @@ Most docs and examples online, and fsd-flight-check, are still SvelteKit 2. In t
 - **Env vars** are declared and validated with zod in `src/env.ts` and imported by name from `$app/env/private` or `$app/env/public`. `$env/*` no longer exists. New variables go into `env.ts`, `.env.example` and the compose file.
 - **`$app/env`** replaces `$app/environment`.
 - **Hook types** (`Handle`, `HandleServerError`, `sequence`) come from `@sveltejs/kit/hooks`. Remote function validation errors arrive in `handleError` with `kind: 'validation'`.
-- **`resolve()`** from `$app/paths` takes route ids including groups: `resolve('/(app)/settings')`. The eslint rule requires it for every `href` and `goto`.
+- **`resolve()`** from `$app/paths` takes route ids including groups: `resolve('/(app)/settings')`. The eslint rule requires it for every `href` and `goto`. `paths.relative` is off: relative paths read the request url, which a query may not, and turned notification links into `../../`.
 - **tsconfig** extends `$app/tsconfig`.
 - **Origin** is build time config (`paths.origin` in `vite.config.ts`, fed by `ORIGIN`), adapter-node no longer reads it at runtime and otherwise assumes https from the `Host` header.
 
