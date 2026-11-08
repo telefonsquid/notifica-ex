@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 · 2026-11-09
+
+- added a full user delete for admins
+
 ## 0.3.1 · 2026-11-09
 
 - added release signing for the android app
