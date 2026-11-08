@@ -1,5 +1,5 @@
 import { mergeNotes, type NoteEvent } from '#lib/notes.ts';
-import type { Note } from '#lib/schemas.ts';
+import type { Note } from '#lib/schemas/notes.ts';
 import { getNotes } from '../routes/api/notes.remote';
 
 /*
@@ -10,6 +10,12 @@ import { getNotes } from '../routes/api/notes.remote';
 export function keepEvents(events: NoteEvent[]){
     const list = getNotes().current
     if(list) getNotes().set(mergeNotes(list, events))
+}
+
+// Notes gone from the server, or about to be
+export function dropNotes(ids: string[]){
+    const list = getNotes().current
+    if(list) getNotes().set(list.filter((note) => !ids.includes(note.id)))
 }
 
 // Wrap a command that answers with its note

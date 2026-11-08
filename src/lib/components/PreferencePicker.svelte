@@ -1,32 +1,32 @@
 <script lang="ts" generics="T extends string">
     import { browser } from '$app/env';
+    import type { PreferenceName } from '#lib/preferences.ts';
     import CheckMark from '#lib/ui/CheckMark.svelte';
     import type { Snippet } from 'svelte';
+    import { setPreference } from '../../routes/api/settings.remote';
 
     // PROPS
     let {
         options,
-        attribute,
+        name,
         current,
-        save,
         miniature
     }: {
         options: readonly { value: T, name: string }[]
-        attribute: 'labels' | 'images'  // the data attribute on <html> that carries the choice
+        name: PreferenceName
         current: T
-        save: (value: T) => Promise<unknown>
         miniature: Snippet<[T]>
     } = $props()
 
     // The page attribute holds the latest choice, the load data keeps the value of the first page load
-    let selected = $derived(browser ? document.documentElement.dataset[attribute] as T : current)
+    let selected = $derived(browser ? document.documentElement.dataset[name] as T : current)
 
     // Applies right away, the cookie only matters for the next page load
     function choose(value: T){
         if(value === selected) return
         selected = value
-        document.documentElement.dataset[attribute] = value
-        save(value).catch(() => {})
+        document.documentElement.dataset[name] = value
+        setPreference({ name, value }).catch(() => {})
     }
 </script>
 

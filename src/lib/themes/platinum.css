@@ -1,4 +1,4 @@
-/* PLATINUM | light default, a paper look, also roomier with tighter corners to show that layout tokens are themeable too */
+/* PLATINUM | light default, a paper look */
 :root,
 [data-theme='platinum'] {
     color-scheme: light;
@@ -63,10 +63,4 @@
 
     /* NOTE SHADE */
     --theme-note-shade: rgb(0 0 0 / 0.06);
-
-    /* LAYOUT */
-    --layout-note-gap: 1.125rem;
-    --layout-card-padding: 1.375rem;
-    --layout-radius-card: 0.625rem;
-    --layout-radius-control: 0.5rem;
 }

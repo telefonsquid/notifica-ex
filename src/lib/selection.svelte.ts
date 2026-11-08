@@ -12,10 +12,6 @@ export class Selection {
         return this.#ids.has(id)
     }
 
-    get size(): number {
-        return this.#ids.size
-    }
-
     clear(){
         this.#ids.clear()
         this.#anchor = null
@@ -40,9 +36,4 @@ export class Selection {
         }
         this.#anchor = id
     }
-}
-
-// Keys meant for a field stay there
-export function typing(event: KeyboardEvent): boolean {
-    return event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(event.target.tagName))
 }

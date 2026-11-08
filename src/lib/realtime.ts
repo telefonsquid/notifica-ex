@@ -1,7 +1,7 @@
 import { invalidateAll } from '$app/navigation';
 import { pb } from '#lib/pocketbase.ts';
 import { busy } from '#lib/singletons/busy.svelte.ts';
-import type { Collection } from '#lib/schemas.ts';
+import type { Collection } from '#lib/schemas/collections.ts';
 import type { RecordModel, RecordSubscription } from 'pocketbase';
 
 /*

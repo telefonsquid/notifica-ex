@@ -1,4 +1,4 @@
-import { viewFilterSchema, viewSortSchema, type ViewFilter, type ViewSort } from '#lib/schemas.ts';
+import { viewFilterSchema, viewSortSchema, type ViewFilter, type ViewSort } from '#lib/schemas/views.ts';
 import { defaultSort, emptyFilter } from '#lib/views.ts';
 
 // Saved filters may predate newer fields, parsing fills them in

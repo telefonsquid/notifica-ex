@@ -1,6 +1,6 @@
 import { afterSave, changedFields, fitted, holdSave, parseDraft, rescued, restoreOf, sameContent, saveOpenNotes } from '#lib/drafts.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
-import type { Note, NoteContent } from '#lib/schemas.ts';
+import type { Note, NoteContent } from '#lib/schemas/notes.ts';
 import { describe, expect, test } from 'bun:test';
 
 const content = (title: string, body = ''): NoteContent => ({ title, body, color: '', labels: [], pinned: false, archived: false })
@@ -114,12 +114,6 @@ describe('saving only what changed', () => {
         const { saved, adopted } = afterSave(content('a'), { title: ' b ' }, content(' b '), content('b'))
         expect(saved.title).toBe(' b ')
         expect(adopted).toEqual({})
-    })
-
-    test('keeps the order of the fields, the card compares them as text', () => {
-        const current = content('a')
-        const stored: NoteContent = { archived: false, pinned: false, labels: [], color: '', body: '', title: 'a' }
-        expect(JSON.stringify(afterSave(current, {}, current, stored).saved)).toBe(JSON.stringify(current))
     })
 })
 

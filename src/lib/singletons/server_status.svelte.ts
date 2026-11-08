@@ -31,7 +31,7 @@ function pollWhenVisible(){
     if(!document.hidden) checkServer()
 }
 
-// WATCH | from the root layout, returns the stop
+// WATCH | from the banner, returns the stop
 export function watchServer(): () => void {
     watching = true
     checkServer()

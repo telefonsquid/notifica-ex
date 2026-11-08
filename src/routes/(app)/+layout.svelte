@@ -3,11 +3,12 @@
     import { goto, invalidateAll } from '$app/navigation'
     import { resolve } from '$app/paths'
     import { page } from '$app/state'
-    import { hasShare } from '#lib/android.ts'
+    import { onAndroidEvent } from '#lib/android.ts';
+    import { hasShare } from '#lib/android_share.ts';
     import ReminderHistory from '#lib/components/ReminderHistory.svelte'
     import Rail from '#lib/components/Rail.svelte'
     import { followAppPause, startDeviceNotifications } from '#lib/device_notifications.ts'
-    import { safeAction } from '#lib/pocketbase.ts'
+    import { safeAction } from '#lib/safe_action.ts';
     import { connectRealtime, onRecordChange } from '#lib/realtime.ts'
     import { onDestroy, onMount } from 'svelte'
     import type { LayoutProps } from './$types';
@@ -29,8 +30,7 @@
 
     onMount(() => {
         followShare()
-        window.addEventListener('notifica-android', followShare)
-        return () => window.removeEventListener('notifica-android', followShare)
+        return onAndroidEvent(followShare)
     })
 
     // OWN ACCOUNT | name, role or deactivation changed elsewhere shows up here at once
@@ -44,10 +44,27 @@
 
 <!-- CONTENT -->
 <div class="sm:pl-rail">
-    <main class="vt-page flex min-h-dvh flex-col px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-24 sm:pt-[calc(3rem+env(safe-area-inset-top))] sm:pb-12">
+    <main class="page vt-page flex min-h-dvh flex-col px-gutter">
         {@render children()}
     </main>
 </div>
 
 <!-- GLOBAL DIALOGS -->
 <ReminderHistory />
+
+<style>
+    /* The settings page fills exactly what this padding leaves of the window */
+    .page {
+        --page-top: calc(2.5rem + env(safe-area-inset-top));
+        --page-bottom: calc(var(--layout-bottom-clear) + 1rem);
+        padding-top: var(--page-top);
+        padding-bottom: var(--page-bottom);
+    }
+
+    @media (width >= 40rem) {
+        .page {
+            --page-top: calc(3rem + env(safe-area-inset-top));
+            --page-bottom: 3rem;
+        }
+    }
+</style>

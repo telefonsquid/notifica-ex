@@ -1,6 +1,7 @@
 <script lang="ts">
     import Glider from '#lib/ui/Glider.svelte';
-    import type { ViewSort } from '#lib/schemas.ts';
+    import Switch from '#lib/ui/Switch.svelte';
+    import type { ViewSort } from '#lib/schemas/views.ts';
     import { BellRing, CalendarPlus, CaseSensitive, GripVertical, PencilLine, Pin } from '@lucide/svelte';
 
     // PROPS | every change hands back a fresh copy, the owner decides when to save
@@ -46,7 +47,7 @@
         <label class="flex cursor-pointer items-center gap-2.5 px-1 text-sm text-ink-muted">
             <Pin class="size-4 text-ink-faint" />
             <span class="mr-auto">Pinned first</span>
-            <input type="checkbox" class="switch" checked={sort.pinnedFirst} onchange={(event) => update({ pinnedFirst: event.currentTarget.checked })} />
+            <Switch checked={sort.pinnedFirst} label="Pinned first" onchange={(pinnedFirst) => update({ pinnedFirst })} />
         </label>
     </div>
 </div>
@@ -86,32 +87,4 @@
     .list button:hover { color: var(--theme-ink); }
     .list button > :global(svg) { color: var(--theme-ink-faint); transition: color var(--duration-fast) var(--ease-out); }
     .list button.on, .list button.on > :global(svg) { color: var(--theme-accent); }
-
-    /* SWITCH | a pill with a knob that slides across */
-    .switch {
-        appearance: none;
-        position: relative;
-        width: 2.25rem;
-        height: 1.25rem;
-        border-radius: 999px;
-        background: var(--theme-line-strong);
-        cursor: pointer;
-        transition: background-color var(--duration-base) var(--ease-in-out);
-    }
-
-    .switch::after {
-        content: '';
-        position: absolute;
-        top: 0.125rem;
-        left: 0.125rem;
-        width: 1rem;
-        height: 1rem;
-        border-radius: 999px;
-        background: var(--theme-raised);
-        box-shadow: 0 1px 2px color-mix(in oklab, var(--theme-ink) 20%, transparent);
-        transition: translate var(--duration-base) var(--ease-in-out);
-    }
-
-    .switch:checked { background: var(--theme-accent); }
-    .switch:checked::after { translate: 1rem 0; }
 </style>

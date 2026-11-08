@@ -1,6 +1,6 @@
 <script lang="ts">
     import { isSafeUrl } from '#lib/markdown.ts';
-    import { rise } from '#lib/motion.ts';
+    import { appear } from '#lib/motion.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Bold, Check, FileCode, Heading, Italic, Link, List, ListOrdered, ListTodo, Unlink, X } from '@lucide/svelte';
     import { Editor } from '@tiptap/core';
@@ -10,14 +10,14 @@
     import StarterKit from '@tiptap/starter-kit';
     import { untrack } from 'svelte';
 
+    const PLACEHOLDER = 'Write something'
+
     // PROPS
     let {
         value = $bindable(''),
-        placeholder = 'Write something',
         autofocus = false
     }: {
         value?: string          // markdown source, rich and raw mode both write it
-        placeholder?: string
         autofocus?: boolean
     } = $props()
 
@@ -55,12 +55,12 @@
                 }),
                 TaskList,
                 TaskItem.configure({ nested: true }),
-                Placeholder.configure({ placeholder }),
+                Placeholder.configure({ placeholder: PLACEHOLDER }),
                 Markdown,
             ],
             content: value,
             contentType: 'markdown',
-            editorProps: { attributes: { class: 'markdown min-h-32 text-ink-muted outline-none', 'aria-label': 'Text' } },
+            editorProps: { attributes: { class: 'markdown min-h-32 text-ink-muted outline-none', 'aria-label': 'Text', 'data-claims-escape': '', 'data-note-text': '' } },
             onCreate: ({ editor }) => { if(autofocus) focusEnd(editor) },
             onUpdate: ({ editor }) => value = editor.getMarkdown(),
             onTransaction: () => version++,
@@ -112,8 +112,9 @@
     <!-- TEXT -->
     {#if raw}
         <textarea
+            data-note-text
             bind:value
-            {placeholder}
+            placeholder={PLACEHOLDER}
             aria-label="Markdown source"
             class="field-sizing-content min-h-32 resize-none bg-transparent font-mono text-sm leading-relaxed text-ink-muted outline-none placeholder:text-ink-faint"
         ></textarea>
@@ -122,7 +123,7 @@
     {/if}
 
     <!-- TOOLBAR | formatting only exists in rich mode, the source toggle sits quietly at the end | drifts in with the other controls of an opening note -->
-    <div class="editor-toolbar -mx-2 flex min-h-8 items-center gap-0.5" in:rise|global={{ y: 4, scale: 1, duration: 'base', delay: 120 }}>
+    <div class="open-only -mx-2 flex min-h-8 items-center gap-0.5" in:appear|global>
         {#if linking}
             <form class="flex flex-1 items-center gap-1" onsubmit={(event) => { event.preventDefault(); applyLink() }}>
                 <Link class="mx-1.5 size-3.5 shrink-0 text-ink-faint" />

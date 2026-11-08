@@ -1,12 +1,14 @@
 <script lang="ts">
     import FilterEditor from '#lib/components/FilterEditor.svelte';
-    import { deleteSavedView } from '#lib/deletions.ts';
     import SortEditor from '#lib/components/SortEditor.svelte';
-    import { safeAction } from '#lib/pocketbase.ts';
-    import { onCollectionChange } from '#lib/realtime.ts';
+    import { debounced } from '#lib/debounced.ts';
+    import { deleteSavedView } from '#lib/deletions.ts';
+    import { optimisticOrder } from '#lib/optimistic_order.svelte.ts';
+    import { safeAction } from '#lib/safe_action.ts';
     import { duration, easing } from '#lib/motion.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
-    import type { Label, ViewFilter, ViewIcon, ViewSort } from '#lib/schemas.ts';
+    import type { Label } from '#lib/schemas/notes.ts';
+    import type { ViewFilter, ViewIcon, ViewSort } from '#lib/schemas/views.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
     import InlineInput from '#lib/ui/InlineInput.svelte';
@@ -28,11 +30,8 @@
 
     let saved = $derived(await getViews())
 
-    // A move shows at once, the saved order takes over once the server has it
-    let order = $state.raw<string[] | null>(null)
-    let views = $derived(order ? order.map((id) => saved.find((view) => view.id === id)).filter((view) => !!view) : saved)
-
-    $effect(() => onCollectionChange('views', () => getViews().refresh()))
+    const order = optimisticOrder(() => saved, reorderViews)
+    let views = $derived(order.items)
 
     // ROW STATE | one open icon picker at a time
     let picking = $state<string | null>(null)
@@ -62,28 +61,21 @@
         safeAction(updateView({ id, icon }))
     }
 
-    // Swaps with the neighbour and sends the whole order | a later move keeps its own order showing
-    async function move(index: number, step: -1 | 1){
-        const ids = views.map((view) => view.id);
-        [ids[index], ids[index + step]] = [ids[index + step], ids[index]]
-        order = ids
-        await safeAction(reorderViews(ids))
-        if(order === ids) order = null
-    }
-
     // FILTERS | saved shortly after the last change, typing in a word field would send every key otherwise
-    let pending = $state<Record<string, { filter: ViewFilter, sort: ViewSort }>>({})
-    const timers: Record<string, ReturnType<typeof setTimeout>> = {}
+    let pending = $state.raw<Record<string, { filter: ViewFilter, sort: ViewSort }>>({})
+
+    const saving = debounced(async () => {
+        const sent = pending
+        await Promise.all(Object.entries(sent).map(([id, edit]) => safeAction(updateView({ id, ...edit }))))
+        pending = Object.fromEntries(Object.entries(pending).filter(([id, edit]) => sent[id] !== edit))
+    })
 
     function change(id: string, filter: ViewFilter, sort: ViewSort){
-        const edit = { filter, sort }
-        pending[id] = edit
-        clearTimeout(timers[id])
-        timers[id] = setTimeout(async () => {
-            await safeAction(updateView({ id, ...edit }))
-            if(pending[id] === edit) delete pending[id]
-        }, 400)
+        pending = { ...pending, [id]: { filter, sort } }
+        saving.schedule()
     }
+
+    $effect(() => saving.flush)
 
     // ====================================================================================================
 
@@ -153,8 +145,8 @@
                 {#if index === 0}<span class="type-meta hidden text-ink-faint sm:inline">Home</span>{/if}
 
                 <!-- ORDER -->
-                <button class="icon-button" aria-label={`Move ${view.name} up`} disabled={index === 0} onclick={() => move(index, -1)} {@attach tip('Move up')}><ChevronUp class="size-4" /></button>
-                <button class="icon-button" aria-label={`Move ${view.name} down`} disabled={index === views.length - 1} onclick={() => move(index, 1)} {@attach tip('Move down')}><ChevronDown class="size-4" /></button>
+                <button class="icon-button" aria-label={`Move ${view.name} up`} disabled={index === 0} onclick={() => order.move(index, index - 1)} {@attach tip('Move up')}><ChevronUp class="size-4" /></button>
+                <button class="icon-button" aria-label={`Move ${view.name} down`} disabled={index === views.length - 1} onclick={() => order.move(index, index + 1)} {@attach tip('Move down')}><ChevronDown class="size-4" /></button>
 
                 <!-- FILTERS -->
                 <button

@@ -1,4 +1,4 @@
-import { withoutLeaving } from '#lib/motion.ts';
+import { withoutLeaving } from '#lib/relayout.ts';
 import type { Attachment } from 'svelte/attachments';
 
 /*
@@ -27,7 +27,7 @@ export function pack(grid: HTMLElement){
     const roomBelow = document.documentElement.dataset.labels === 'bottom'
 
     // Leaving cards float above the grid and keep no spot | a placed one would measure from its old spot
-    const floating = cells.filter((cell) => cell.style.position === 'absolute')
+    const floating = cells.filter((cell) => cell.dataset.floating !== undefined)
     const placed = cells.filter((cell) => !floating.includes(cell))
     const heights = withoutLeaving(grid, () => placed.map((cell) => Math.ceil(cell.offsetHeight)))
     const spans = placed.map((cell) => Math.min(columns, parseInt(getComputedStyle(cell).gridColumnEnd.replace('span', '')) || 1))

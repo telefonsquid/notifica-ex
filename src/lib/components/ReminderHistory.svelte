@@ -2,10 +2,10 @@
     import { now } from '#lib/clock.svelte.ts';
     import DoneButton from '#lib/components/DoneButton.svelte';
     import { cssEasing, duration, easing, emerge, rise, stagger, unfold } from '#lib/motion.ts';
-    import { dayKey, formatDay, formatTime } from '#lib/notes.ts';
-    import { safeAction } from '#lib/pocketbase.ts';
+    import { dayKey, formatDay, formatTime } from '#lib/time_format.ts';
+    import { safeAction } from '#lib/safe_action.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
-    import type { Occurrence } from '#lib/schemas.ts';
+    import type { Occurrence } from '#lib/schemas/reminders.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
     import { history, HISTORY_PAGE } from '#lib/singletons/reminder_history.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';

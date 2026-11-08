@@ -30,6 +30,10 @@ export const variables = defineEnvVars({
         schema: z.string().min(16),
         description: 'Shared with the migration and cron containers to call the internal endpoints',
     },
+    SIGNING_SECRET: {
+        schema: z.string().min(16).optional(),
+        description: 'Signs the Done and Snooze buttons in reminders, falls back to SERVER_AUTH_SECRET while unset',
+    },
 
     // NTFY | optional, the other ways to get reminders work without it
     NTFY_URL: {

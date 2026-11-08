@@ -13,7 +13,7 @@ type NotificationOptions = {
     onend?: () => void              // The toast left without its button being pressed
 }
 
-export type Notification = {
+type Notification = {
     id: number
     content: string
     type: NotificationType

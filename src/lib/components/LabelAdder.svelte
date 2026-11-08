@@ -1,7 +1,7 @@
 <script lang="ts">
-    import { randomLabelColor } from '#lib/notes.ts';
-    import { safeAction } from '#lib/pocketbase.ts';
-    import type { Label } from '#lib/schemas.ts';
+    import { randomLabelColor } from '#lib/note_colors.ts';
+    import { safeAction } from '#lib/safe_action.ts';
+    import type { Label } from '#lib/schemas/notes.ts';
     import { Plus } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
     import type { ClassValue } from 'svelte/elements';

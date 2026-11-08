@@ -1,9 +1,9 @@
 <script lang="ts">
     import { notify } from '#lib/notifications.svelte.ts'
-    import { safeAction } from '#lib/pocketbase.ts'
+    import { safeAction } from '#lib/safe_action.ts';
     import { onCollectionChange } from '#lib/realtime.ts'
     import { LIMITS } from '#lib/schema_limits.ts'
-    import type { AuthorizationLevel, UserSummary } from '#lib/schemas.ts'
+    import type { AuthorizationLevel, UserSummary } from '#lib/schemas/users.ts';
     import { confirmAction } from '#lib/singletons/confirm.svelte.ts'
     import { tip } from '#lib/tooltip.svelte.ts'
     import Button from '#lib/ui/Button.svelte'

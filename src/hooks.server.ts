@@ -1,9 +1,8 @@
 // IMPORTS
 import { INTERNAL_POCKETBASE_URL } from '$app/env/private'
-import { DEFAULT_IMAGE_FIT, DEFAULT_LABEL_POSITION, IMAGE_FIT_COOKIE, LABEL_POSITION_COOKIE, isImageFit, isLabelPosition } from '#lib/preferences.ts'
-import type { User } from '#lib/schemas.ts'
+import { readPreferences } from '#lib/preferences.ts'
+import type { User } from '#lib/schemas/users.ts';
 import { isOutage, outage } from '#lib/server/outage.ts'
-import { DEFAULT_THEME, THEME_COOKIE, isThemeName } from '#lib/themes/index.ts'
 import { sequence, type Handle, type HandleServerError } from '@sveltejs/kit/hooks'
 import PocketBase, { getTokenPayload, isTokenExpired } from 'pocketbase'
 
@@ -61,26 +60,18 @@ const authenticate = (async ({ event, resolve }) => {
 
 }) satisfies Handle
 
-const applyTheme = (async ({ event, resolve }) => {
+const applyPreferences = (async ({ event, resolve }) => {
 
-    // READ PREFERENCES FROM COOKIES, FALL BACK FOR UNKNOWN OR MISSING ONES
-    const theme = event.cookies.get(THEME_COOKIE)
-    event.locals.theme = isThemeName(theme) ? theme : DEFAULT_THEME
-
-    const labels = event.cookies.get(LABEL_POSITION_COOKIE)
-    event.locals.labelPosition = isLabelPosition(labels) ? labels : DEFAULT_LABEL_POSITION
-
-    const images = event.cookies.get(IMAGE_FIT_COOKIE)
-    event.locals.imageFit = isImageFit(images) ? images : DEFAULT_IMAGE_FIT
+    event.locals.preferences = readPreferences((name) => event.cookies.get(name))
 
     // RENDER THEM INTO THE HTML | set before first paint so the page never flashes the wrong look
     return resolve(event, {
-        transformPageChunk: ({ html }) => html.replace('%theme%', event.locals.theme).replace('%labels%', event.locals.labelPosition).replace('%images%', event.locals.imageFit)
+        transformPageChunk: ({ html }) => Object.entries(event.locals.preferences).reduce((page, [name, value]) => page.replace(`%${name}%`, value), html)
     })
 
 }) satisfies Handle
 
-export const handle = sequence(authenticate, applyTheme)
+export const handle = sequence(authenticate, applyPreferences)
 
 
 

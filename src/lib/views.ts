@@ -1,11 +1,13 @@
 import { tasksOf } from '#lib/markdown.ts';
-import { isOpenTask, shownColor } from '#lib/notes.ts';
-import { parseTimestamp } from '#lib/reminders.ts';
-import type { DateRange, Label, Note, NoteContent, Reminder, ViewContent, ViewFilter, ViewSort } from '#lib/schemas.ts';
+import { shownColor } from '#lib/auto_colors.ts';
+import { positionOf } from '#lib/note_position.ts';
+import { isOpenTask, parseTimestamp } from '#lib/reminders.ts';
+import type { Label, Note, NoteContent } from '#lib/schemas/notes.ts';
+import type { Reminder } from '#lib/schemas/reminders.ts';
+import type { DateRange, ViewContent, ViewFilter, ViewSort } from '#lib/schemas/views.ts';
 
 /*
-    A view is a saved set of filters plus a sort order.
-    Matching runs in the browser and on the server alike, so both render the same notes.
+    A view is a saved set of filters plus a sort order, matched in the browser.
 */
 
 
@@ -43,16 +45,73 @@ export function starterViews(): ViewContent[] {
     ]
 }
 
-// How many fields differ from an empty filter
-export function countActive(filter: ViewFilter): number {
-    const empty = emptyFilter()
-    return (Object.keys(empty) as (keyof ViewFilter)[])
-        .filter((key) => JSON.stringify(filter[key]) !== JSON.stringify(empty[key]))
-        .length
+// The first view lives at the root, the rest at their own address
+export function viewParams(view: { id: string }, index: number) {
+    return { view: index === 0 ? undefined : view.id }
 }
 
 export function sameFilter(a: ViewFilter, b: ViewFilter): boolean {
     return JSON.stringify(a) === JSON.stringify(b)
+}
+
+
+
+// FILTER FIELDS ====================================================================================================
+export type FilterSection = 'words' | 'labels' | 'state' | 'reminder' | 'colors' | 'dates'
+type FilterField = keyof ViewFilter
+
+// The simple editor's on and off filters, each with the value it turns on
+const SIMPLE_TOGGLES = { pinned: 'only', reminder: 'with', list: 'open' } as const
+type SimpleToggle = keyof typeof SIMPLE_TOGGLES
+
+export const isToggled = (filter: ViewFilter, field: SimpleToggle) => filter[field] === SIMPLE_TOGGLES[field]
+
+export function flipToggle(filter: ViewFilter, field: SimpleToggle): Partial<ViewFilter> {
+    return { [field]: isToggled(filter, field) ? emptyFilter()[field] : SIMPLE_TOGGLES[field] }
+}
+
+// The advanced editor's section of each field | simple says when the simple editor can show the value too
+const FILTER_FIELDS: Record<FilterField, { section: FilterSection, simple?: (filter: ViewFilter) => boolean }> = {
+    words: { section: 'words', simple: () => true },
+    without: { section: 'words' },
+    titleOnly: { section: 'words' },
+    include: { section: 'labels', simple: () => true },
+    exclude: { section: 'labels' },
+    labelMatch: { section: 'labels', simple: (filter) => filter.include.length <= 1 },
+    labelled: { section: 'labels' },
+    colors: { section: 'colors' },
+    pinned: { section: 'state', simple: (filter) => isToggled(filter, 'pinned') },
+    archived: { section: 'state', simple: () => true },
+    list: { section: 'state', simple: (filter) => isToggled(filter, 'list') },
+    reminder: { section: 'reminder', simple: (filter) => isToggled(filter, 'reminder') },
+    created: { section: 'dates' },
+    updated: { section: 'dates' },
+    due: { section: 'dates' },
+}
+
+function activeFields(filter: ViewFilter): FilterField[] {
+    const empty = emptyFilter()
+    return (Object.keys(FILTER_FIELDS) as FilterField[]).filter((field) => JSON.stringify(filter[field]) !== JSON.stringify(empty[field]))
+}
+
+// How many fields differ from an empty filter
+export function countActive(filter: ViewFilter): number {
+    return activeFields(filter).length
+}
+
+// How many active fields only the advanced editor shows
+export function countAdvancedOnly(filter: ViewFilter): number {
+    return activeFields(filter).filter((field) => !FILTER_FIELDS[field].simple?.(filter)).length
+}
+
+export function isSectionActive(filter: ViewFilter, section: FilterSection): boolean {
+    return activeFields(filter).some((field) => FILTER_FIELDS[field].section === section)
+}
+
+export function clearSection(filter: ViewFilter, section: FilterSection): ViewFilter {
+    const empty = emptyFilter()
+    const cleared = (Object.keys(FILTER_FIELDS) as FilterField[]).filter((field) => FILTER_FIELDS[field].section === section)
+    return { ...filter, ...Object.fromEntries(cleared.map((field) => [field, empty[field]])) }
 }
 
 
@@ -77,17 +136,6 @@ type MatchContext = {
     reminders: Map<string, Reminder[]>  // keyed by note id
     now: Date
     autoColors: Label[]                 // the auto color chart, highest first
-}
-
-// Soonest first, finished ones last
-export function groupReminders(reminders: Reminder[]): Map<string, Reminder[]> {
-    const grouped = new Map<string, Reminder[]>()
-    for(const reminder of reminders.toSorted((a, b) => Number(!a.next) - Number(!b.next) || a.next.localeCompare(b.next))){
-        const group = grouped.get(reminder.note)
-        if(group) group.push(reminder)
-        else grouped.set(reminder.note, [reminder])
-    }
-    return grouped
 }
 
 export function matchesView(note: Note, filter: ViewFilter, context: MatchContext): boolean {
@@ -199,18 +247,4 @@ export function sortNotes(notes: Note[], sort: ViewSort, reminders: Map<string, 
     }
 
     return notes.toSorted((a, b) => (sort.pinnedFirst ? Number(b.pinned) - Number(a.pinned) : 0) || compare(a, b))
-}
-
-// Creation time stands in until a drag gives the note a place of its own
-export function positionOf(note: Note): number {
-    return note.position || parseTimestamp(note.created)?.getTime() || 0
-}
-
-// A dropped note lands halfway between its new neighbours | either side may be missing at the ends
-export function positionBetween(before: Note | undefined, after: Note | undefined, direction: ViewSort['direction']): number {
-    const [higher, lower] = direction === 'desc' ? [before, after] : [after, before]
-    if(higher && lower) return (positionOf(higher) + positionOf(lower)) / 2
-    if(higher) return positionOf(higher) / 2
-    if(lower) return positionOf(lower) + 60_000
-    return Date.now()
 }

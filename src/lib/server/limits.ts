@@ -1,6 +1,7 @@
-import { DEFAULT_LIMITS, effectiveLimits, type FileLimits } from '#lib/limits.ts';
-import type { User } from '#lib/schemas.ts';
-import { findOne, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { DEFAULT_LIMITS, effectiveLimits } from '#lib/limits.ts';
+import type { FileLimits, User } from '#lib/schemas/users.ts';
+import { findOne, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { orNull, unwrap } from '#lib/server/result.ts';
 
 // One process, so what was read or saved here stays true | every page load asks for it
 let known: FileLimits | null = null
@@ -9,10 +10,10 @@ let known: FileLimits | null = null
 export async function serverLimits() {
     if(known) return known
 
-    const found = await findOne('app_settings', 'id != ""')
-    if(!found.success) return DEFAULT_LIMITS // Nothing saved so far
+    const found = orNull(await findOne('app_settings', 'id != ""'), 'Could not read the limits.')
+    if(!found) return DEFAULT_LIMITS // Nothing saved so far
 
-    known = { ...DEFAULT_LIMITS, ...found.data.limits }
+    known = { ...DEFAULT_LIMITS, ...found.limits }
     return known
 }
 
@@ -21,9 +22,9 @@ export async function limitsFor(user: Pick<User, 'limits'>) {
 }
 
 export async function saveServerLimits(limits: FileLimits) {
-    const found = await findOne('app_settings', 'id != ""')
-    const saved = found.success
-        ? await updateOnePartial('app_settings', found.data.id, { limits })
+    const found = orNull(await findOne('app_settings', 'id != ""'), 'Could not save the limits.')
+    const saved = found
+        ? await updateOnePartial('app_settings', found.id, { limits })
         : await insertOnePartial('app_settings', { limits })
     unwrap(saved, 'Could not save the limits.')
 

@@ -4,24 +4,21 @@
     import { page } from '$app/state';
     import ViewMenu from '#lib/components/ViewMenu.svelte';
     import { duration, easing, rise, stagger } from '#lib/motion.ts';
-    import { safeAction } from '#lib/pocketbase.ts';
-    import { stopDeviceNotifications } from '#lib/device_notifications.ts';
-    import { disconnectRealtime, onCollectionChange } from '#lib/realtime.ts';
+    import { optimisticOrder } from '#lib/optimistic_order.svelte.ts';
+    import { logout } from '#lib/logout.ts';
+    import { onCollectionChange } from '#lib/realtime.ts';
     import { viewIcon } from '#lib/view_icons.ts';
+    import { viewParams } from '#lib/views.ts';
     import { LogOut, Menu, Settings, X } from '@lucide/svelte';
     import { ContextMenu, Dialog } from 'bits-ui';
-    import { finishRemovals } from '#lib/deletions.ts';
-    import { saveOpenNotes } from '#lib/drafts.ts';
-    import { logoutUser } from '../../routes/api/auth.remote';
     import { sortable } from '#lib/drag_list.ts';
     import { getViews, reorderViews } from '../../routes/api/views.remote';
 
     // VIEWS | set up in settings, the first one lives at the root
     let saved = $derived(await getViews())
 
-    // A move shows at once, the saved order takes over once the server has it
-    let order = $state.raw<string[] | null>(null)
-    let views = $derived(order ? order.map((id) => saved.find((view) => view.id === id)).filter((view) => !!view) : saved)
+    const order = optimisticOrder(() => saved, reorderViews)
+    let views = $derived(order.items)
 
     $effect(() => onCollectionChange('views', () => getViews().refresh()))
 
@@ -29,15 +26,9 @@
     let inSettings = $derived(page.url.pathname.startsWith(resolve('/(app)/settings')))
 
     // The root shows whichever view is first, the open one moves to its own address so it stays on screen
-    async function moveView(from: number, to: number){
-        const ids = views.map((view) => view.id)
-        ids.splice(to, 0, ...ids.splice(from, 1))
-
-        if(openView && !page.params.view && ids[0] !== openView) goto(resolve('/(app)/[[view]]', { view: openView }), { replace: true, reset: false })
-
-        order = ids
-        await safeAction(reorderViews(ids))
-        if(order === ids) order = null
+    function moveView(from: number, to: number){
+        if(openView && !page.params.view && (from === 0) !== (to === 0)) goto(resolve('/(app)/[[view]]', { view: openView }), { replace: true, reset: false })
+        order.move(from, to)
     }
 
     // TOOLTIP | fixed to the window, so the scrolling view list never clips it
@@ -54,19 +45,11 @@
         }
     }
 
-    // LOGOUT | the next account on this device must not get these events or reminders
-    // Notifications stop before the session ends, unsubscribing needs it
+    // LOGOUT
     let loggingOut = $state(false)
-    async function logout(){
+    async function signOut(){
         loggingOut = true
-        await safeAction(stopDeviceNotifications())
-        await saveOpenNotes()
-        await finishRemovals()
-        const done = await safeAction(logoutUser())
-        if(done){
-            disconnectRealtime()
-            await goto(resolve('/login'), { refreshAll: true })
-        }
+        await logout()
         loggingOut = false
     }
 
@@ -113,11 +96,11 @@
 {/snippet}
 
 <!-- A menu button in the bottom bar on phones, side rail from sm up -->
-<nav class="vt-rail fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-gutter z-40 flex items-center gap-2 sm:inset-y-0 sm:left-0 sm:w-rail sm:flex-col sm:pt-[calc(1.5rem+env(safe-area-inset-top))] sm:pb-6">
+<nav class="vt-rail fixed bottom-[var(--layout-bottom-row)] left-gutter z-40 flex items-center gap-2 sm:inset-y-0 sm:left-0 sm:w-rail sm:flex-col sm:pt-[calc(1.5rem+env(safe-area-inset-top))] sm:pb-6">
 
     <!-- MENU | everything the rail holds, spread over the screen on phones -->
     <Dialog.Root bind:open={menuOpen}>
-        <Dialog.Trigger bind:ref={menuButton} class="menu-button grid size-16 shrink-0 place-items-center rounded-full border border-line-strong bg-raised text-ink sm:hidden" aria-label="Menu">
+        <Dialog.Trigger bind:ref={menuButton} class="menu-button grid size-[var(--layout-menu-button)] shrink-0 place-items-center rounded-full border border-line-strong bg-raised text-ink sm:hidden" aria-label="Menu">
             <Menu class="size-7" strokeWidth={2.25} />
         </Dialog.Trigger>
         <Dialog.Portal>
@@ -125,7 +108,7 @@
             <Dialog.Content forceMount preventScroll={false}>
                 {#snippet child({ props, open })}
                     {#if open}
-                        <div {...props} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto overscroll-contain bg-canvas/95 px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(6.5rem+env(safe-area-inset-bottom))] outline-none sm:hidden" transition:spread>
+                        <div {...props} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto overscroll-contain bg-canvas/95 px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(var(--layout-bottom-clear)+1.5rem)] outline-none sm:hidden" transition:spread>
                             <Dialog.Title class="sr-only">Menu</Dialog.Title>
 
                             <nav class="flex flex-col gap-1">
@@ -134,26 +117,26 @@
                                     <ContextMenu.Root>
                                         <ContextMenu.Trigger>
                                             {#snippet child({ props })}
-                                                {@render entry(resolve('/(app)/[[view]]', { view: index === 0 ? undefined : view.id }), view.name, Icon, openView === view.id, index, props)}
+                                                {@render entry(resolve('/(app)/[[view]]', viewParams(view, index)), view.name, Icon, openView === view.id, index, props)}
                                             {/snippet}
                                         </ContextMenu.Trigger>
                                         <ContextMenu.Portal>
                                             <ContextMenu.Content class="menu z-[70]" collisionPadding={12}>
-                                                <ViewMenu {view} {views} current={openView === view.id} />
+                                                <ViewMenu {view} {views} current={openView === view.id} onmove={moveView} />
                                             </ContextMenu.Content>
                                         </ContextMenu.Portal>
                                     </ContextMenu.Root>
                                 {/each}
                                 <hr class="my-3 border-line" />
                                 {@render entry(resolve('/(app)/settings'), 'Settings', Settings, inSettings, views.length)}
-                                <button class="entry" disabled={loggingOut} onclick={logout} in:rise|global={{ y: 16, delay: stagger(views.length + 1), duration: 'base' }}>
+                                <button class="entry" disabled={loggingOut} onclick={signOut} in:rise|global={{ y: 16, delay: stagger(views.length + 1), duration: 'base' }}>
                                     <LogOut class="size-6 shrink-0" strokeWidth={1.75} />
                                     <span class="type-title text-lg">Logout</span>
                                 </button>
                             </nav>
 
                             <!-- Sits right over the menu button, so the button seems to turn into a cross -->
-                            <Dialog.Close class="menu-button absolute bottom-[calc(1rem+env(safe-area-inset-bottom))] left-gutter grid size-16 place-items-center rounded-full border border-line-strong bg-raised text-ink" aria-label="Close menu">
+                            <Dialog.Close class="menu-button absolute bottom-[var(--layout-bottom-row)] left-gutter grid size-[var(--layout-menu-button)] place-items-center rounded-full border border-line-strong bg-raised text-ink" aria-label="Close menu">
                                 <X class="size-7" strokeWidth={2.25} />
                             </Dialog.Close>
                         </div>
@@ -171,12 +154,12 @@
             <ContextMenu.Root>
                 <ContextMenu.Trigger>
                     {#snippet child({ props })}
-                        {@render link({ view: index === 0 ? undefined : view.id }, view.name, viewIcon(view.icon), openView === view.id, props)}
+                        {@render link(viewParams(view, index), view.name, viewIcon(view.icon), openView === view.id, props)}
                     {/snippet}
                 </ContextMenu.Trigger>
                 <ContextMenu.Portal>
                     <ContextMenu.Content class="menu" collisionPadding={12}>
-                        <ViewMenu {view} {views} current={openView === view.id} />
+                        <ViewMenu {view} {views} current={openView === view.id} onmove={moveView} />
                     </ContextMenu.Content>
                 </ContextMenu.Portal>
             </ContextMenu.Root>
@@ -186,7 +169,7 @@
     <!-- ACCOUNT | settings carry the user admin too -->
     <div class="hidden shrink-0 flex-col items-center gap-2 sm:flex">
         {@render link('settings', 'Settings', Settings, inSettings)}
-        <button class="item" {@attach tipAnchor} aria-label="Logout" disabled={loggingOut} onclick={logout}>
+        <button class="item" {@attach tipAnchor} aria-label="Logout" disabled={loggingOut} onclick={signOut}>
             <LogOut class="icon relative size-6" strokeWidth={1.75} />
             <span class="tip type-meta" aria-hidden="true">Logout</span>
         </button>

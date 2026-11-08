@@ -1,5 +1,5 @@
-import type { Push } from '#lib/server/delivery.ts';
-import type { User } from '#lib/schemas.ts';
+import type { Push } from '#lib/server/push.ts';
+import type { User } from '#lib/schemas/users.ts';
 
 // Who listens right now, the Android app keeps one connection per phone | lives in this process, the app runs as a single one
 const listeners = new Map<string, Set<Listener>>()
@@ -9,7 +9,7 @@ const HEARTBEAT = 55_000
 
 type Listener = { send: (push: Push) => void, end: () => void }
 
-export function listen(user: string, listener: Listener) {
+function listen(user: string, listener: Listener) {
     const own = listeners.get(user) ?? new Set()
     listeners.set(user, own)
     own.add(listener)
@@ -42,7 +42,7 @@ export function broadcast(user: string, push: Push) {
 }
 
 // One line of json per notification, held open for as long as the phone stays connected | nothing in here may throw, a timer that throws ends the whole server
-export function streamFor(user: string, cursor: string, catchUp: () => Promise<Push[]>, heartbeat = HEARTBEAT) {
+export function streamFor(user: string, cursor: string, catchUp: () => Promise<Push[]>) {
     const encoder = new TextEncoder()
     let stop = () => {}
 
@@ -56,7 +56,7 @@ export function streamFor(user: string, cursor: string, catchUp: () => Promise<P
 
             const timer = setInterval(() => {
                 try { controller.enqueue(encoder.encode('\n')) } catch { stop() }
-            }, heartbeat)
+            }, HEARTBEAT)
 
             // Live pushes first, so none falls between the catch up and listening | the app drops doubles
             const leave = listen(user, { send, end: finish })

@@ -9,13 +9,15 @@ export const LIMITS = {
     USER_NAME: 128,
     USER_EMAIL: 256,
     PASSWORD: 72,                       // bcrypt ignores anything past this
+    PASSWORD_MIN: 8,
     LABEL_NAME: 64,
     AUTO_COLORS: 500,                   // labels in the auto color chart
     VIEW_NAME: 64,
     VIEW_ICON: 64,                      // a lucide icon name
     NTFY_TOPIC: 64,                     // ntfy rejects longer topics
     PUSH_ENDPOINT: 1024,                // address a browser hands out for web push
-    PUSH_KEY: 256,                      // keys of a web push subscription
+    PUSH_P256DH: 256,                   // public key of a web push subscription
+    PUSH_AUTH: 64,                      // auth secret of a web push subscription
     FILE_NAME: 128,                     // pocketbase stores a sanitized name plus a random suffix
     ATTACHMENT_NAME: 200,               // the name an attachment came with
     TIMEZONE: 64,                       // iana zone name like America/Argentina/Buenos_Aires
@@ -48,4 +50,10 @@ export const LIMITS = {
     STORAGE_BYTES: 100 * 1024 ** 4,     // most an admin can grant one account
 
 } as const;
+
+export const UPLOAD_FORM_OVERHEAD = 64 * 1024     // bytes the form adds around one file, BODY_SIZE_LIMIT in the Dockerfile has room for both
+
+// IMAGES ==============================================
+export const IMAGE_TYPES: readonly string[] = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']     // matches mimeTypes of the images field
+export const IMAGE_THUMB = '640x0'      // matches thumbs of the images field
 

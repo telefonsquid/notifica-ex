@@ -67,10 +67,13 @@ describe('a note on its way out', () => {
     })
 
     test('finishing all of them sends each once', async () => {
-        const { queue, removed } = setup()
+        const { queue, toasts, removed } = setup()
         queue.add([NOTE], 'me')
 
         await queue.finishAll()
+        await queue.finishAll()
+        toasts.get(1)!.end()
+        await Bun.sleep(0)
         expect(removed).toEqual(['a'])
     })
 })

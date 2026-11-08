@@ -1,5 +1,6 @@
 import { LIMITS } from '#lib/schema_limits.ts';
-import type { Note, NoteContent } from '#lib/schemas.ts';
+import { emptyNote } from '#lib/notes.ts';
+import type { Note, NoteContent } from '#lib/schemas/notes.ts';
 
 /*
     Unsaved notes also wait in this browser, so a reload during an outage or a killed app can't lose them.
@@ -7,7 +8,7 @@ import type { Note, NoteContent } from '#lib/schemas.ts';
 */
 
 // PLAN ============================================================
-export type Draft = {
+type Draft = {
     owner: string           // Another account on this browser leaves it alone
     id?: string             // Empty while the note was never stored
     base?: NoteContent      // The stored note the edits started from
@@ -15,12 +16,10 @@ export type Draft = {
     tab: string             // The page that wrote it, a live one still looks after it on its own
 }
 
-export type Restore = 'drop' | 'update' | 'create'
-
-const FIELDS = ['title', 'body', 'color', 'pinned', 'archived'] as const
+type Restore = 'drop' | 'update' | 'create'
 
 export function sameContent(a: NoteContent, b: NoteContent): boolean {
-    return FIELDS.every((field) => a[field] === b[field]) && a.labels.join() === b.labels.join()
+    return (Object.keys(emptyNote()) as (keyof NoteContent)[]).every((key) => sameField(a[key], b[key]))
 }
 
 // A save may have landed just before the page went | a note changed elsewhere meanwhile stays as it is and the edits become their own note

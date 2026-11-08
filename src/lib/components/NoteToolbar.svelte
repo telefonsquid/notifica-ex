@@ -2,12 +2,13 @@
     import { afterNavigate, goto } from '$app/navigation';
     import { resolve } from '$app/paths';
     import FilterEditor from '#lib/components/FilterEditor.svelte';
-    import { editor } from '#lib/components/Note.svelte';
     import SortEditor from '#lib/components/SortEditor.svelte';
     import { unfold } from '#lib/motion.ts';
-    import { safeAction } from '#lib/pocketbase.ts';
-    import type { Label, View, ViewFilter, ViewSort } from '#lib/schemas.ts';
-    import { typing } from '#lib/selection.svelte.ts';
+    import { safeAction } from '#lib/safe_action.ts';
+    import type { Label } from '#lib/schemas/notes.ts';
+    import type { View, ViewFilter, ViewSort } from '#lib/schemas/views.ts';
+    import { noteEditor } from '#lib/note_editor.svelte.ts';
+    import { typing } from '#lib/overlays.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { sameFilter } from '#lib/views.ts';
     import { ArrowUpDown, Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
@@ -129,7 +130,7 @@
 </div>
 
 <!-- CREATE | grows into a blank note at the front of the grid, gone while that one is open -->
-<button bind:this={button} class={['create grid size-16 shrink-0 place-items-center rounded-full text-on-accent', creating && 'away']} aria-label="New note" tabindex={creating ? -1 : 0} onpointerenter={editor.load} onfocus={editor.load} onclick={oncreate} {@attach tip('New note')}>
+<button bind:this={button} class={['create grid size-16 shrink-0 place-items-center rounded-full text-on-accent', creating && 'away']} aria-label="New note" tabindex={creating ? -1 : 0} onpointerenter={noteEditor.load} onfocus={noteEditor.load} onclick={oncreate} {@attach tip('New note')}>
     <Plus class="plus size-7" strokeWidth={2.25} />
 </button>
 

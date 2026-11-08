@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { ClassValue, HTMLInputAttributes } from 'svelte/elements';
+    import type { HTMLInputAttributes } from 'svelte/elements';
 
     type BaseAttributes = Omit<HTMLInputAttributes, 'class' | 'value'>;
 
@@ -8,18 +8,16 @@
         id,
         label,
         value = $bindable(''),
-        class: className = '',
         ...others
     }: {
         id: string
         label: string
         value?: string
-        class?: ClassValue
     } & BaseAttributes = $props()
 </script>
 
 <!-- Label sits inside the field and shrinks to the top once there is something to show -->
-<div class={['floating relative', className]}>
+<div class="floating relative">
     <input
         {id}
         bind:value

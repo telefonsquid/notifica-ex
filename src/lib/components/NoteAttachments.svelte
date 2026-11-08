@@ -16,7 +16,7 @@
         open,
         onremove
     }: {
-        note?: string
+        note: string
         attachments: string[]
         fileInfo: FileInfo | null
         sending: { key: string, name: string, bytes: number, share: number }[]      // On their way up, share runs from 0 to 1
@@ -34,7 +34,7 @@
             {@const shown = info?.name ?? name}
             <li class="row flex items-center gap-1 rounded-control border border-line pr-1">
                 <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the url is resolved already -->
-                <a class="flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-2.5 text-sm text-ink" href={note ? attachmentUrl(note, name) : undefined} download={shown} {@attach tip('Download')}>
+                <a class="flex min-w-0 flex-1 items-center gap-2 py-1.5 pl-2.5 text-sm text-ink" href={attachmentUrl(note, name)} download={shown} {@attach tip('Download')}>
                     <Download class="size-4 shrink-0 text-ink-faint" />
                     <span class="min-w-0 flex-1 truncate">{shown}</span>
                     {#if info}<span class="type-meta shrink-0 text-ink-faint">{formatBytes(info.bytes)}</span>{/if}

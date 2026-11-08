@@ -1,11 +1,12 @@
 <script lang="ts">
     import { cssEasing, duration, morph, unfold } from '#lib/motion.ts';
-    import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
+    import { COLOR_GROUPS, colorName } from '#lib/note_colors.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Glider, { type GliderOption } from '#lib/ui/Glider.svelte';
     import NumberField from '#lib/ui/NumberField.svelte';
-    import { emptyFilter, sameFilter } from '#lib/views.ts';
-    import type { DateRange, Label, ViewFilter } from '#lib/schemas.ts';
+    import { clearSection, countAdvancedOnly, emptyFilter, flipToggle, isSectionActive, isToggled, sameFilter, type FilterSection } from '#lib/views.ts';
+    import type { Label } from '#lib/schemas/notes.ts';
+    import type { DateRange, ViewFilter } from '#lib/schemas/views.ts';
     import { Archive, Bell, CalendarRange, CaseSensitive, Check, ChevronDown, ListChecks, Minus, Palette, Pin, RotateCcw, SlidersHorizontal, Tag, TextSearch, X } from '@lucide/svelte';
     import { untrack, type Snippet } from 'svelte';
     import { fade } from 'svelte/transition';
@@ -28,11 +29,6 @@
     function update(patch: Partial<ViewFilter>){ onchange({ ...filter, ...patch }) }
     function updateRange(key: 'created' | 'updated' | 'due', patch: Partial<DateRange>){ update({ [key]: { ...filter[key], ...patch } }) }
 
-    function clear(...keys: (keyof ViewFilter)[]){
-        const empty = emptyFilter()
-        update(Object.fromEntries(keys.map((key) => [key, empty[key]])))
-    }
-
     // OPTIONS
     type Icon = typeof Tag
 
@@ -52,25 +48,12 @@
     ]
 
     // MODES | simple holds the everyday filters, advanced all of them
-    // Counts what only advanced shows, so simple can tell that more applies
-    const hidden = $derived([
-        filter.without, filter.titleOnly, filter.exclude.length, filter.labelled !== 'any',
-        filter.include.length > 1 && filter.labelMatch === 'all', filter.pinned === 'hide',
-        !['any', 'with'].includes(filter.reminder), filter.list === 'complete', filter.colors.length,
-        ...DATES.map((date) => filter[date.key].mode !== 'any')
-    ].filter(Boolean).length)
+    // Lets simple tell that more applies
+    const hidden = $derived(countAdvancedOnly(filter))
 
     let tab = $state(untrack(() => hidden) ? 'advanced' : 'simple')
 
     const filtered = $derived(!sameFilter(filter, emptyFilter()))
-    const active = $derived({
-        words: !!filter.words || !!filter.without || filter.titleOnly,
-        labels: filter.include.length > 0 || filter.exclude.length > 0 || filter.labelled !== 'any',
-        state: filter.pinned !== 'any' || filter.archived !== 'hide' || filter.list !== 'any',
-        reminder: filter.reminder !== 'any',
-        colors: filter.colors.length > 0,
-        dates: DATES.some((date) => filter[date.key].mode !== 'any')
-    })
 
     // LABELS | simple only picks, advanced cycles through ignored, included and excluded
     function stateOf(id: string): 'include' | 'exclude' | null {
@@ -132,13 +115,14 @@
     </button>
 {/snippet}
 
-{#snippet section(title: string, Icon: Icon, on: boolean, keys: (keyof ViewFilter)[], body: Snippet)}
+{#snippet section(title: string, Icon: Icon, name: FilterSection, body: Snippet)}
+    {@const on = isSectionActive(filter, name)}
     <section class="section">
         <header class="mb-3 flex h-5 items-center gap-2">
             <Icon class={['size-3.5 transition-colors', on ? 'text-accent' : 'text-ink-faint']} />
             <h3 class="type-meta text-ink-faint">{title}</h3>
             {#if on}
-                <button type="button" class="reset type-meta ml-auto" onclick={() => clear(...keys)} transition:fade={{ duration: duration('fast') }}>Clear</button>
+                <button type="button" class="reset type-meta ml-auto" onclick={() => onchange(clearSection(filter, name))} transition:fade={{ duration: duration('fast') }}>Clear</button>
             {/if}
         </header>
         {@render body()}
@@ -187,9 +171,9 @@
                 {/if}
             </label>
             <div class="flex gap-1">
-                {@render iconToggle(Pin, 'Pinned only', filter.pinned === 'only', () => update({ pinned: filter.pinned === 'only' ? 'any' : 'only' }))}
-                {@render iconToggle(Bell, 'With reminder', filter.reminder === 'with', () => update({ reminder: filter.reminder === 'with' ? 'any' : 'with' }))}
-                {@render iconToggle(ListChecks, 'Open tasks', filter.list === 'open', () => update({ list: filter.list === 'open' ? 'any' : 'open' }))}
+                {@render iconToggle(Pin, 'Pinned only', isToggled(filter, 'pinned'), () => update(flipToggle(filter, 'pinned')))}
+                {@render iconToggle(Bell, 'With reminder', isToggled(filter, 'reminder'), () => update(flipToggle(filter, 'reminder')))}
+                {@render iconToggle(ListChecks, 'Open tasks', isToggled(filter, 'list'), () => update(flipToggle(filter, 'list')))}
                 <button
                     type="button"
                     class={['icon-toggle', filter.archived === 'only' && 'on', filter.archived === 'any' && 'half']}
@@ -213,12 +197,12 @@
 <!-- ADVANCED ==================================================================================================== -->
 {#snippet advanced()}
     <div class="grid">
-        {@render section('Words', TextSearch, active.words, ['words', 'without', 'titleOnly'], words)}
-        {@render section('Labels', Tag, active.labels, ['include', 'exclude', 'labelled', 'labelMatch'], labelFilters)}
-        {@render section('State', SlidersHorizontal, active.state, ['pinned', 'archived', 'list'], states)}
-        {@render section('Reminder', Bell, active.reminder, ['reminder'], reminders)}
-        {@render section('Color', Palette, active.colors, ['colors'], colors)}
-        {@render section('Dates', CalendarRange, active.dates, ['created', 'updated', 'due'], dates)}
+        {@render section('Words', TextSearch, 'words', words)}
+        {@render section('Labels', Tag, 'labels', labelFilters)}
+        {@render section('State', SlidersHorizontal, 'state', states)}
+        {@render section('Reminder', Bell, 'reminder', reminders)}
+        {@render section('Color', Palette, 'colors', colors)}
+        {@render section('Dates', CalendarRange, 'dates', dates)}
     </div>
 {/snippet}
 

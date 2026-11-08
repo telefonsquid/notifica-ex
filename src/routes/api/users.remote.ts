@@ -1,7 +1,11 @@
-import { idSchema, setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type Person, type User, type UserSummary } from '#lib/schemas.ts';
+import { idSchema } from '#lib/schemas/base.ts';
+import type { Person } from '#lib/schemas/notes.ts';
+import { setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type User, type UserSummary } from '#lib/schemas/users.ts';
 import { endStreams } from '#lib/server/app_stream.ts';
-import { confirmPasswordReset, findOne, getAll, getOne, insertOnePartial, renewStreamKey, requestPasswordReset, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { confirmPasswordReset, renewStreamKey, requestPasswordReset } from '#lib/server/accounts.ts';
+import { findOne, getAll, getOne, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
+import { orNull, unwrap } from '#lib/server/result.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
 import { hasPermission } from '#lib/user.ts';
 import { error } from '@sveltejs/kit';
@@ -72,8 +76,8 @@ export const updateProfile = command(userInputSchema.pick({ name: true, email: t
 
     const me = signedIn()
 
-    const taken = await findOne('users', 'email = {:email} && id != {:id}', undefined, { email: changes.email, id: me.id })
-    if(taken.success) error(400, 'Another account already uses this address.')
+    const taken = orNull(await findOne('users', 'email = {:email} && id != {:id}', undefined, { email: changes.email, id: me.id }), 'Could not update your account.')
+    if(taken) error(400, 'Another account already uses this address.')
 
     const user = unwrap(await updateOnePartial('users', me.id, changes), 'Could not update your account.')
 

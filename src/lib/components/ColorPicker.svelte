@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
-    import type { NoteColor } from '#lib/schemas.ts';
+    import { COLOR_GROUPS, colorName } from '#lib/note_colors.ts';
+    import type { NoteColor } from '#lib/schemas/notes.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Check } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
@@ -9,13 +9,13 @@
     let {
         value,
         onpick,
-        label = 'Color',
+        label,
         auto = '',
         class: className = ''
     }: {
         value: NoteColor
         onpick: (color: NoteColor) => void
-        label?: string                          // what gets colored, for screen readers
+        label: string                           // what gets colored, for screen readers
         auto?: NoteColor                        // what a label paints while no color is picked
         class?: string
     } = $props()

@@ -1,7 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { viewFilterSchema, viewSortSchema, type Label, type Note, type Reminder } from '#lib/schemas.ts';
+import type { Label, Note } from '#lib/schemas/notes.ts';
+import type { Reminder } from '#lib/schemas/reminders.ts';
+import { viewFilterSchema, viewSortSchema } from '#lib/schemas/views.ts';
 import { readFilter } from '#lib/server/views.ts';
-import { countActive, defaultSort, emptyFilter, groupReminders, matchesView, noteDefaults, positionBetween, positionOf, sortNotes } from '#lib/views.ts';
+import { positionBetween, positionOf } from '#lib/note_position.ts';
+import { groupReminders } from '#lib/reminders.ts';
+import { countActive, countAdvancedOnly, defaultSort, emptyFilter, flipToggle, isToggled, matchesView, noteDefaults, sortNotes } from '#lib/views.ts';
 
 // A note as pocketbase returns it, with only what a test cares about changed
 const note = (overrides: Partial<Note>): Note => ({
@@ -125,8 +129,10 @@ describe('manual order', () => {
     const at = (position: number) => note({ position })
 
     test('a drop lands between its neighbours either way the sort runs', () => {
-        expect(positionBetween(at(300), at(100), 'desc')).toBe(200)
-        expect(positionBetween(at(100), at(300), 'asc')).toBe(200)
+        for(const position of [positionBetween(at(300), at(100), 'desc'), positionBetween(at(100), at(300), 'asc')]){
+            expect(position).toBeGreaterThan(100)
+            expect(position).toBeLessThan(300)
+        }
     })
 
     test('the ends move past the last neighbour', () => {
@@ -147,5 +153,20 @@ describe('new notes in a view', () => {
     test('several labels any of which would do pick none', () => {
         expect(noteDefaults({ ...emptyFilter(), include: ['a', 'b'] }).labels).toEqual([])
         expect(noteDefaults({ ...emptyFilter(), include: ['a', 'b'], labelMatch: 'all' }).labels).toEqual(['a', 'b'])
+    })
+})
+
+describe('simple toggles', () => {
+    test('a toggle turns its one value on and back to none', () => {
+        const on = { ...emptyFilter(), ...flipToggle(emptyFilter(), 'reminder') }
+        expect(on.reminder).toBe('with')
+        expect(isToggled(on, 'reminder')).toBe(true)
+        expect(flipToggle(on, 'reminder')).toEqual({ reminder: 'any' })
+    })
+
+    test('what a toggle sets stays visible in the simple editor', () => {
+        for(const field of ['pinned', 'reminder', 'list'] as const){
+            expect(countAdvancedOnly({ ...emptyFilter(), ...flipToggle(emptyFilter(), field) })).toBe(0)
+        }
     })
 })

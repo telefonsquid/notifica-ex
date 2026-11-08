@@ -1,7 +1,7 @@
 <script lang="ts">
     import { page } from '$app/state'
     import AuthPage from '#lib/components/AuthPage.svelte'
-    import { safeAction } from '#lib/pocketbase.ts'
+    import { safeAction } from '#lib/safe_action.ts';
     import { returnPath } from '#lib/return_path.ts'
     import Input from '#lib/ui/Input.svelte'
     import { loginUser } from '../api/auth.remote'

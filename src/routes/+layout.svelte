@@ -1,16 +1,16 @@
 <script lang="ts">
     import { beforeNavigate, onNavigate } from '$app/navigation'
     import { page } from '$app/state'
-    import { followPendingLink, syncStatusBar } from '#lib/android.ts'
+    import { followPendingLink, syncStatusBar } from '#lib/android.ts';
     import { closeOverlay } from '#lib/back.ts'
     import { prefetchRoute } from '#lib/prefetch.ts'
-    import type { User } from '#lib/schemas.ts'
-    import ConfirmDialog from '#lib/ui/ConfirmDialog.svelte'
-    import ImageViewer from '#lib/ui/ImageViewer.svelte'
-    import NavigationProgress from '#lib/ui/NavigationProgress.svelte'
-    import ServerBanner from '#lib/ui/ServerBanner.svelte'
-    import Toaster from '#lib/ui/Toaster.svelte'
-    import Tooltip from '#lib/ui/Tooltip.svelte'
+    import type { User } from '#lib/schemas/users.ts';
+    import ConfirmDialog from '#lib/components/ConfirmDialog.svelte'
+    import ImageViewer from '#lib/components/ImageViewer.svelte'
+    import NavigationProgress from '#lib/components/NavigationProgress.svelte'
+    import ServerBanner from '#lib/components/ServerBanner.svelte'
+    import Toaster from '#lib/components/Toaster.svelte'
+    import Tooltip from '#lib/components/Tooltip.svelte'
     import { onMount } from 'svelte'
     import '../app.css'
     import type { LayoutProps } from './$types';

@@ -53,7 +53,7 @@
 <main class="grid min-h-dvh place-items-center px-gutter py-12">
     {#if mounted}
         <div class="grid w-full max-w-xs gap-8" in:rise>
-            <Logo wordmark class="justify-self-center" />
+            <Logo class="justify-self-center" />
             <form bind:this={form} class="grid gap-3" onsubmit={submit}>
                 {@render children()}
                 <Button type="submit" class="mt-2 w-full" loading={submitting}>{action}</Button>

@@ -1,9 +1,8 @@
 import { browser } from '$app/env';
+import type { IconComponent } from '#lib/lucide_icons.ts';
 import BlankIcon from '#lib/ui/BlankIcon.svelte';
 import { Archive, Bell, BookOpen, Briefcase, Calendar, CircleDashed, Clock, Code, Coffee, Flame, GraduationCap, Heart, House, Inbox, Leaf, Lightbulb, ListChecks, Music, Palette, Pin, Plane, ShoppingCart, Star, StickyNote, Tag } from '@lucide/svelte';
 import { SvelteMap } from 'svelte/reactivity';
-
-type IconComponent = typeof Bell
 
 // ICONS | stored by name, so the view collection never depends on the icon library
 const CURATED: Record<string, IconComponent> = {
@@ -15,7 +14,7 @@ const CURATED: Record<string, IconComponent> = {
     'list-checks': ListChecks,
     'calendar': Calendar,
     'clock': Clock,
-    'book': BookOpen,
+    'book-open': BookOpen,
     'briefcase': Briefcase,
     'house': House,
     'heart': Heart,
@@ -49,6 +48,7 @@ export function viewIcon(name: string): IconComponent {
         import('#lib/lucide_icons.ts')
             .then(({ importIcon }) => importIcon(name))
             .then((component) => loaded.set(name, component ?? CircleDashed))
+            .catch(() => requested.delete(name))        // A lost download gets another try on the next render
     }
     return BlankIcon
 }

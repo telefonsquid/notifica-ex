@@ -1,5 +1,6 @@
-import type { User } from '#lib/schemas.ts';
+import type { User } from '#lib/schemas/users.ts';
 import { hasPermission } from '#lib/user.ts';
+import { getAdministration } from '../routes/api/administration.remote';
 import { getLabels } from '../routes/api/labels.remote';
 import { getNotes } from '../routes/api/notes.remote';
 import { getReminders } from '../routes/api/reminders.remote';
@@ -13,7 +14,7 @@ import { getViews } from '../routes/api/views.remote';
 
 const ROUTE_QUERIES: Record<string, (user: User | undefined) => Promise<unknown>[]> = {
     '/(app)/[[view]]': () => [getNotes(), getLabels(), getReminders(), getViews(), getPeople()],
-    '/(app)/settings': (user) => [getLabels(), getViews(), ...(hasPermission(user, 'admin') ?[getUsers()] : [])]
+    '/(app)/settings': (user) => [getLabels(), getViews(), ...(hasPermission(user, 'admin') ? [getUsers(), getAdministration()] : [])]
 }
 
 // The returned queries stay cached only while someone holds them, so keep the list until the page shows

@@ -19,7 +19,7 @@
         alone = false,
         onremove
     }: {
-        note: string | undefined
+        note: string
         images: string[]
         uploads: { key: string, url: string }[]
         editable?: boolean
@@ -33,7 +33,6 @@
 
     // Hands every stored image to the viewer, each with the cell it grows out of
     function view(index: number){
-        if(!note) return
         showImages(images.map((name, i) => {
             const shown = cells[i]?.querySelector<HTMLImageElement>('img.shown')
             return {
@@ -73,7 +72,7 @@
 {#if count}
     <div class={['gallery relative -mx-card -mt-card grid gap-0.5 overflow-hidden', alone && 'alone -mb-card', count === 1 && 'single', !editable && 'pointer-events-none']} {@attach track} style:grid-template-columns={`repeat(${columns}, minmax(0, 1fr))`} in:rise={{ y: 0, scale: 1, duration: 'base' }} out:unfold>
         {#each images as name, index (name)}
-            {@const src = note ? imageUrl(note, name) : undefined}
+            {@const src = imageUrl(note, name)}
             <figure bind:this={cells[index]} class={['cell relative overflow-hidden', columns > 1 && 'aspect-square']}>
                 <!-- Opens the viewer, only while open since the closed card is one big button -->
                 <button class="block size-full cursor-zoom-in" tabindex={editable ? 0 : -1} aria-label="View image" onclick={() => view(index)}>
@@ -85,12 +84,10 @@
                         <button class="control" aria-label="View whole image" onclick={() => view(index)}>
                             <Expand class="size-3.5" />
                         </button>
-                        {#if note}
-                            <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the image url is resolved already -->
-                            <a class="control" href={imageUrl(note, name, 'full')} download aria-label="Download image" {@attach tip('Download')}>
-                                <Download class="size-3.5" />
-                            </a>
-                        {/if}
+                        <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- the image url is resolved already -->
+                        <a class="control" href={imageUrl(note, name, 'full')} download aria-label="Download image" {@attach tip('Download')}>
+                            <Download class="size-3.5" />
+                        </a>
                         <button class="control" aria-label="Remove image" onclick={() => onremove(name)}>
                             <X class="size-4" />
                         </button>

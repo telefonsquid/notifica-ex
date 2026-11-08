@@ -1,11 +1,13 @@
 <script lang="ts">
     import { PUBLIC_NTFY_URL } from '$app/env/public';
     import { invalidateAll } from '$app/navigation';
+    import { onAndroidEvent } from '#lib/android.ts';
     import { androidApp, browserPushBlocker, browserPushEndpoint, browserPushOn, disableBrowserPush, enableBrowserPush } from '#lib/device_notifications.ts';
     import { unfold } from '#lib/motion.ts';
     import { notify } from '#lib/notifications.svelte.ts';
-    import { safeAction } from '#lib/pocketbase.ts';
-    import type { User } from '#lib/schemas.ts';
+    import type { TestChannel } from '#lib/reminders.ts';
+    import { safeAction } from '#lib/safe_action.ts';
+    import type { User } from '#lib/schemas/users.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
     import Switch from '#lib/ui/Switch.svelte';
@@ -36,8 +38,7 @@
         mounted = true
         if(app){
             readPhone()
-            window.addEventListener('notifica-android', readPhone)
-            return () => window.removeEventListener('notifica-android', readPhone)
+            return onAndroidEvent(readPhone)
         }
 
         browserBlocker = browserPushBlocker()
@@ -92,9 +93,9 @@
     }
 
     // TEST
-    let testing = $state<'phone' | 'browser' | 'ntfy' | null>(null)
+    let testing = $state<TestChannel | null>(null)
 
-    async function test(channel: 'phone' | 'browser' | 'ntfy') {
+    async function test(channel: TestChannel) {
         testing = channel
         const endpoint = channel === 'browser' ? await browserPushEndpoint() : undefined
         if(await safeAction(sendTestReminder({ channel, endpoint }))) notify('Test sent.')
@@ -146,7 +147,7 @@
     </ul>
 </div>
 
-{#snippet testButton(channel: 'phone' | 'browser' | 'ntfy')}
+{#snippet testButton(channel: TestChannel)}
     <Button style="ghost" class="w-11 px-0!" icon={Send} loading={testing === channel} aria-label="Send a test" onclick={() => test(channel)} {@attach tip('Send a test')} />
 {/snippet}
 

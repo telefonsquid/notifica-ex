@@ -15,6 +15,7 @@ services:
       - "POCKETBASE_SUPERUSER_EMAIL=<EMAIL_HERE>" # must match the pocketbase service below
       - "POCKETBASE_SUPERUSER_PASSWORD=<PASSWORD_HERE>" # must match the pocketbase service below
       - "SERVER_AUTH_SECRET=<SECRET_HERE>" # generate a secure secret key and put it here, the pocketbase and migration services need it too
+      - "SIGNING_SECRET=" # optional, signs the buttons in reminders, SERVER_AUTH_SECRET while empty | changing it breaks buttons already sent
       - "NTFY_URL=http://ntfy:80" # internal ntfy access, do not change!
       - "NTFY_TOKEN=<NTFY_TOKEN_HERE>" # token of an ntfy user allowed to publish, see README
       - "PUBLIC_NTFY_URL=http://localhost:8092" # same as NTFY_BASE_URL below, shown in the settings for subscribing

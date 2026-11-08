@@ -38,7 +38,7 @@ Checks: `bun run check` for types, `bun run lint` for eslint, `bun run test` for
 Rename `docker-compose-example.yml` to `docker-compose.yml` and fill in the marked values. On the first start the stack creates the PocketBase superuser, the collections and the first web app user by itself.
 
 - `POCKETBASE_SUPERUSER_EMAIL` and `POCKETBASE_SUPERUSER_PASSWORD` must match in `web` and `pocketbase`. They are also the login of the first web app user, so change that password once you are in.
-- `SERVER_AUTH_SECRET` must match in `web`, `pocketbase` and the `migration` command.
+- `SERVER_AUTH_SECRET` must match in `web`, `pocketbase` and the `migration` command. `SIGNING_SECRET` is optional and signs the buttons in reminders, without it they use `SERVER_AUTH_SECRET`. Changing either one breaks the buttons in reminders already sent.
 - `ORIGIN` must match in the `web` build args and its environment. SvelteKit 3 bakes it into the build as the origin it trusts for logins and every other call, without it only https behind a proxy that passes the `Host` header works.
 - SMTP is optional, but without it the app cannot send password emails, and that includes the invites under Settings → Users.
 

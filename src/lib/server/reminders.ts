@@ -1,8 +1,12 @@
-import { describeRule, isDue, movedOn, parseTimestamp } from '#lib/reminders.ts';
-import { LIMITS } from '#lib/schema_limits.ts';
-import type { Note, User } from '#lib/schemas.ts';
-import { deliver, pushFor } from '#lib/server/delivery.ts';
-import { countOpenOccurrences, deleteOne, getDueReminders, getReminderNow, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { isDue, movedOn, parseTimestamp } from '#lib/reminders.ts';
+import type { Note } from '#lib/schemas/notes.ts';
+import type { Reminder } from '#lib/schemas/reminders.ts';
+import type { User } from '#lib/schemas/users.ts';
+import { deliver } from '#lib/server/delivery.ts';
+import { canSee } from '#lib/server/note_access.ts';
+import { countOpenOccurrences, forgetOccurrence, logOccurrence } from '#lib/server/occurrences.ts';
+import { pushFor } from '#lib/server/push.ts';
+import { deleteOne, run, updateOnePartial } from '#lib/server/queries.ts';
 
 // DISPATCH ====================================================================================================
 
@@ -12,11 +16,26 @@ const RETRY_WINDOW = 60 * 60 * 1000
 // One run at a time, a slow one overlapping the next minute would push the same reminders twice
 let running = false
 
+async function getDueReminders(now: Date) {
+    return run((pb) => {
+        const filter = pb.filter('next != "" && next <= {:now}', { now })
+        return pb.collection('reminders').getFullList<Pick<Reminder, 'id'>>({ filter, fields: 'id' })
+    })
+}
+
+// As it stands right now, null once deleted
+async function getReminderNow(id: string) {
+    return run(async (pb) => {
+        const found = await pb.collection('reminders').getList<Reminder>(1, 1, { filter: pb.filter('id = {:id}', { id }), expand: 'note,owner', skipTotal: true })
+        return found.items[0] ?? null
+    })
+}
+
 // Sends every reminder that is due and moves it on to its next time | runs every minute from the pocketbase cron
-export async function dispatchDueReminders(at = new Date()) {
+export async function dispatchDueReminders() {
     if(running) return { sent: 0, failed: ['The previous run is still going.'] }
     running = true
-    try { return await dispatch(at) }
+    try { return await dispatch(new Date()) }
     finally { running = false }
 }
 
@@ -42,30 +61,21 @@ async function dispatch(at: Date) {
         const reminder = read.data
         if(!reminder || !isDue(reminder, now)) continue
 
-        const note = reminder.expand?.note as Note | undefined
-        const owner = reminder.expand?.owner as User | undefined
+        const { note, owner } = reminder.expand as { note: Note, owner: User }      // Both relations are required and cascade, so they are always there
         const late = at.getTime() - (parseTimestamp(reminder.next)?.getTime() ?? 0)
 
         // GONE | its owner was taken off the shared note, nothing to push about any more
-        if(note && note.owner !== reminder.owner && !note.shared.includes(reminder.owner)){
+        if(!canSee(note, reminder.owner)){
             const removed = await deleteOne('reminders', reminder.id)
             if(!removed.success) failed.push(`${reminder.id}: ${removed.error}`)
             continue
         }
 
         // An inactive owner hears nothing and their history stays as it was
-        if(owner?.state !== 'inactive'){
+        if(owner.state !== 'inactive'){
 
-            // LOG | the history keeps every time it went off, whatever happens to the reminder later
-            const logged = await insertOnePartial('occurrences', {
-                owner: reminder.owner,
-                note: reminder.note,
-                reminder: id,
-                at: reminder.next,
-                rule: describeRule(reminder).slice(0, LIMITS.OCCURRENCE_RULE),
-                timezone: reminder.timezone,
-                task: reminder.task,
-            })
+            // LOG
+            const logged = await logOccurrence(reminder)
 
             // A push without a log entry has no buttons and the history misses it | only an hour late is that better than silence
             if(!logged.success){
@@ -74,17 +84,15 @@ async function dispatch(at: Date) {
             }
 
             // DELIVER | no way to reach the owner still moves on, so it does not pile up
-            if(note && owner){
-                const results = await deliver(owner, pushFor(note, reminder.task, logged.data))
-                const errors = results.filter((result) => !result.success)
-                if(results.length > errors.length) sent++
-                failed.push(...errors.map((result) => `${id}: ${result.error}`))
+            const results = await deliver(owner, pushFor(note, reminder.task, logged.data))
+            const errors = results.filter((result) => !result.success)
+            if(results.length > errors.length) sent++
+            failed.push(...errors.map((result) => `${id}: ${result.error}`))
 
-                // RETRY | only when it reached nowhere, stays due for the next run and its log entry goes so the history holds it once
-                if(results.length && errors.length === results.length && late < RETRY_WINDOW){
-                    if(logged.success) await deleteOne('occurrences', logged.data.id)
-                    continue
-                }
+            // RETRY | only when it reached nowhere, stays due for the next run
+            if(results.length && errors.length === results.length && late < RETRY_WINDOW){
+                if(logged.success) await forgetOccurrence(logged.data.id)
+                continue
             }
         }
 

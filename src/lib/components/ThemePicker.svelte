@@ -3,6 +3,7 @@
     import { THEMES, type ThemeName } from '#lib/themes/index.ts';
     import { switchTheme } from '#lib/themes/switch.ts';
     import CheckMark from '#lib/ui/CheckMark.svelte';
+    import { setPreference } from '../../routes/api/settings.remote';
 
     // PROPS
     let { current }: { current: ThemeName } = $props()
@@ -14,6 +15,7 @@
     function choose(theme: ThemeName, event: MouseEvent){
         if(theme === selected) return
         selected = theme
+        setPreference({ name: 'theme', value: theme }).catch(() => {})      // The switch itself must not wait for the network
         switchTheme(theme, event.detail === 0 ? undefined : { x: event.clientX, y: event.clientY })
     }
 </script>

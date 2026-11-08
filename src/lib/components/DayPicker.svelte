@@ -1,15 +1,9 @@
 <script lang="ts">
     import { WEEKDAYS } from '#lib/reminders.ts';
-    import type { Weekday } from '#lib/schemas.ts';
+    import type { Weekday } from '#lib/schemas/reminders.ts';
 
     // PROPS
-    let {
-        value = $bindable(),
-        label = 'Days'
-    }: {
-        value: Weekday[]
-        label?: string
-    } = $props()
+    let { value = $bindable() }: { value: Weekday[] } = $props()
 
     // Picks stay in week order, Monday first
     function toggle(day: Weekday){
@@ -18,7 +12,7 @@
     }
 </script>
 
-<div class="flex flex-1 gap-1" role="group" aria-label={label}>
+<div class="flex flex-1 gap-1" role="group" aria-label="Days">
     {#each WEEKDAYS as day (day.value)}
         {@const on = value.includes(day.value)}
         <button type="button" class={['day type-meta', on && 'on']} aria-pressed={on} aria-label={day.short} onclick={() => toggle(day.value)}>

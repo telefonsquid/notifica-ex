@@ -22,7 +22,7 @@ class ReminderPrefs(context: Context) {
     get() = prefs.getString("since", "") ?: ""
     set(value) = prefs.edit().putString("since", value).apply()
 
-  // The system's permission and battery questions come up once, later only from the settings
+  // The system's permission and battery questions come up once, again when the switch is turned back on
   var asked: Boolean
     get() = prefs.getBoolean("asked", false)
     set(value) = prefs.edit().putBoolean("asked", value).apply()

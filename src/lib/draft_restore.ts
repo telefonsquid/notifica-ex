@@ -1,8 +1,8 @@
 import { claimTab, fitted, forgetDraft, oneAtATime, orphanedDrafts, rescued, restoreOf } from '#lib/drafts.ts';
 import { kept } from '#lib/note_list.ts';
 import { notify } from '#lib/notifications.svelte.ts';
-import { safeAction } from '#lib/pocketbase.ts';
-import type { Label, Note } from '#lib/schemas.ts';
+import { safeAction } from '#lib/safe_action.ts';
+import type { Label, Note } from '#lib/schemas/notes.ts';
 import { createNote, updateNote } from '../routes/api/notes.remote';
 
 // Hands what pages now gone left behind to the server | a failed one stays for the next load

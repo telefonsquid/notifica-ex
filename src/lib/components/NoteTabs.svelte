@@ -3,7 +3,7 @@
     import LabelEditor from '#lib/components/LabelEditor.svelte';
     import { deleteLabelEverywhere } from '#lib/deletions.ts';
     import { appear, unfold } from '#lib/motion.ts';
-    import type { Label } from '#lib/schemas.ts';
+    import type { Label } from '#lib/schemas/notes.ts';
     import { Pencil, Trash2, X } from '@lucide/svelte';
     import { ContextMenu } from 'bits-ui';
 
@@ -110,7 +110,7 @@
     }
 
     .adder-tab {
-        height: 1.375rem;
+        height: var(--layout-note-tab);
         transition: opacity var(--duration-fast) var(--ease-in);
     }
 
@@ -136,7 +136,7 @@
     }
 
     :global(.note.open) .tab {
-        height: 1.375rem;
+        height: var(--layout-note-tab);
     }
 
     :global(.note:hover) .name,

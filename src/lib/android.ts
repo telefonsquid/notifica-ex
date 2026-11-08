@@ -1,6 +1,3 @@
-import { imagesIn } from '#lib/images.ts';
-import { sharedContent } from '#lib/notes.ts';
-import type { NoteContent } from '#lib/schemas.ts';
 import { THEMES } from '#lib/themes/index.ts';
 
 // Set by MainActivity in the Android app, missing in any browser | an older app lacks the optional ones
@@ -31,34 +28,14 @@ export function syncStatusBar(scheme?: 'light' | 'dark'){
     window.NotificaAndroid.statusBar(scheme !== 'dark')
 }
 
+// Sent by MainActivity whenever permissions or a share may have changed
+export function onAndroidEvent(run: () => void){
+    window.addEventListener('notifica-android', run)
+    return () => window.removeEventListener('notifica-android', run)
+}
+
 // A notification tapped while the app was closed opens its note once the server's page is up
 export function followPendingLink(){
     const link = window.NotificaAndroid?.pendingLink?.()
     if(link) location.replace(link)
-}
-
-// SHARED FROM OTHER APPS ====================================================================================================
-export type SharedNote = { content: Partial<NoteContent>, files: File[], unread: number }
-
-export function hasShare(){
-    return window.NotificaAndroid?.hasShare?.() ?? false
-}
-
-function fileFrom(address: string, index: number){
-    const [head, data] = address.split(',')
-    const type = head.slice('data:'.length).split(';')[0]
-    return new File([Uint8Array.from(atob(data), (char) => char.charCodeAt(0))], `shared-${index}`, { type })
-}
-
-// Null without anything waiting | unread counts the images that got lost on the way
-export function takeShare(): SharedNote | null {
-    const app = window.NotificaAndroid
-    const raw = app?.takeShare?.()
-    if(!raw) return null
-
-    const { title, text, images } = JSON.parse(raw) as { title: string, text: string, images: number }
-    const addresses = Array.from({ length: images }, (_, index) => app?.sharedImage?.(index) ?? null)
-    const files = imagesIn(addresses.flatMap((address, index) => address ? [fileFrom(address, index)] : []))
-
-    return { content: sharedContent(title, text), files, unread: images - files.length }
 }

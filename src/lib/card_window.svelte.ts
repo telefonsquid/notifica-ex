@@ -1,5 +1,6 @@
 import { estimatedHeight } from '#lib/notes.ts';
-import type { Note } from '#lib/schemas.ts';
+import { idOf } from '#lib/relayout.ts';
+import type { Note } from '#lib/schemas/notes.ts';
 import type { Attachment } from 'svelte/attachments';
 import { SvelteSet } from 'svelte/reactivity';
 
@@ -37,7 +38,7 @@ export class CardWindow {
         const scrolled = new IntersectionObserver((entries) => {
             for(const { target, isIntersecting } of entries){
                 const cell = target as HTMLElement
-                const id = cell.dataset.flip
+                const id = idOf(cell)
                 if(!id) continue
 
                 if(isIntersecting) this.#near.add(id)

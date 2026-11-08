@@ -1,5 +1,5 @@
 /*
-    NOTE COLORS | one [data-note] rule per name in NOTE_COLORS (#lib/schemas.ts)
+    NOTE COLORS | one [data-note] rule per name in NOTE_COLORS (#lib/note_colors.ts)
     --note-bg       surface of the note
     --note-texture  optional pattern on top of that surface
     --note-mark     label tab color, stronger than a tint so it stands out next to any card

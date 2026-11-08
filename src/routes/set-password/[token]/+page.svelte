@@ -4,7 +4,7 @@
     import { page } from '$app/state'
     import AuthPage from '#lib/components/AuthPage.svelte'
     import { notify } from '#lib/notifications.svelte.ts'
-    import { safeAction } from '#lib/pocketbase.ts'
+    import { safeAction } from '#lib/safe_action.ts';
     import Input from '#lib/ui/Input.svelte'
     import { setPassword } from '../../api/users.remote'
 

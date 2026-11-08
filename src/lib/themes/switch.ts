@@ -1,15 +1,11 @@
 import { syncStatusBar } from '#lib/android.ts';
 import { cssEasing, duration } from '#lib/motion.ts';
 import { prefersReducedMotion } from 'svelte/motion';
-import { setTheme } from '../../routes/api/settings.remote';
 import type { ThemeName } from './index';
 
 // SWITCH THEME | the new theme grows as a circle out of the point that triggered it
 export async function switchTheme(theme: ThemeName, origin?: { x: number, y: number }){
     const root = document.documentElement
-
-    // PERSIST IN THE BACKGROUND | the switch itself must not wait for the network
-    setTheme(theme).catch(() => {})
 
     const apply = () => {
         root.dataset.theme = theme

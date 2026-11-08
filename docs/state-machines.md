@@ -58,7 +58,7 @@ Invariants:
 | Open | navigation, type `link` or `goto` | Saving, then repeats the navigation | Stays when the save failed |
 | Open | navigation, type `leave` | `leaving` | No wait, the backup stays for the next page |
 | Open | navigation, type `popstate` | Closes first | `closeOverlay()` |
-| Any | removed from the list while open | closed | Page effect at `+page.svelte:296` |
+| Any | removed from the list while open | closed | Page effect that closes `editing` when its note is gone (`[[view]]/+page.svelte`) |
 
 ## Save queue
 
@@ -122,7 +122,7 @@ Invariants:
 | Sent on leave | new page load | Notes stay hidden for that page |
 | Sent on leave | page comes back from bfcache | Notes stay hidden, toast goes |
 
-Archive has no state of its own: `offerArchiveUndo` stores at once, Undo writes the old `archived` and `pinned` back.
+Archive has no state of its own: `archiveChange()` in `#lib/notes.ts` sets it and unpins, `offerArchiveUndo` stores at once, Undo writes the old `archived` and `pinned` back.
 
 ## Sharing membership
 
@@ -131,7 +131,7 @@ Archive has no state of its own: `offerArchiveUndo` stores at once, Undo writes 
 | From | Event | To | Notes |
 |---|---|---|---|---|
 | Nobody | owner adds them | Collaborator | |
-| Collaborator | owner removes them, or `leaveNote` | Nobody | Their reminders go (`deleteRemindersOn`), history stays |
+| Collaborator | owner removes them, or `removeNote` on a note they don't own | Nobody | Their reminders go (`deleteRemindersOn`), history stays |
 | Collaborator | note deleted | Nobody | Cascade |
 
 Invariant: nobody but the owner changes pin, archive, labels, order or membership, the server strips those fields.
@@ -385,7 +385,7 @@ Reached on every production install, every minute. SvelteKit treats a POST with 
 
 **Machine:** note card. **Evidence:** reproduced.
 
-Every save sends the whole draft (`Note.svelte:140`). An open card doesn't follow the stored note (invariant 4), so its draft holds what the note was when opened. A title edit there writes back every other field too.
+Every save sends the whole draft (`#write` in `note_session.svelte.ts`). An open card doesn't follow the stored note (invariant 4), so its draft holds what the note was when opened. A title edit there writes back every other field too.
 
 ```
 G title edit on an open card, other device pinned and changed the body | pinned false body "original" title more AUDIT G
@@ -399,7 +399,7 @@ Pin and the other device's body were silently undone.
 
 **Machine:** note card, sharing membership. **Evidence:** reproduced.
 
-Taken off a shared note, PocketBase sends no event, the card stays. Typing into it gets a 404, `gone()` (`Note.svelte:155`) forgets the backup and sets `deleted`.
+Taken off a shared note, PocketBase sends no event, the card stays. Typing into it gets a 404, `#gone()` (`note_session.svelte.ts`) forgets the backup and sets `deleted`.
 
 ```
 E after being taken off, card still there true
@@ -428,7 +428,7 @@ UNCAUGHT ERR_INVALID_STATE Invalid state: Controller is already closed
 
 Same on Bun. The window is narrow: the key check must pass, then PocketBase must drop before the catch up answers, as when PocketBase restarts while phones reconnect. An uncaught error ends the process for every user.
 
-Related: `setUserState` to inactive doesn't call `endStreams` (`users.remote.ts:91`), the connection stays open, silently, until the phone reconnects. Catch up resends occurrences already done on another device (`getOccurrencesSince` has no `done` filter), so a checked task can pop up again on a phone back online.
+Related: `setUserState` to inactive doesn't call `endStreams` (`users.remote.ts`), the connection stays open, silently, until the phone reconnects. Catch up resends occurrences already done on another device (`getOccurrencesSince` has no `done` filter), so a checked task can pop up again on a phone back online.
 
 **Fix:** `streamFor` in `app_stream.ts` holds the whole stream, a failed catch up ends it cleanly and no timer can throw. Deactivating ends running streams, catch up leaves out what is done. **Test:** `app_stream.test.ts`.
 
@@ -480,7 +480,7 @@ H load 2 toast | Title must not be longer than 200 characters. | stored 1
 H load 3 toast | Title must not be longer than 200 characters. | stored 1
 ```
 
-A label deleted meanwhile poisons a restore the same way (by reading). And a broken entry blocks all others, `orphanedDrafts` has an unguarded `JSON.parse` (`drafts.ts:75`):
+A label deleted meanwhile poisons a restore the same way (by reading). And a broken entry blocks all others, `orphanedDrafts` has an unguarded `JSON.parse` (`orphanedDrafts` in `drafts.ts`):
 
 ```
 L corrupt entry beside a good one | good restored false | left broken,good | toast (none)
@@ -506,7 +506,7 @@ Leaving a page and coming back through bfcache: the request was sent, the toast 
 K persisted true | toast Note deleted Undo | note gone on the server
 ```
 
-The page's own realtime check (`shown` in `+page.svelte:45`) compares against the filtered list, so a delete event for a hidden note looks like its own echo and gets dropped, which is what keeps the ghost.
+The page's own realtime check (`shown` in `[[view]]/+page.svelte`) compares against the filtered list, so a delete event for a hidden note looks like its own echo and gets dropped, which is what keeps the ghost.
 
 **Fix:** `removals.ts` holds the waiting list. A 404 counts as done, a finished removal also leaves the list, `shown` compares against the stored list. Coming back through bfcache ends the toast of what was sent, those notes stay gone. **Test:** `removals.test.ts`.
 
@@ -523,7 +523,7 @@ Looked at, not bugs. Recorded so nobody hunts them again.
 ## Ruled out by reading
 
 - **Stuck save queue**: `safeAction` catches everything, a run never rejects.
-- **Stale `editing`**: the page effect at `+page.svelte:296` closes the editor when the open note vanished.
+- **Stale `editing`**: the page effect in `[[view]]/+page.svelte` closes the editor when the open note vanished.
 - **Echo resurrecting a note**: `onCollectionChange` waits on `busy.actions`, a command's answer lands before its older event.
 
 ## Accepted

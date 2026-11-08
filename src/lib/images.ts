@@ -1,6 +1,6 @@
 import { resolve } from '$app/paths';
-import { formatBytes } from '#lib/limits.ts';
-import type { Note } from '#lib/schemas.ts';
+import { IMAGE_THUMB, IMAGE_TYPES } from '#lib/schema_limits.ts';
+import type { Note } from '#lib/schemas/notes.ts';
 
 // URLS ====================================================================================================
 type ImageSize = 'thumb' | 'full'
@@ -8,13 +8,12 @@ type ImageSize = 'thumb' | 'full'
 // Served through our own route, the files are protected in pocketbase
 export function imageUrl(note: string, name: string, size: ImageSize = 'thumb'): string {
     const path = resolve('/api/notes/[id]/images/[name]', { id: note, name })
-    return size === 'thumb' ? `${path}?thumb=640x0` : path
+    return size === 'thumb' ? `${path}?thumb=${IMAGE_THUMB}` : path
 }
 
 
 
 // UPLOAD ====================================================================================================
-export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']
 const MAX_EDGE = 2560                       // px, plenty for a note and keeps phone photos small
 const KEEP_BELOW = 1024 * 1024              // bytes, smaller files go up as they are
 
@@ -48,9 +47,7 @@ export async function shrink(file: File): Promise<File> {
 }
 
 // One file per request keeps each one well below the server's body limit
-export async function uploadImage(note: string, file: File, maxBytes: number): Promise<Note> {
-    if(file.size > maxBytes) throw new Error(`${file.name} is larger than ${formatBytes(maxBytes)}.`)
-
+export async function uploadImage(note: string, file: File): Promise<Note> {
     const form = new FormData()
     form.append('images', file)
     const response = await fetch(resolve('/api/notes/[id]/images', { id: note }), { method: 'POST', body: form })

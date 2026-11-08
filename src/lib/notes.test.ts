@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { autoColorOrder, colorName, estimatedHeight, formatDistance, lastPriority, mergeNotes, sharedContent, shownColor } from '#lib/notes.ts';
-import type { Label, Note, NoteColor } from '#lib/schemas.ts';
+import { autoColorOrder, lastPriority, shownColor } from '#lib/auto_colors.ts';
+import { colorName } from '#lib/note_colors.ts';
+import { archiveChange, contentOf, emptyNote, estimatedHeight, mergeNotes, sharedContent } from '#lib/notes.ts';
+import { LIMITS } from '#lib/schema_limits.ts';
+import { formatDistance } from '#lib/time_format.ts';
+import { noteContentSchema, type Label, type Note, type NoteColor } from '#lib/schemas/notes.ts';
 
 const NOW = Date.parse('2026-10-15T12:00:00Z')
 const later = (ms: number) => new Date(NOW + ms).toISOString()
@@ -8,26 +12,33 @@ const MINUTE = 60_000, HOUR = 60 * MINUTE, DAY = 24 * HOUR
 
 describe('estimatedHeight', () => {
     test('grows with the text, up to the lines a closed card shows', () => {
-        const short = estimatedHeight({ title: '', body: 'one line', images: [] })
-        const long = estimatedHeight({ title: '', body: 'a\n'.repeat(11), images: [] })
-        const clamped = estimatedHeight({ title: '', body: 'a\n'.repeat(500), images: [] })
-        expect(long).toBeGreaterThan(short)
-        expect(clamped).toBe(estimatedHeight({ title: '', body: 'a\n'.repeat(11) + 'a', images: [] }))
+        const height = (lines: number) => estimatedHeight({ title: '', body: 'a\n'.repeat(lines), images: [], attachments: [] })
+        expect(height(5)).toBeGreaterThan(height(1))
+        expect(height(5000)).toBe(height(500))
     })
 
     test('counts wrapped lines, a title and images', () => {
-        const plain = estimatedHeight({ title: '', body: 'x', images: [] })
-        expect(estimatedHeight({ title: '', body: 'x'.repeat(100), images: [] })).toBeGreaterThan(plain)
-        expect(estimatedHeight({ title: 'T', body: 'x', images: [] })).toBeGreaterThan(plain)
-        expect(estimatedHeight({ title: '', body: 'x', images: ['a.webp'] })).toBeGreaterThan(plain)
+        const plain = estimatedHeight({ title: '', body: 'x', images: [], attachments: [] })
+        expect(estimatedHeight({ title: '', body: 'x'.repeat(100), images: [], attachments: [] })).toBeGreaterThan(plain)
+        expect(estimatedHeight({ title: 'T', body: 'x', images: [], attachments: [] })).toBeGreaterThan(plain)
+        expect(estimatedHeight({ title: '', body: 'x', images: ['a.webp'], attachments: [] })).toBeGreaterThan(plain)
     })
 })
 
 describe('sharedContent', () => {
     test('trims and keeps to the size caps', () => {
-        const shared = sharedContent(` ${'t'.repeat(500)} `, ' body\n')
-        expect(shared.title).toHaveLength(200)
+        const shared = sharedContent(` ${'t'.repeat(LIMITS.NOTE_TITLE + 1)} `, ' body\n')
+        expect(shared.title).toHaveLength(LIMITS.NOTE_TITLE)
         expect(shared.body).toBe('body')
+    })
+})
+
+// Drafts, duplicates and saves all walk these keys | a new content field has to show up in each
+describe('note content fields', () => {
+    test('contentOf, emptyNote and the schema name the same fields', () => {
+        const fields = Object.keys(noteContentSchema.shape).toSorted()
+        expect(Object.keys(emptyNote()).toSorted()).toEqual(fields)
+        expect(Object.keys(contentOf({ ...emptyNote(), id: 'x', owner: 'y' } as unknown as Note)).toSorted()).toEqual(fields)
     })
 })
 
@@ -116,5 +127,12 @@ describe('auto colors', () => {
     test('a new label joins below the last one', () => {
         expect(lastPriority(order)).toBe(2)
         expect(lastPriority([])).toBe(-1)
+    })
+})
+
+describe('archiveChange', () => {
+    test('archiving unpins, unarchiving keeps the pin as it was', () => {
+        expect(archiveChange({ pinned: true }, true)).toEqual({ archived: true, pinned: false })
+        expect(archiveChange({ pinned: true }, false)).toEqual({ archived: false, pinned: true })
     })
 })

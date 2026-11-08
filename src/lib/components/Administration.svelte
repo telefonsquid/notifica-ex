@@ -3,7 +3,7 @@
     import LimitFields from '#lib/components/LimitFields.svelte';
     import { effectiveLimits, formatBytes } from '#lib/limits.ts';
     import { unfold } from '#lib/motion.ts';
-    import { safeAction } from '#lib/pocketbase.ts';
+    import { safeAction } from '#lib/safe_action.ts';
     import { onCollectionChange } from '#lib/realtime.ts';
     import { ChevronDown } from '@lucide/svelte';
     import { getAdministration, saveDefaultLimits, saveUserLimits } from '../../routes/api/administration.remote';

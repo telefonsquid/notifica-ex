@@ -1,8 +1,7 @@
 // See https://svelte.dev/docs/kit/types#app.d.ts
 
-import type { ImageFit, LabelPosition } from '#lib/preferences.ts'
-import type { User } from '#lib/schemas.ts'
-import type { ThemeName } from '#lib/themes/index.ts'
+import type { Preferences } from '#lib/preferences.ts'
+import type { User } from '#lib/schemas/users.ts';
 import type PocketBase from 'pocketbase'
 
 declare global {
@@ -15,10 +14,7 @@ declare global {
             user: undefined | User
             serverDown?: boolean
 
-            // APPEARANCE
-            theme: ThemeName
-            labelPosition: LabelPosition
-            imageFit: ImageFit
+            preferences: Preferences
 
         }
 

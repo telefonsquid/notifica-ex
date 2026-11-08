@@ -5,7 +5,7 @@ import type { Bell } from '@lucide/svelte';
     Import this module dynamically, its name list alone is about 2000 entries.
 */
 
-type IconComponent = typeof Bell
+export type IconComponent = typeof Bell
 
 const files = import.meta.glob<{ default: IconComponent }>('/node_modules/@lucide/svelte/dist/icons/*.svelte')
 const loaders = new Map(Object.entries(files).map(([path, load]) => [path.slice(path.lastIndexOf('/') + 1, -'.svelte'.length), load]))

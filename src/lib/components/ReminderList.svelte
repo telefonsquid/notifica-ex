@@ -1,9 +1,12 @@
 <script lang="ts">
     import ReminderEditor from '#lib/components/ReminderEditor.svelte';
-    import { cssEasing, duration, morph, rise, sink, unfold } from '#lib/motion.ts';
-    import type { Reminder } from '#lib/schemas.ts';
+    import { appear, cssEasing, duration, morph, rise, sink, unfold } from '#lib/motion.ts';
+    import { NEW_REMINDER } from '#lib/reminders.ts';
+    import type { Reminder } from '#lib/schemas/reminders.ts';
+    import { safeAction } from '#lib/safe_action.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { BellPlus, History } from '@lucide/svelte';
+    import { setReminderDone } from '../../routes/api/reminders.remote';
 
     // PROPS
     let {
@@ -11,19 +14,17 @@
         ensureNote,
         editable = false,
         focus,
-        ondone,
         onhistory
     }: {
         reminders: Reminder[]
         ensureNote: () => Promise<string | null>
         editable?: boolean                          // an open card edits them and can add more
-        focus?: string                              // reminder id to start open, 'new' starts the add form
-        ondone: (reminder: Reminder) => void
+        focus?: string                              // reminder id to start open, NEW_REMINDER starts the add form
         onhistory: (anchor: HTMLElement) => void
     } = $props()
 
     // ADDING | a full row while there are none, then a button on the first line opens the form below
-    let adding = $derived(editable && focus === 'new')
+    let adding = $derived(editable && focus === NEW_REMINDER)
     let added = $state(0)
     let arriving = $state(false)     // a saved first reminder is on its way, the empty row waits for it
 
@@ -55,8 +56,8 @@
     }
 
     // TRANSITIONS | the band and its add button drift in with the other open only controls
-    function appear(node: Element){
-        return settled ? rise(node, { y: 0, scale: 0.6, duration: 'fast' }) : rise(node, { y: 4, scale: 1, duration: 'base', delay: 120 })
+    function drift(node: Element){
+        return settled ? rise(node, { y: 0, scale: 0.6, duration: 'fast' }) : appear(node)
     }
 
     // A closing card folds the button away with its own shrinking
@@ -73,10 +74,10 @@
 
 {#snippet addButton()}
     {#if !adding}
-        <button class="icon-button shrink-0" aria-label="Reminder history" onclick={(event) => onhistory(event.currentTarget)} in:appear|global out:leave|global {@attach tip('History')}>
+        <button class="icon-button shrink-0" aria-label="Reminder history" onclick={(event) => onhistory(event.currentTarget)} in:drift|global out:leave|global {@attach tip('History')}>
             <History class="size-4" />
         </button>
-        <button class="add-reminder icon-button -mr-2 shrink-0" aria-label="Add reminder" onclick={() => adding = true} in:appear|global out:leave|global {@attach tip('Add reminder')}>
+        <button class="open-only icon-button -mr-2 shrink-0" aria-label="Add reminder" onclick={() => adding = true} in:drift|global out:leave|global {@attach tip('Add reminder')}>
             <BellPlus class="size-4" />
         </button>
     {/if}
@@ -84,7 +85,7 @@
 
 <!-- BAND | a darker strip across the bottom of the card, the shade follows the note color | its height morphs around every swap inside -->
 {#if reminders.length || editable}
-    <footer class={['band -mx-card mt-auto -mb-card flex flex-col px-card py-1 text-ink-muted', !editable && 'pointer-events-none', !reminders.length && 'empty']} in:appear out:unfold {@attach morph(timing)}>
+    <footer class={['band -mx-card mt-auto -mb-card flex flex-col px-card py-1 text-ink-muted', !editable && 'pointer-events-none', !reminders.length && 'open-only']} in:drift out:unfold {@attach morph(timing)}>
         <div class="flex shrink-0 flex-col">
             {#each reminders as reminder, index (reminder.id)}
                 <ReminderEditor
@@ -94,7 +95,7 @@
                     animate={settled}
                     open={focus === reminder.id}
                     trailing={editable && index === 0 ? addButton : undefined}
-                    ondone={() => ondone(reminder)}
+                    ondone={() => safeAction(setReminderDone(reminder.id))}
                     {onhistory}
                 />
             {/each}

@@ -8,7 +8,7 @@
 </script>
 
 <!-- Newest toast at the bottom, the others slide up to make room -->
-<ol class="pointer-events-none fixed inset-x-0 bottom-20 z-50 flex flex-col items-center gap-2 px-4 sm:bottom-6 sm:items-end sm:px-6" aria-live="polite">
+<ol class="pointer-events-none fixed inset-x-0 bottom-[var(--layout-bottom-clear)] z-50 flex flex-col items-center gap-2 px-4 sm:bottom-6 sm:items-end sm:px-6" aria-live="polite">
     {#each notifications as notification (notification.id)}
         {@const Icon = icons[notification.type]}
         <li

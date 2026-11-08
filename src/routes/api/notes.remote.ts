@@ -1,11 +1,14 @@
 import z from 'zod';
+import { contentOf } from '#lib/notes.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
-import { fileNameSchema, idSchema, noteContentSchema, notePositionSchema, type Note } from '#lib/schemas.ts';
+import { idSchema } from '#lib/schemas/base.ts';
+import { fileNameSchema, noteContentSchema, notePositionSchema } from '#lib/schemas/notes.ts';
+import { collaboratorChanges, deleteRemindersOn, getAllNotesFor, removeFor, requireNote, requireOwnNote } from '#lib/server/note_access.ts';
 import { duplicateWithFiles, removeNoteFile } from '#lib/server/note_files.ts';
-import { deleteOne, deleteRemindersOn, getAll, getAllNotesFor, getAllOwned, getNoteFor, getOwned, insertOnePartial, leaveNote as leave, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { getAll, getAllOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { unwrap } from '#lib/server/result.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
-import { error } from '@sveltejs/kit';
 import { getReminders } from './reminders.remote.ts';
 
 // NOTES ============================================================
@@ -30,29 +33,20 @@ export const createNote = command(noteContentSchema, async (content) => {
 export const duplicateNote = command(idSchema, async (id) => {
 
     const me = signedIn()
-    const stored = unwrap(await getNoteFor(id, me.id), 'Note not found.')
+    const stored = await requireNote(id, me.id)
 
-    const { title, body, color, pinned, archived } = stored
-    const labels = await ownLabels(me.id, stored.labels)
-    return await duplicateWithFiles(stored, { title, body, color, pinned, archived, labels, owner: me.id })
+    const content = contentOf(stored)
+    const labels = await ownLabels(me.id, content.labels)
+    return await duplicateWithFiles(stored, { ...content, labels, owner: me.id })
 
 });
 
 export const updateNote = command(noteContentSchema.partial().extend({ id: idSchema }), async ({ id, ...changes }) => {
 
     const me = signedIn()
-    const found = await getNoteFor(id, me.id)
-    if(!found.success) error(404, 'Note not found.') // deleted or unshared meanwhile, the open note tells its writer
-    const stored = found.data
+    const stored = await requireNote(id, me.id) // Deleted or unshared meanwhile, the 404 tells the open note's writer
 
-    // Pin, archive and labels stay the owner's, the others edit only what the note says
-    const update: Partial<Note> = { ...changes }
-    if(stored.owner !== me.id){
-        delete update.pinned
-        delete update.archived
-        delete update.labels
-    }
-    else if(changes.labels) update.labels = await ownLabels(me.id, changes.labels)
+    const update = stored.owner !== me.id ? collaboratorChanges(changes) : { ...changes, ...(changes.labels ? { labels: await ownLabels(me.id, changes.labels) } : {}) }
     return unwrap(await updateOnePartial('notes', id, update), 'Could not save the note.')
 
 });
@@ -61,38 +55,26 @@ export const updateNote = command(noteContentSchema.partial().extend({ id: idSch
 export const moveNote = command(z.object({ id: idSchema, position: notePositionSchema }), async ({ id, position }) => {
 
     const me = signedIn()
-    unwrap(await getOwned('notes', id, me.id), 'Note not found.')
+    await requireOwnNote(id, me.id)
     return unwrap(await updateOnePartial('notes', id, { position }), 'Could not move the note.')
 
 });
 
-// Adding goes through POST /api/notes/[id]/images, files don't fit through a command
-export const removeImage = command(z.object({ id: idSchema, name: fileNameSchema }), async ({ id, name }) => {
+// Adding goes through POST /api/notes/[id]/images or attachments, files don't fit through a command | stays possible with attachments turned off, to free storage
+export const removeFile = command(z.object({ id: idSchema, field: z.enum(['images', 'attachments']), name: fileNameSchema }), async ({ id, field, name }) => {
 
     const me = signedIn()
-    const note = unwrap(await getNoteFor(id, me.id), 'Note not found.')
-    return await removeNoteFile(note, 'images', name)
+    return await removeNoteFile(await requireNote(id, me.id), field, name)
 
 });
 
-// Adding goes through POST /api/notes/[id]/attachments | stays possible with attachments turned off, to free storage
-export const removeAttachment = command(z.object({ id: idSchema, name: fileNameSchema }), async ({ id, name }) => {
+// Its reminders go with it | a note shared with the user is only left, the owner keeps it
+export const removeNote = command(idSchema, async (id) => {
 
     const me = signedIn()
-    const note = unwrap(await getNoteFor(id, me.id), 'Note not found.')
-    return await removeNoteFile(note, 'attachments', name)
+    unwrap(await removeFor(id, me.id), 'Could not remove the note.')
 
-});
-
-// Its reminder goes with it through the cascade
-export const deleteNote = command(idSchema, async (id) => {
-
-    const me = signedIn()
-    const found = await getOwned('notes', id, me.id)
-    if(!found.success) error(404, 'Note not found.')  // Gone meanwhile, the removal counts as done
-    unwrap(await deleteOne('notes', id), 'Could not delete the note.')
-
-    await getNotes().refresh()
+    await Promise.all([getNotes().refresh(), getReminders().refresh()])
     return true
 
 });
@@ -105,7 +87,7 @@ export const deleteNote = command(idSchema, async (id) => {
 export const shareNote = command(z.object({ id: idSchema, people: z.array(idSchema).max(LIMITS.NOTE_SHARES, `A note can be shared with at most ${LIMITS.NOTE_SHARES} people.`) }), async ({ id, people }) => {
 
     const me = signedIn()
-    const stored = unwrap(await getOwned('notes', id, me.id), 'Note not found.')
+    const stored = await requireOwnNote(id, me.id)
 
     const active = new Set(unwrap(await getAll('users', { filter: 'state = "active"', fields: 'id' }), 'Could not load people.').map((user) => user.id))
     const shared = [...new Set(people)].filter((person) => person !== me.id && active.has(person))
@@ -116,21 +98,6 @@ export const shareNote = command(z.object({ id: idSchema, people: z.array(idSche
     unwrap(await deleteRemindersOn(id, removed), 'Could not remove their reminders.')
 
     return note
-
-});
-
-// Someone else's note disappears from the user's own list again
-export const leaveNote = command(idSchema, async (id) => {
-
-    const me = signedIn()
-    const found = await getNoteFor(id, me.id)
-    if(!found.success) error(404, 'Note not found.')  // Gone meanwhile, the removal counts as done
-    if(found.data.owner === me.id) error(400, 'You own this note, delete it instead.')
-    unwrap(await leave(id, me.id), 'Could not leave the note.')
-    unwrap(await deleteRemindersOn(id, [me.id]), 'Could not remove your reminders on it.')
-
-    await Promise.all([getNotes().refresh(), getReminders().refresh()])
-    return true
 
 });
 

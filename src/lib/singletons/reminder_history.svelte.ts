@@ -1,4 +1,4 @@
-import type { Note } from '#lib/schemas.ts';
+import type { Note } from '#lib/schemas/notes.ts';
 
 /*
     State of the one reminder history dialog in the app layout. Cards open it for a note,

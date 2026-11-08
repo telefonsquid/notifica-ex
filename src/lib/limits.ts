@@ -1,22 +1,15 @@
+import { LIMITS } from '#lib/schema_limits.ts';
+import type { FileLimits, LimitOverrides } from '#lib/schemas/users.ts';
+
 export const MB = 1024 * 1024
 export const GB = 1024 * MB
-
-// What one account may do with files
-export type FileLimits = {
-    attachments: boolean;       // may attach files besides images
-    attachmentBytes: number;    // one attachment
-    imageBytes: number;         // one image
-    storageBytes: number;       // everything on the notes they own
-}
-
-export type LimitOverrides = Partial<FileLimits>
 
 // Per stored file name | attachments keep the name they came with, the stored one carries a random suffix
 export type FileInfo = Record<string, { bytes: number, name?: string }>
 
 export const DEFAULT_LIMITS: FileLimits = {
     attachments: true,
-    attachmentBytes: 100 * MB,
+    attachmentBytes: LIMITS.UPLOAD_BYTES,
     imageBytes: 15 * MB,
     storageBytes: GB
 }

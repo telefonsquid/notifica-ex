@@ -7,7 +7,7 @@ description: PocketBase collections and access rules, sharing, images, realtime,
 
 ## Collections
 
-Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas.ts` holds zod for what the browser sends and plain types for stored records, size caps sit in `#lib/schema_limits.ts`. Zod stays out of the browser bundle: client code takes only types from `schemas.ts`, constants it needs sit in zod free modules (`schema_limits.ts`, `note_colors.ts`, `preferences.ts`), reading saved views in `#lib/server/views.ts`.
+Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas/` holds zod for what the browser sends and plain types for stored records, size caps sit in `#lib/schema_limits.ts`. Zod stays out of the browser bundle: client code takes only types from `#lib/schemas/`, constants it needs sit in zod free modules (`schema_limits.ts`, `note_colors.ts`, `preferences.ts`), reading saved views in `#lib/server/views.ts`.
 
 | Collection | Fields | List/view rule |
 |---|---|---|
@@ -33,7 +33,7 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 
 - The owner picks people in `ShareEditor`, stored in `notes.shared`.
 - Collaborators edit title, body, colour, images and attachments and add their own reminders. Pin, archive, labels, manual order and delete stay with the owner, the server strips those fields from a collaborator's update.
-- For a collaborator, delete becomes `leaveNote` (removes them from `shared`). Duplicating someone else's note drops their labels.
+- `removeNote` deletes for the owner and leaves for a collaborator (removes them from `shared`), both through `removeFor` in `#lib/server/note_access.ts`. Its `ACCESS` filter mirrors the notes list and view rules, a contract test keeps them equal. `removeFile` drops an image or attachment. Duplicating someone else's note drops their labels.
 - Leaving, or being taken off a note, deletes that person's reminders on it (`deleteRemindersOn`), and dispatch drops any reminder whose owner lost the note. Their history stays.
 - UI: `owned = note.owner === me` decides which actions show.
 
@@ -41,7 +41,7 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 
 - Protected `images` file field, since PocketBase is public for realtime.
 - Upload through `POST /api/notes/[id]/images`, one file per request (files don't fit remote functions, `BODY_SIZE_LIMIT` raised in the Dockerfile). `shrink()` turns big photos into WebP in the browser first.
-- Served through `/api/notes/[id]/images/[name]`, which checks access with `getNoteFor` and fetches with a file token. Names never repeat, so it caches immutable.
+- Served through `/api/notes/[id]/images/[name]`, which checks access with `requireNote` and fetches with a file token. Names never repeat, so it caches immutable.
 
 ## Attachments and limits
 
@@ -55,7 +55,7 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 
 - **Queries**: `#lib/server/queries.ts`, every function returns `Result<T>`. Callers `unwrap()` into a SvelteKit error.
 - **Remote functions**: `src/routes/api/*.remote.ts`, wrapped by `#lib/server/remote_function_error_trace`. Every argument has a zod schema, each starts with `signedIn()` (`#lib/server/signed_in.ts`), which gives the user or a 403.
-- **Client**: calls go through `safeAction()` (`#lib/pocketbase.ts`), which turns errors into toasts. The client `pb` instance is never imported on the server.
+- **Client**: calls go through `safeAction()` (`#lib/safe_action.ts`), which turns errors into toasts. The client `pb` instance is never imported on the server.
 
 ## Realtime
 
@@ -70,6 +70,6 @@ Sort `manual` is the default. `position` stays 0 until a note is dragged, `posit
 ## Schema changes
 
 - No versioned migrations before the first release. Edit `pb_schema.json`, then `POST /api/migration` with `SERVER_AUTH_SECRET`: `bootstrap.ts` imports the schema and drops fields it no longer lists (the import alone keeps them).
-- A new field touches `pb_schema.json`, `schemas.ts`, the queries that write it, and any remote function schema that accepts it.
+- A new field touches `pb_schema.json`, `#lib/schemas/`, the queries that write it, and any remote function schema that accepts it.
 - PocketBase refuses to change a field's type. Give the field a new id in `pb_schema.json` and add a dev one off in `bootstrap.ts` that reads the values, drops the old field, adds the new one and refills them. Delete it once every dev database ran it.
 - After the first release, data changes become versioned migrations run from the same endpoint.

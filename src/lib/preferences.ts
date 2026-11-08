@@ -1,19 +1,33 @@
-// LABEL POSITION | which card edge the label tabs hang from, rendered into <html data-labels> like the theme
-export const LABEL_POSITIONS = ['top', 'bottom'] as const;
+import { THEMES, type ThemeName } from '#lib/themes/index.ts';
 
-export type LabelPosition = typeof LABEL_POSITIONS[number];
+// Which card edge the label tabs hang from
+export type LabelPosition = 'top' | 'bottom'
 
-export const DEFAULT_LABEL_POSITION: LabelPosition = 'top';
-export const LABEL_POSITION_COOKIE = 'labels';
+// Cropped to fill the card, or whole with plain ground around it
+export type ImageFit = 'cropped' | 'whole'
 
-export function isLabelPosition(value: unknown): value is LabelPosition { return LABEL_POSITIONS.some((position) => position === value) }
+export type Preferences = { theme: ThemeName, labels: LabelPosition, images: ImageFit }
+export type PreferenceName = keyof Preferences
 
-// IMAGE FIT | cropped to fill the card, or whole with plain ground around it, rendered into <html data-images>
-export const IMAGE_FITS = ['cropped', 'whole'] as const;
+// Per device, in a cookie of this name and on <html data-name> before first paint, app.html has a %name% for each | the first choice is the default
+const CHOICES: { [N in PreferenceName]: readonly Preferences[N][] } = {
+    theme: THEMES.map((theme) => theme.name),
+    labels: ['top', 'bottom'],
+    images: ['cropped', 'whole'],
+}
 
-export type ImageFit = typeof IMAGE_FITS[number];
+export const PREFERENCE_NAMES = Object.keys(CHOICES) as [PreferenceName, ...PreferenceName[]]
 
-export const DEFAULT_IMAGE_FIT: ImageFit = 'cropped';
-export const IMAGE_FIT_COOKIE = 'images';
+function choose<N extends PreferenceName>(name: N, value: string | undefined): Preferences[N] {
+    const choices: readonly Preferences[N][] = CHOICES[name]
+    return choices.find((choice) => choice === value) ?? choices[0]
+}
 
-export function isImageFit(value: unknown): value is ImageFit { return IMAGE_FITS.some((fit) => fit === value) }
+export function isChoice(name: PreferenceName, value: string) {
+    return (CHOICES[name] as readonly string[]).includes(value)
+}
+
+// Unknown and missing ones fall back to the default
+export function readPreferences(cookie: (name: string) => string | undefined): Preferences {
+    return { theme: choose('theme', cookie('theme')), labels: choose('labels', cookie('labels')), images: choose('images', cookie('images')) }
+}

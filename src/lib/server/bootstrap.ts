@@ -1,24 +1,20 @@
 import { dev } from '$app/env';
 import * as env from '$app/env/private';
-import type { CollectionMap } from '#lib/schemas.ts';
-import { fetchNoteFile, findOne, getAll, getCollection, importCollections, insertOnePartial, unwrap, updateCollection, updateOnePartial, updateSettings } from '#lib/server/queries.ts';
+import type { CollectionMap } from '#lib/schemas/collections.ts';
+import { findOne, getCollection, importCollections, insertOnePartial, updateCollection, updateSettings } from '#lib/server/queries.ts';
+import { orNull, unwrap } from '#lib/server/result.ts';
 import type { CollectionModel } from 'pocketbase';
 import pbSchema from '../../../pocketbase/pb_schema.json';
-
-// Versions whose migrations are already part of pb_schema.json
-const SNAPSHOT_MIGRATIONS: string[] = []
 
 export async function bootstrap(){ // setup for a fresh pocketbase install
 
     // CREATE SCHEMA ON FRESH INSTALL
     if(await isFreshInstall()){
         await createSchema()
-        await markSnapshotMigrations() // a fresh install always has the latest schema
     }
     else if(dev){
         await createSchema() // no versioned migrations before the first release, local dev follows pb_schema.json
         await dropRetiredFields()
-        await fillFileSizes()
     }
 
     // CREATE REQUIRED DATABASE ENTRIES
@@ -30,8 +26,7 @@ export async function bootstrap(){ // setup for a fresh pocketbase install
 }
 
 async function isFreshInstall(){
-    const result = await getCollection('migrations')
-    return !result.success
+    return !orNull(await getCollection('migrations'), 'Could not look for the schema.')
 }
 
 async function createSchema(){
@@ -49,32 +44,9 @@ async function dropRetiredFields(){
     }
 }
 
-// Dev one off, images from before storage limits have no size on record | delete once every dev database ran it
-async function fillFileSizes(){
-    for(const note of unwrap(await getAll('notes', { fields: 'id,images,fileInfo' }))){
-        const missing = note.images.filter((name) => !note.fileInfo?.[name])
-        if(!missing.length){ continue }
-
-        const fileInfo = { ...note.fileInfo }
-        for(const name of missing){
-            const file = await fetchNoteFile(note.id, name)
-            await file.body?.cancel()
-            fileInfo[name] = { bytes: Number(file.headers.get('content-length')) || 0 }
-        }
-        unwrap(await updateOnePartial('notes', note.id, { fileInfo }))
-    }
-}
-
-async function markSnapshotMigrations(){
-    for(const version of SNAPSHOT_MIGRATIONS){
-        unwrap(await insertOnePartial('migrations', { version: version, completed: true }))
-    }
-}
-
 async function createFirstUser(){
 
-    const existing = await findOne('users', 'id != ""')
-    if(existing.success){ return }
+    if(orNull(await findOne('users', 'id != ""'), 'Could not look for users.')){ return }
 
     unwrap(await insertOnePartial('users', { // first user mirrors the pb superuser and should be changed after first login
         email: env.POCKETBASE_SUPERUSER_EMAIL,

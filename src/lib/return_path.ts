@@ -1,3 +1,5 @@
+import { resolve } from '$app/paths';
+
 // RETURN PATH | where the login sends someone after a link, like a notification tap, met an expired session
 
 const PARAM = 'next'
@@ -8,7 +10,7 @@ type Address = { pathname: string, search: string, searchParams: { get(name: str
 // Login link that comes back to the given page afterwards
 export function loginPath(url: Address): string {
     const back = url.pathname + url.search
-    return back === '/' ? '/login' : `/login?${PARAM}=${encodeURIComponent(back)}`
+    return back === '/' ? resolve('/login') : `${resolve('/login')}?${PARAM}=${encodeURIComponent(back)}`
 }
 
 // Only paths on this site, so a crafted link can't send anyone elsewhere after logging in

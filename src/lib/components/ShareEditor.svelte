@@ -1,5 +1,5 @@
 <script lang="ts">
-    import type { Person } from '#lib/schemas.ts';
+    import type { Person } from '#lib/schemas/notes.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Check, UserPlus } from '@lucide/svelte';
     import { Popover } from 'bits-ui';

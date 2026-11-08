@@ -1,7 +1,7 @@
 <script lang="ts">
     import { duration, easing, emerge, rise, unfold } from '#lib/motion.ts';
-    import type { ReminderLimit } from '#lib/schemas.ts';
-    import { WEEKDAYS } from '#lib/reminders.ts';
+    import { localWeekday } from '#lib/reminders.ts';
+    import type { ReminderLimit } from '#lib/schemas/reminders.ts';
     import Button from '#lib/ui/Button.svelte';
     import Glider, { type GliderOption } from '#lib/ui/Glider.svelte';
     import DayPicker from '#lib/components/DayPicker.svelte';
@@ -44,7 +44,7 @@
         const day = start.slice(0, 10)
         limits[index] =
             kind === 'times' ? { mode, kind, from: '09:00', to: '17:00' }
-            : kind === 'days' ? { mode, kind, days: [WEEKDAYS[(new Date(start).getDay() + 6) % 7].value] }
+            : kind === 'days' ? { mode, kind, days: [localWeekday(new Date(start))] }
             : { mode, kind, from: day, to: day }
     }
 

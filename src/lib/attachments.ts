@@ -1,5 +1,5 @@
 import { resolve } from '$app/paths';
-import type { Note } from '#lib/schemas.ts';
+import type { Note } from '#lib/schemas/notes.ts';
 
 // Served through its own route, the files are protected in pocketbase
 export function attachmentUrl(note: string, name: string): string {

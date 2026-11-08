@@ -23,7 +23,7 @@ describe('checklists', () => {
     for(const [name, source] of Object.entries(SOURCES)){
         test(name, () => {
             const tasks = tasksOf(source)
-            expect((renderMarkdown(source).match(/class="task"/g) ?? []).length).toBe(tasks.length)
+            expect((renderMarkdown(source).match(/type="checkbox"/g) ?? []).length).toBe(tasks.length)
 
             tasks.forEach((done, index) => {
                 expect(tasksOf(toggleTask(source, index))).toEqual(tasks.map((item, i) => i === index ? !done : item))

@@ -1,6 +1,6 @@
 <script lang="ts">
-    import { safeAction } from '#lib/pocketbase.ts';
-    import type { Label } from '#lib/schemas.ts';
+    import { safeAction } from '#lib/safe_action.ts';
+    import type { Label } from '#lib/schemas/notes.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { PaintBucket } from '@lucide/svelte';
     import { updateLabel } from '../../routes/api/labels.remote';

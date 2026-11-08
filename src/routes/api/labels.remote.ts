@@ -1,9 +1,11 @@
 import { error } from '@sveltejs/kit';
-import { lastPriority } from '#lib/notes.ts';
+import { lastPriority } from '#lib/auto_colors.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
-import { idSchema, labelNameSchema, noteColorSchema } from '#lib/schemas.ts';
-import { deleteOne, getAllOwned, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { idSchema } from '#lib/schemas/base.ts';
+import { labelNameSchema, noteColorSchema } from '#lib/schemas/notes.ts';
+import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
+import { unwrap } from '#lib/server/result.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
 import { z } from 'zod';
 import { getNotes } from './notes.remote.ts';

@@ -3,13 +3,13 @@
 */
 
 export type RemovedNote = { id: string, owner: string }
-type Removal = { notes: RemovedNote[], me: string, toast: number }
+type Removal = { notes: RemovedNote[], toast: number }
 
 type Parts = {
     hidden: Set<string>                                                             // What the page leaves out meanwhile
     toast: (notes: RemovedNote[], me: string, undo: () => void, end: () => void) => number
     dismiss: (toast: number) => void
-    remove: (note: RemovedNote, me: string) => Promise<unknown>                     // Empty when the server refused, the note comes back
+    remove: (note: RemovedNote) => Promise<unknown>                                 // Empty when the server refused, the note comes back
     drop: (notes: RemovedNote[]) => void                                            // Out of the page's list
     send: (notes: RemovedNote[]) => void                                            // The one request that outlives a closing page
 }
@@ -24,9 +24,9 @@ export function removalQueue({ hidden, toast, dismiss, remove, drop, send }: Par
 
     async function finish(removal: Removal){
         if(!waiting.delete(removal)) return
-        const { notes, me } = removal
+        const { notes } = removal
 
-        const results = await Promise.all(notes.map((note) => remove(note, me)))
+        const results = await Promise.all(notes.map((note) => remove(note)))
         drop(notes.filter((_, index) => results[index]))
         show(notes)
     }
@@ -35,7 +35,7 @@ export function removalQueue({ hidden, toast, dismiss, remove, drop, send }: Par
         add(notes: RemovedNote[], me: string){
             for(const note of notes) hidden.add(note.id)
 
-            const removal: Removal = { notes, me, toast: 0 }
+            const removal: Removal = { notes, toast: 0 }
             waiting.add(removal)
             removal.toast = toast(notes, me, () => {
                 waiting.delete(removal)

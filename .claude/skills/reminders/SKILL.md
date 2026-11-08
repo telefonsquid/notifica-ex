@@ -21,7 +21,7 @@ Runs on server and client: `occurrenceAfter()` computes the next occurrence, `pa
 
 ## Scheduler
 
-- `pocketbase/cronjobs/cron.pb.js` POSTs to `WEB_INTERNAL_URL` with `SERVER_AUTH_SECRET`: reminders every minute (`/api/reminders/dispatch`), maintenance daily at 3am. Machine POSTs must send a `Content-Type`: without one and without an `Origin`, a built app answers 403 as a cross site form, the dev server doesn't check.
+- `pocketbase/cronjobs/cron.pb.js` POSTs to `WEB_INTERNAL_URL` with `SERVER_AUTH_SECRET`: reminders every minute (`/api/reminders/dispatch`). Machine POSTs must send a `Content-Type`: without one and without an `Origin`, a built app answers 403 as a cross site form, the dev server doesn't check.
 - `dispatchDueReminders()` in `#lib/server/reminders.ts` takes every reminder with `next` due, logs an occurrence, delivers it, then sets `next: occurrenceAfter(now)` and recounts `open`. A run can last minutes, so each reminder is read again right before it goes off and before it moves on: deleted ones are skipped and a `next` changed meanwhile stands (`movedOn()`). A failed log entry stays due without a push for the hour too. An inactive owner's reminders move on silently. Missed occurrences collapse into one push. "Due" reaches 30 s ahead, since PocketBase's cron sometimes fires a few ms before the full minute. A failed push stays due and is retried every minute for an hour (its log entry removed again), then the reminder moves on. One run at a time.
 - Local dev: PocketBase in Docker calls the host dev server through `host.docker.internal`, so the dev script binds Vite to `127.0.0.1` (not `::1`) and `vite.config.ts` allows that host. Rebuild the PocketBase image whenever `pocketbase/cronjobs` changes.
 
@@ -31,13 +31,13 @@ Runs on server and client: `occurrenceAfter()` computes the next occurrence, `pa
 
 - **Android app**: `#lib/server/app_stream.ts` holds the open connections, `/api/app-stream/[user]` serves them as one json line per push, key signed from the user id (`getAppStream`). A foreground service in the app stays connected and shows the notifications itself, see the `android` skill. Coming back with `?since=` replays what it missed from the occurrence log, up to 12 hours and 20 pushes, so a phone that was away never needs server side queueing. `users.appPaused` silences this channel for all of the account's phones, from any browser or the app (`setAppPaused`). Turning it back on writes `appResumed`, replay never reaches behind that, so what fell into the pause stays missed.
 - **Browser**: Web Push through `#lib/server/web_push.ts` to `push_subscriptions`, keys from `PUBLIC_VAPID_KEY` and `VAPID_PRIVATE_KEY`, off while those are empty. `static/push-worker.js` shows them. It registers only once someone turns them on and caches nothing, plain JS since SvelteKit's own service worker build adds a top level import that needs a module worker. A subscription the browser dropped (404, 410) is deleted.
-- **ntfy**: bundled as its own compose service (port 8092), `#lib/server/ntfy.ts` `publish()` to the owner's `ntfyTopic`, unless `ntfyPaused`. The click target is `${ORIGIN}/?note=<id>`, tasks add a Done `http` action.
+- **ntfy**: bundled as its own compose service (port 8092), `#lib/server/ntfy.ts` `publish()` to the owner's `ntfyTopic`, unless `ntfyPaused`. The click target is `ORIGIN` plus `noteLink()` from `#lib/links.ts`, tasks add a Done `http` action.
 
 Each row in Notifications settings has its own test button (`deliverTest()`), a browser tests only itself.
 
 ## Done links
 
-- The signature is an HMAC over the occurrence id with `SERVER_AUTH_SECRET` (`sign(doneSubject(id))`). No login on the phone needed.
+- The signature is an HMAC over the occurrence id with `SIGNING_SECRET`, or `SERVER_AUTH_SECRET` while that is unset (`sign(doneSubject(id))`). No login on the phone needed. The done and snooze routes check it through `signedAction()` in `#lib/server/server_auth.ts`. Paths in a push are built with `resolve()`, `logOccurrence()` and `forgetOccurrence()` in `#lib/server/occurrences.ts` write and undo the log entry.
 - Each button ticks off just its own occurrence, however late it gets pressed. A second press does nothing.
 
 ## Snooze

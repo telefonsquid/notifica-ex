@@ -2,13 +2,7 @@
     import type { ClassValue } from 'svelte/elements';
 
     // PROPS
-    let {
-        wordmark = false,
-        class: className = ''
-    }: {
-        wordmark?: boolean
-        class?: ClassValue
-    } = $props()
+    let { class: className = '' }: { class?: ClassValue } = $props()
 </script>
 
 <span class={['logo inline-flex items-center gap-3', className]}>
@@ -17,11 +11,7 @@
         <rect class="sheet front" x="6" y="8" width="24" height="28" rx="7" />
         <path class="letter" d="M13 29V15l10 14V15" />
     </svg>
-    {#if wordmark}
-        <span class="type-display text-2xl text-ink">notifica<span class="text-accent">·ex</span></span>
-    {:else}
-        <span class="sr-only">notifica-ex</span>
-    {/if}
+    <span class="type-display text-2xl text-ink">notifica<span class="text-accent">·ex</span></span>
 </span>
 
 <style>

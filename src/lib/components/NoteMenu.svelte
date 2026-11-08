@@ -1,9 +1,11 @@
 <script lang="ts">
-    import { COLOR_GROUPS, colorName } from '#lib/notes.ts';
-    import { offerArchiveUndo, removeNotes } from '#lib/deletions.ts';
-    import { safeAction } from '#lib/pocketbase.ts';
-    import { describeRule } from '#lib/reminders.ts';
-    import type { Label, Note, NoteColor, Reminder } from '#lib/schemas.ts';
+    import { COLOR_GROUPS, colorName } from '#lib/note_colors.ts';
+    import { offerArchiveUndo, removeNotes } from '#lib/note_removal.ts';
+    import { safeAction } from '#lib/safe_action.ts';
+    import { describeRule, NEW_REMINDER } from '#lib/reminders.ts';
+    import { archiveChange } from '#lib/notes.ts';
+    import type { Label, Note, NoteColor } from '#lib/schemas/notes.ts';
+    import type { Reminder } from '#lib/schemas/reminders.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
     import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, History, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
@@ -36,7 +38,7 @@
         selected?: boolean
         bar?: boolean                                           // icon buttons for the selection bar instead of menu items
         onselect?: () => void                                   // adds the card to the selection or takes it out
-        onedit?: (note: Note, focus: string) => void            // opens the card with a reminder form, 'new' for a blank one
+        onedit?: (note: Note, focus: string) => void            // opens the card with a reminder form, NEW_REMINDER for a blank one
         onfinish?: () => void                                   // the notes are gone from view, the selection can go
     } = $props()
 
@@ -71,7 +73,7 @@
     async function archive(){
         const before = owned.map(({ id, archived, pinned }) => ({ id, archived, pinned }))
         const archiving = !allArchived
-        await each((note) => updateNote({ id: note.id, archived: archiving, pinned: !archiving && note.pinned }), owned)
+        await each((note) => updateNote({ id: note.id, ...archiveChange(note, archiving) }), owned)
         offerArchiveUndo(before, archiving)
         onfinish?.()
     }
@@ -89,11 +91,19 @@
         removeNotes(notes, me)
         onfinish?.()
     }
+
+    // The same actions in the same order for the bar and the menu
+    let actions = $derived([
+        { shown: owned.length > 0, label: allPinned ? 'Unpin' : 'Pin', icon: allPinned ? PinOff : Pin, run: pin },
+        { shown: true, label: 'Duplicate', icon: Copy, run: duplicate },
+        { shown: owned.length > 0, label: allArchived ? 'Unarchive' : 'Archive', icon: allArchived ? ArchiveRestore : Archive, run: archive },
+        { shown: true, label: removeLabel, detail: notes.length > 1 ? ` ${notes.length} notes` : '', icon: owned.length ? Trash2 : LogOut, run: remove }
+    ].filter((action) => action.shown))
 </script>
 
 {#snippet colorItems()}
     {#each COLOR_GROUPS as group (group.name)}
-        <div class="grid grid-cols-[repeat(6,1.75rem)] gap-1.5 min-[24rem]:grid-cols-[repeat(9,1.75rem)]">
+        <div class="grid w-[calc(9*1.75rem+8*0.375rem)] max-w-full grid-cols-[repeat(auto-fill,1.75rem)] gap-1.5">
             {#each group.colors as color (color)}
                 {@const picked = notes.every((note) => note.color === color)}
                 <Menu.Item
@@ -128,12 +138,22 @@
     {/each}
 {/snippet}
 
+{#snippet actionItems()}
+    {#each actions as action (action.run)}
+        {#if bar}
+            <button class="icon-button size-10 rounded-full" aria-label={action.label} onclick={action.run} {@attach tip(action.label)}><action.icon class="size-4.5" /></button>
+        {:else}
+            <Menu.Item class="menu-item" onSelect={action.run}><action.icon class="size-4" />{action.label}{action.detail}</Menu.Item>
+        {/if}
+    {/each}
+{/snippet}
+
 {#if bar}
     <!-- BAR | every action one click away, colour and labels pop up above -->
     <Menu.Root>
         <Menu.Trigger class="icon-button size-10 rounded-full" aria-label="Color" {@attach tip('Color')}><Palette class="size-4.5" /></Menu.Trigger>
         <Menu.Portal>
-            <Menu.Content class="menu grid gap-3 p-3" side="top" sideOffset={10} collisionPadding={12}>{@render colorItems()}</Menu.Content>
+            <Menu.Content class="menu flex flex-col gap-3 p-3" side="top" sideOffset={10} collisionPadding={12}>{@render colorItems()}</Menu.Content>
         </Menu.Portal>
     </Menu.Root>
     {#if owned.length}
@@ -147,20 +167,7 @@
     {#if attached.length}
         <button class="icon-button size-10 rounded-full" aria-label="Remove reminders" onclick={removeReminders} {@attach tip('Remove reminders')}><BellOff class="size-4.5" /></button>
     {/if}
-    {#if owned.length}
-        <button class="icon-button size-10 rounded-full" aria-label={allPinned ? 'Unpin' : 'Pin'} onclick={pin} {@attach tip(allPinned ? 'Unpin' : 'Pin')}>
-            {#if allPinned}<PinOff class="size-4.5" />{:else}<Pin class="size-4.5" />{/if}
-        </button>
-    {/if}
-    <button class="icon-button size-10 rounded-full" aria-label="Duplicate" onclick={duplicate} {@attach tip('Duplicate')}><Copy class="size-4.5" /></button>
-    {#if owned.length}
-        <button class="icon-button size-10 rounded-full" aria-label={allArchived ? 'Unarchive' : 'Archive'} onclick={archive} {@attach tip(allArchived ? 'Unarchive' : 'Archive')}>
-            {#if allArchived}<ArchiveRestore class="size-4.5" />{:else}<Archive class="size-4.5" />{/if}
-        </button>
-    {/if}
-    <button class="icon-button size-10 rounded-full" aria-label={removeLabel} onclick={remove} {@attach tip(removeLabel)}>
-        {#if owned.length}<Trash2 class="size-4.5" />{:else}<LogOut class="size-4.5" />{/if}
-    </button>
+    {@render actionItems()}
 {:else}
 
 {#if onselect}
@@ -173,14 +180,14 @@
 <!-- COLOR -->
 <Menu.Sub>
     <Menu.SubTrigger class="menu-item"><Palette class="size-4" />Color<ChevronRight class="ml-auto size-3.5" /></Menu.SubTrigger>
-    <Menu.SubContent class="menu grid gap-3 p-3" sideOffset={6}>{@render colorItems()}</Menu.SubContent>
+    <Menu.SubContent class="menu flex flex-col gap-3 p-3" sideOffset={6} collisionPadding={12}>{@render colorItems()}</Menu.SubContent>
 </Menu.Sub>
 
 <!-- LABELS -->
 {#if owned.length}
 <Menu.Sub>
     <Menu.SubTrigger class="menu-item"><Tag class="size-4" />Labels<ChevronRight class="ml-auto size-3.5" /></Menu.SubTrigger>
-    <Menu.SubContent class="menu max-h-80 overflow-y-auto" sideOffset={6}>{@render labelItems()}</Menu.SubContent>
+    <Menu.SubContent class="menu max-h-80 overflow-y-auto" sideOffset={6} collisionPadding={12}>{@render labelItems()}</Menu.SubContent>
 </Menu.Sub>
 {/if}
 
@@ -188,7 +195,7 @@
 {#if single && onedit}
     <Menu.Sub>
         <Menu.SubTrigger class="menu-item"><BellPlus class="size-4" />Reminders<ChevronRight class="ml-auto size-3.5" /></Menu.SubTrigger>
-        <Menu.SubContent class="menu w-64" sideOffset={6}>
+        <Menu.SubContent class="menu w-64" sideOffset={6} collisionPadding={12}>
             {#each attached as reminder (reminder.id)}
                 <div class="flex">
                     <Menu.Item class="menu-item min-w-0 flex-1" onSelect={() => onedit(single, reminder.id)}>
@@ -200,7 +207,7 @@
                 </div>
             {/each}
             {#if attached.length}<Menu.Separator class="menu-separator" />{/if}
-            <Menu.Item class="menu-item" onSelect={() => onedit(single, 'new')}><BellPlus class="size-4" />Add reminder</Menu.Item>
+            <Menu.Item class="menu-item" onSelect={() => onedit(single, NEW_REMINDER)}><BellPlus class="size-4" />Add reminder</Menu.Item>
             <Menu.Item class="menu-item" onSelect={() => showHistory(single)}><History class="size-4" />History</Menu.Item>
         </Menu.SubContent>
     </Menu.Sub>
@@ -210,20 +217,5 @@
 
 <Menu.Separator class="menu-separator" />
 
-{#if owned.length}
-    <Menu.Item class="menu-item" onSelect={pin}>
-        {#if allPinned}<PinOff class="size-4" />Unpin{:else}<Pin class="size-4" />Pin{/if}
-    </Menu.Item>
-{/if}
-<Menu.Item class="menu-item" onSelect={duplicate}><Copy class="size-4" />Duplicate</Menu.Item>
-{#if owned.length}
-    <Menu.Item class="menu-item" onSelect={archive}>
-        {#if allArchived}<ArchiveRestore class="size-4" />Unarchive{:else}<Archive class="size-4" />Archive{/if}
-    </Menu.Item>
-{/if}
-
-<Menu.Item class="menu-item" onSelect={remove}>
-    {#if owned.length}<Trash2 class="size-4" />{:else}<LogOut class="size-4" />{/if}
-    {removeLabel}{notes.length > 1 ? ` ${notes.length} notes` : ''}
-</Menu.Item>
+{@render actionItems()}
 {/if}

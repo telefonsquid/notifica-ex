@@ -1,10 +1,16 @@
-import { firstOccurrence } from '#lib/reminders.ts';
+import { resolve } from '$app/paths';
+import { firstOccurrence, normalizeRule, TEST_CHANNELS } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
-import { idSchema, ntfyTopicSchema, pushSubscriptionSchema, reminderRuleSchema, type ReminderRule } from '#lib/schemas.ts';
+import { idSchema } from '#lib/schemas/base.ts';
+import { reminderRuleSchema, type ReminderRule } from '#lib/schemas/reminders.ts';
+import { ntfyTopicSchema, pushSubscriptionSchema } from '#lib/schemas/users.ts';
 import { streamSubject } from '#lib/server/app_stream.ts';
 import { deliverTest } from '#lib/server/delivery.ts';
-import { countOpenOccurrences, deleteOne, findOne, getAllOwned, getNoteFor, getOccurrences, getOpenOccurrences, getOwned, insertOnePartial, unwrap, updateOnePartial } from '#lib/server/queries.ts';
+import { requireNote } from '#lib/server/note_access.ts';
+import { getNewestOpenOccurrence, getOccurrences, getOpenOccurrences, setDone } from '#lib/server/occurrences.ts';
+import { deleteOne, findOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
+import { orNull, unwrap } from '#lib/server/result.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
 import { sign } from '#lib/server/server_auth.ts';
 import { error } from '@sveltejs/kit';
@@ -22,7 +28,7 @@ export const getReminders = query(async () => {
 export const addReminder = command(reminderRuleSchema.extend({ note: idSchema }), async ({ note, ...rule }) => {
 
     const me = signedIn()
-    unwrap(await getNoteFor(note, me.id), 'Note not found.')
+    await requireNote(note, me.id)
 
     const reminder = unwrap(await insertOnePartial('reminders', { ...ruleFields(rule), note, owner: me.id }), 'Could not save the reminder.')
 
@@ -60,9 +66,8 @@ export const setReminderDone = command(idSchema, async (id) => {
 
     const me = signedIn()
     unwrap(await getOwned('reminders', id, me.id), 'Reminder not found.')
-    const occurrence = unwrap(await findOne('occurrences', 'reminder = {:id} && task = true && done = ""', { sort: '-at' }, { id }), 'Nothing left to check off.')
-    unwrap(await updateOnePartial('occurrences', occurrence.id, { done: new Date().toISOString() }), 'Could not check off the reminder.')
-    unwrap(await countOpenOccurrences(id), 'Could not update the reminder.')
+    const occurrence = unwrap(await getNewestOpenOccurrence(id), 'Nothing left to check off.')
+    unwrap(await setDone([occurrence], true), 'Could not check off the reminder.')
 
     await getReminders().refresh()
     return true
@@ -88,11 +93,10 @@ export const setOccurrenceDone = command(z.object({ id: idSchema, done: z.boolea
     const occurrence = unwrap(await getOwned('occurrences', id, me.id), 'Occurrence not found.')
     if(!occurrence.task) error(400, 'This reminder had no Done button.')
 
-    const updated = unwrap(await updateOnePartial('occurrences', id, { done: done ? new Date().toISOString() : '' }), 'Could not update the reminder.')
-    if(occurrence.reminder) unwrap(await countOpenOccurrences(occurrence.reminder), 'Could not update the reminder.')
+    const [updated] = unwrap(await setDone([occurrence], done), 'Could not update the reminder.')
 
     await getReminders().refresh()
-    return updated
+    return updated ?? occurrence
 
 });
 
@@ -111,13 +115,7 @@ export const checkOffHistory = command(z.object({ note: idSchema }), async ({ no
     const me = signedIn()
     const open = unwrap(await getOpenOccurrences(note, me.id), 'Could not load the history.')
 
-    const now = new Date().toISOString()
-    for(const occurrence of open) unwrap(await updateOnePartial('occurrences', occurrence.id, { done: now }), 'Could not check off the reminder.')
-
-    // Recount each reminder once
-    for(const reminder of new Set(open.map((occurrence) => occurrence.reminder).filter(Boolean))){
-        unwrap(await countOpenOccurrences(reminder), 'Could not update the reminder.')
-    }
+    unwrap(await setDone(open, true), 'Could not check off the reminder.')
 
     await getReminders().refresh()
     return open.length
@@ -127,18 +125,15 @@ export const checkOffHistory = command(z.object({ note: idSchema }), async ({ no
 
 
 // HELPERS ============================================================
-function ruleFields(rule: ReminderRule) {
+function ruleFields(sent: ReminderRule) {
+    const rule = normalizeRule(sent)
     if(rule.repeat === 'weekdays' && !rule.weekdays.length) error(400, 'Pick at least one day.')
-    if(rule.until && rule.repeat !== 'never' && new Date(rule.until) < new Date(rule.at)) error(400, 'The end lies before the start.')
+    if(rule.until && new Date(rule.until) < new Date(rule.at)) error(400, 'The end lies before the start.')
 
     // A time already passed is kept as finished
     const next = firstOccurrence(rule, new Date())
 
-    // Only what the chosen repeat uses gets stored
-    const weekdays = rule.repeat === 'weekdays' ? rule.weekdays : []
-    const until = rule.until && rule.repeat !== 'never' ? new Date(rule.until).toISOString() : ''
-    const rules = rule.repeat === 'never' ? [] : rule.rules
-    return { ...rule, weekdays, until, rules, at: new Date(rule.at).toISOString(), next: next?.toISOString() ?? '' }
+    return { ...rule, until: rule.until && new Date(rule.until).toISOString(), at: new Date(rule.at).toISOString(), next: next?.toISOString() ?? '' }
 }
 
 
@@ -170,7 +165,7 @@ export const setAppPaused = command(z.boolean(), async (paused) => {
 
 });
 
-const testSchema = z.object({ channel: z.enum(['phone', 'browser', 'ntfy']), endpoint: pushSubscriptionSchema.shape.endpoint.optional() })
+const testSchema = z.object({ channel: z.enum(TEST_CHANNELS), endpoint: pushSubscriptionSchema.shape.endpoint.optional() })
 
 export const sendTestReminder = command(testSchema, async ({ channel, endpoint }) => {
 
@@ -191,9 +186,9 @@ export const addPushSubscription = command(pushSubscriptionSchema, async (subscr
 
     const me = signedIn()
 
-    const known = await findOne('push_subscriptions', 'endpoint = {:endpoint}', undefined, { endpoint: subscription.endpoint })
-    const saved = known.success
-        ? await updateOnePartial('push_subscriptions', known.data.id, { ...subscription, owner: me.id })
+    const known = orNull(await findOne('push_subscriptions', 'endpoint = {:endpoint}', undefined, { endpoint: subscription.endpoint }), 'Could not turn on notifications.')
+    const saved = known
+        ? await updateOnePartial('push_subscriptions', known.id, { ...subscription, owner: me.id })
         : await insertOnePartial('push_subscriptions', { ...subscription, owner: me.id })
     unwrap(saved, 'Could not turn on notifications.')
     return true
@@ -204,8 +199,8 @@ export const removePushSubscription = command(pushSubscriptionSchema.shape.endpo
 
     const me = signedIn()
 
-    const known = await findOne('push_subscriptions', 'endpoint = {:endpoint} && owner = {:owner}', undefined, { endpoint, owner: me.id })
-    if(known.success) unwrap(await deleteOne('push_subscriptions', known.data.id), 'Could not turn off notifications.')
+    const known = orNull(await findOne('push_subscriptions', 'endpoint = {:endpoint} && owner = {:owner}', undefined, { endpoint, owner: me.id }), 'Could not turn off notifications.')
+    if(known) unwrap(await deleteOne('push_subscriptions', known.id), 'Could not turn off notifications.')
     return true
 
 });
@@ -214,6 +209,6 @@ export const removePushSubscription = command(pushSubscriptionSchema.shape.endpo
 export const getAppStream = query(async () => {
 
     const me = signedIn()
-    return `/api/app-stream/${me.id}?key=${sign(streamSubject(me))}`
+    return `${resolve('/api/app-stream/[user]', { user: me.id })}?key=${sign(streamSubject(me))}`
 
 });

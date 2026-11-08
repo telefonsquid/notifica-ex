@@ -1,9 +1,9 @@
 <script lang="ts">
     import { now } from '#lib/clock.svelte.ts';
-    import { formatDistance, formatMoment, isOpenTask } from '#lib/notes.ts';
-    import { safeAction } from '#lib/pocketbase.ts';
-    import { describeRule, parseTimestamp, UNITS, WEEKDAYS } from '#lib/reminders.ts';
-    import type { Reminder, ReminderLimit, ReminderRepeat, Weekday } from '#lib/schemas.ts';
+    import { describeRule, isCounted, isOpenTask, localWeekday, normalizeRule, parseTimestamp, UNITS } from '#lib/reminders.ts';
+    import { safeAction } from '#lib/safe_action.ts';
+    import { formatDistance, formatMoment } from '#lib/time_format.ts';
+    import type { Reminder, ReminderLimit, ReminderRepeat, Weekday } from '#lib/schemas/reminders.ts';
     import DayPicker from '#lib/components/DayPicker.svelte';
     import DoneButton from '#lib/components/DoneButton.svelte';
     import ReminderRules from '#lib/components/ReminderRules.svelte';
@@ -53,8 +53,7 @@
     let advancedButton = $state<HTMLElement>()
     let saving = $state(false)
 
-    // Minutes to years take a count and read as "every 3 days"
-    let counted = $derived(repeat !== 'never' && repeat !== 'weekdays')
+    let counted = $derived(isCounted(repeat))
     let tuned = $derived(!!until || limits.length > 0)
     // A cleared date field leaves nothing to save
     let start = $derived(at ? new Date(at) : null)
@@ -91,8 +90,7 @@
 
     // Today while the date field is empty
     function startDay(): Weekday {
-        const day = start && !isNaN(start.getTime()) ? start : new Date()
-        return WEEKDAYS[(day.getDay() + 6) % 7].value
+        return localWeekday(start && !isNaN(start.getTime()) ? start : new Date())
     }
 
     // Date ranges picked backwards get turned round
@@ -109,16 +107,16 @@
     async function save(){
         if(incomplete || !start) return
         saving = true
-        const rule = {
+        const rule = normalizeRule({
             at: start.toISOString(),
             repeat,
-            every: counted ? every : 1,
-            weekdays: repeat === 'weekdays' ? weekdays : [],
-            until: until && repeat !== 'never' ? new Date(`${until}T23:59:59`).toISOString() : '',    // the last day counts whole
-            rules: repeat === 'never' ? [] : cleanLimits(),
+            every,
+            weekdays,
+            until: until ? new Date(`${until}T23:59:59`).toISOString() : '',    // the last day counts whole
+            rules: cleanLimits(),
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
             task
-        }
+        })
         const note = reminder ? reminder.note : await ensureNote()
         const saved = note && await safeAction(reminder ? updateReminder({ id: reminder.id, ...rule }) : addReminder({ note, ...rule }))
         saving = false
@@ -148,7 +146,7 @@
     // DONE | one open time gets ticked off right away, more open the history to pick from
     function done(event: MouseEvent){
         if(!reminder) return
-        if(reminder.open > 1 && onhistory) onhistory(event.currentTarget as HTMLElement)
+        if(reminder.open > 1) onhistory?.(event.currentTarget as HTMLElement)
         else ondone?.()
     }
 
@@ -194,7 +192,7 @@
 
 {#if open && editable}
     <!-- FORM | takes the place of the line -->
-    <form class="reminder-form flex flex-col gap-1.5 py-1" onsubmit={(event) => { event.preventDefault(); save() }} in:enter|global>
+    <form class="open-only flex flex-col gap-1.5 py-1" onsubmit={(event) => { event.preventDefault(); save() }} in:enter|global>
         <!-- ONE ROW | wraps only where the card is too narrow -->
         <div class="flex flex-wrap items-center gap-1.5">
             <div class="flex min-w-0 flex-1 basis-56 items-center gap-1.5">
@@ -247,7 +245,7 @@
         {/if}
 
         <!-- ADVANCED | end date and the only and except rules in their own dialog -->
-        <ReminderRules bind:open={advanced} bind:until bind:limits start={at} recurring={repeat !== 'never'} anchor={advancedButton} {schedule} summary={describeRule({ repeat, every: counted ? every : 1, weekdays, rules: limits })} />
+        <ReminderRules bind:open={advanced} bind:until bind:limits start={at} recurring={repeat !== 'never'} anchor={advancedButton} {schedule} summary={describeRule({ repeat, every, weekdays, rules: limits })} />
     </form>
 {:else if reminder}
     <!-- LINE | the Done button pulses while a task waits to be checked off -->
@@ -260,13 +258,13 @@
                 <span class="ml-auto shrink-0">{formatDistance(reminder.next, now())}</span>
             {/if}
         </button>
-        {#if due && ondone}
+        {#if due}
             <DoneButton class={['pointer-events-auto', !trailing && '-mr-1.5']} count={reminder.open} pulse aria-label={reminder.open > 1 ? `${reminder.open} open, show history` : 'Done'} onclick={done} />
         {/if}
         {@render trailing?.()}
     </div>
 {:else}
-    <button class="add-reminder type-meta flex min-h-9 items-center gap-2 hover:text-ink" onclick={() => open = true} in:enter|global>
+    <button class="open-only type-meta flex min-h-9 items-center gap-2 hover:text-ink" onclick={() => open = true} in:enter|global>
         <BellPlus class="size-3.5" /> Add reminder
     </button>
 {/if}

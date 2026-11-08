@@ -1,4 +1,4 @@
-import type { ReminderLimit, ReminderRepeat, Weekday } from '#lib/schemas.ts';
+import type { Reminder, ReminderLimit, ReminderRepeat, Weekday } from '#lib/schemas/reminders.ts';
 
 type Rule = { at: string, repeat: ReminderRepeat, every: number, weekdays?: Weekday[], until?: string, timezone: string, rules?: ReminderLimit[] }
 
@@ -7,18 +7,33 @@ const HOUR = 60 * MINUTE
 const DAY = 24 * HOUR
 const MAX_HOPS = 500 // blocked stretches a search skips before it gives up
 
-// Monday first, as on the picker | getUTCDay counts from sunday
-export const WEEKDAYS: { value: Weekday, short: string }[] = [
-    { value: 'mo', short: 'Mon' }, { value: 'tu', short: 'Tue' }, { value: 'we', short: 'Wed' }, { value: 'th', short: 'Thu' },
-    { value: 'fr', short: 'Fri' }, { value: 'sa', short: 'Sat' }, { value: 'su', short: 'Sun' },
-]
-const BY_DAY_INDEX: Weekday[] = ['su', 'mo', 'tu', 'we', 'th', 'fr', 'sa']
+export const REPEATS = ['never', 'minutes', 'hours', 'days', 'weeks', 'weekdays', 'months', 'years'] as const
+
+// Monday first, as on the picker
+export const WEEKDAY_CODES = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su'] as const
+const WEEKDAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+export const WEEKDAYS = WEEKDAY_CODES.map((value, index) => ({ value, short: WEEKDAY_NAMES[index] }))
+
+// getUTCDay counts from sunday
+function weekdayOf({ year, month, day }: { year: number, month: number, day: number }): Weekday {
+    return WEEKDAY_CODES[(new Date(Date.UTC(year, month - 1, day)).getUTCDay() + 6) % 7]
+}
+
+// The day this moment falls on in the browser's own zone
+export function localWeekday(date: Date): Weekday {
+    return weekdayOf({ year: date.getFullYear(), month: date.getMonth() + 1, day: date.getDate() })
+}
 
 
 
 // TIMESTAMPS ====================================================================================================
 
 // Reads both pocketbase dates and iso strings | empty or broken ones come back as null
+// How PocketBase writes a time | filters compare it as text, so an ISO time would sort wrong against stored ones
+export function pbTime(date: Date) {
+    return date.toISOString().replace('T', ' ')
+}
+
 export function parseTimestamp(value: string | undefined | null): Date | null {
     if(!value) return null
     const date = new Date(value.replace(' ', 'T'))
@@ -45,13 +60,30 @@ export function movedOn(wentOff: { next: string }, latest: (Rule & { next: strin
 
 // RECURRENCE ====================================================================================================
 
+// Minutes to years take a count and read as "every 3 days"
+export function isCounted(repeat: ReminderRepeat) {
+    return repeat !== 'never' && repeat !== 'weekdays'
+}
+
+// A rule without the parts its repeat leaves out, so what a form still holds neither counts nor gets stored
+export function normalizeRule<T extends Rule>(rule: T) {
+    const once = rule.repeat === 'never'
+    return {
+        ...rule,
+        every: isCounted(rule.repeat) ? rule.every : 1,
+        weekdays: rule.repeat === 'weekdays' ? rule.weekdays ?? [] : [],
+        until: once ? '' : rule.until ?? '',
+        rules: once ? [] : rule.rules ?? [],
+    }
+}
+
 // First time the rule goes off after the given moment, null once it is over
 export function occurrenceAfter(rule: Rule, after: Date): Date | null {
     const start = parseTimestamp(rule.at)
     if(!start) return null
 
-    const until = rule.repeat === 'never' ? null : parseTimestamp(rule.until)
-    const limits = rule.repeat === 'never' ? [] : rule.rules ?? []
+    const { until: end, rules: limits } = normalizeRule(rule)
+    const until = parseTimestamp(end)
 
     // A blocked time skips the whole blocked stretch, so a few hops reach the next allowed one
     let from = after
@@ -68,7 +100,11 @@ export function occurrenceAfter(rule: Rule, after: Date): Date | null {
 }
 
 // When a snoozed reminder goes off again | tomorrow means 9:00 on the clock of the reminder's own zone
-export type SnoozeChoice = 'hour' | 'tomorrow'
+// Opens a card with a blank reminder form instead of a stored reminder
+export const NEW_REMINDER = 'new'
+
+export const SNOOZE_CHOICES = ['hour', 'tomorrow'] as const
+export type SnoozeChoice = typeof SNOOZE_CHOICES[number]
 
 export function snoozeUntil(choice: SnoozeChoice, now: Date, timezone: string): Date {
     if(choice === 'hour') return new Date(now.getTime() + 60 * MINUTE)
@@ -134,8 +170,7 @@ function nextWeekday(rule: Rule, start: Date, after: Date): Date | null {
 
     for(let offset = 0; offset <= 7; offset++){
         const day = { ...wall, day: wall.day + offset }
-        const weekday = BY_DAY_INDEX[new Date(Date.UTC(day.year, day.month - 1, day.day)).getUTCDay()]
-        if(!rule.weekdays.includes(weekday)) continue
+        if(!rule.weekdays.includes(weekdayOf(day))) continue
 
         const next = fromWallClock(day, rule.timezone)
         if(next >= start && next > after) return next
@@ -166,7 +201,7 @@ function blockedUntil(limits: ReminderLimit[], moment: Date, timezone: string): 
     const wall = wallClock(moment, timezone)
     const date = isoDate(wall)
     const clock = wall.hour * 60 + wall.minute
-    const weekday = BY_DAY_INDEX[new Date(Date.UTC(wall.year, wall.month - 1, wall.day)).getUTCDay()]
+    const weekday = weekdayOf(wall)
     const at = (days: number, minutes: number) => fromWallClock({ ...wall, day: wall.day + days, hour: Math.floor(minutes / 60), minute: minutes % 60, second: 0 }, timezone)
     const midnight = (date: string, days = 0) => {
         const day = parseDate(date)
@@ -322,4 +357,31 @@ function offset(moment: number, timezone: string): number {
     const wall = wallClock(new Date(moment), timezone)
     const shown = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute, wall.second)
     return shown - Math.floor(moment / 1000) * 1000
+}
+
+
+
+// DELIVERY ====================================================================================================
+
+// What the test buttons in the settings can reach
+export const TEST_CHANNELS = ['phone', 'browser', 'ntfy'] as const
+export type TestChannel = typeof TEST_CHANNELS[number]
+
+
+
+// ON A NOTE ====================================================================================================
+// A task with times that went off but were not checked off yet
+export function isOpenTask(reminder: Reminder): boolean {
+    return reminder.task && reminder.open > 0
+}
+
+// Soonest first, finished ones last
+export function groupReminders(reminders: Reminder[]): Map<string, Reminder[]> {
+    const grouped = new Map<string, Reminder[]>()
+    for(const reminder of reminders.toSorted((a, b) => Number(!a.next) - Number(!b.next) || a.next.localeCompare(b.next))){
+        const group = grouped.get(reminder.note)
+        if(group) group.push(reminder)
+        else grouped.set(reminder.note, [reminder])
+    }
+    return grouped
 }

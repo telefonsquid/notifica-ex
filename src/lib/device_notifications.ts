@@ -72,7 +72,7 @@ export async function startDeviceNotifications(user: string) {
         return;
     }
 
-    if(browserPushBlocker() || !(await browserPushOn())) return;
+    if(browserPushBlocker() || Notification.permission !== 'granted') return;
     const subscription = await currentSubscription();
     if(subscription && localStorage.getItem(REGISTERED) !== `${user} ${subscription.endpoint}`) await register(subscription, user);
 }

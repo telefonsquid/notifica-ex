@@ -1,14 +1,13 @@
 <script lang="ts">
     import type { ImageFit } from '#lib/preferences.ts';
     import PreferencePicker from './PreferencePicker.svelte';
-    import { setImageFit } from '../../routes/api/settings.remote';
 
     let { current }: { current: ImageFit } = $props()
 
     const OPTIONS = [{ value: 'cropped', name: 'Cropped' }, { value: 'whole', name: 'Whole' }] as const
 </script>
 
-<PreferencePicker options={OPTIONS} attribute="images" {current} save={setImageFit}>
+<PreferencePicker options={OPTIONS} name="images" {current}>
     {#snippet miniature(fit: ImageFit)}
         <!-- A card topped by a tall picture, cut or whole -->
         <div class={['my-2 flex h-16 w-20 shrink-0 flex-col overflow-hidden rounded-control border border-line-strong', fit]} aria-hidden="true">

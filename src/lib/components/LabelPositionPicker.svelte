@@ -1,14 +1,13 @@
 <script lang="ts">
     import type { LabelPosition } from '#lib/preferences.ts';
     import PreferencePicker from './PreferencePicker.svelte';
-    import { setLabelPosition } from '../../routes/api/settings.remote';
 
     let { current }: { current: LabelPosition } = $props()
 
     const OPTIONS = [{ value: 'top', name: 'Top' }, { value: 'bottom', name: 'Bottom' }] as const
 </script>
 
-<PreferencePicker options={OPTIONS} attribute="labels" {current} save={setLabelPosition}>
+<PreferencePicker options={OPTIONS} name="labels" {current}>
     {#snippet miniature(position: LabelPosition)}
         <!-- A card with two tabs on the chosen edge -->
         <div class={['mini relative my-2 flex h-16 w-20 shrink-0 flex-col gap-1.5 rounded-control border border-line-strong p-2.5', position]} aria-hidden="true">

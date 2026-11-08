@@ -1,6 +1,9 @@
 <script lang="ts">
-    import { GB, MB, type FileLimits, type LimitOverrides } from '#lib/limits.ts';
+    import { debounced } from '#lib/debounced.ts';
+    import { GB, MB } from '#lib/limits.ts';
+    import type { LimitOverrides } from '#lib/schemas/users.ts';
     import { LIMITS } from '#lib/schema_limits.ts';
+    import type { FileLimits } from '#lib/schemas/users.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import NumberField from '#lib/ui/NumberField.svelte';
     import Switch from '#lib/ui/Switch.svelte';
@@ -27,34 +30,28 @@
         { key: 'storageBytes', label: 'Storage', unit: 'GB', size: GB, min: 0, max: LIMITS.STORAGE_BYTES / GB }
     ] as const
 
-    // SAVING | a moment after the last change, so walking the arrows sends one request
-    const WAIT = 400
+    // SAVING
     let waiting: Changes = {}
-    let timer: ReturnType<typeof setTimeout> | undefined
+
+    const saving = debounced(() => {
+        const changes = waiting
+        waiting = {}
+        if(Object.keys(changes).length) onsave(changes)
+    })
 
     function change<K extends keyof FileLimits>(key: K, value: FileLimits[K]){
         if(values[key] === value && !(key in waiting)) return
         waiting[key] = value
-        clearTimeout(timer)
-        timer = setTimeout(flush, WAIT)
-    }
-
-    function flush(){
-        clearTimeout(timer)
-        if(!Object.keys(waiting).length) return
-        const changes = waiting
-        waiting = {}
-        onsave(changes)
+        saving.schedule()
     }
 
     function reset(key: keyof FileLimits){
         delete waiting[key]
-        flush()
+        saving.flush()
         onsave({ [key]: null })
     }
 
-    // Leaving before the wait is over still saves
-    $effect(() => flush)
+    $effect(() => saving.flush)
 </script>
 
 {#snippet back(key: keyof FileLimits)}
