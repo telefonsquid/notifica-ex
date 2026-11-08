@@ -29,7 +29,8 @@
     import { defaultSort, emptyFilter, matchesView, noteDefaults, noteText, sortNotes, wordsOf } from '#lib/views.ts';
     import { linkedNote } from '#lib/links.ts';
     import { NEW_CELL } from '#lib/relayout.ts';
-    import { X } from '@lucide/svelte'
+    import { tip } from '#lib/tooltip.svelte.ts'
+    import { CheckCheck, X } from '@lucide/svelte'
     import { ContextMenu } from 'bits-ui'
     import { onMount, untrack } from 'svelte'
     import { getLabels } from '../../api/labels.remote'
@@ -157,6 +158,10 @@
         return selected.has(note.id) ? selection : [note]
     }
 
+    function selectAll() {
+        selected.add(visible.map((note) => note.id))
+    }
+
     function removeSelection() {
         removeNotes(selection, me)
         selected.clear()
@@ -169,6 +174,10 @@
             selected.clear()
         }
         else if (event.key === 'Delete' && selection.length && !editing && !menu && !typing(event)) removeSelection()
+        else if (event.key.toLowerCase() === 'a' && (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && visible.length && !editing && !menu && !typing(event) && !dialogOpen()) {
+            event.preventDefault()
+            selectAll()
+        }
         else if (event.key === 'n' && !event.ctrlKey && !event.metaKey && !event.altKey && !event.repeat && !editing && !selection.length && !menu && !typing(event) && !dialogOpen()) {
             event.preventDefault()
             opening.edit(null)
@@ -279,6 +288,7 @@
             <span class="type-meta mr-1 text-ink sm:mr-2">{selection.length}<span class="max-sm:hidden"> selected</span></span>
             <NoteMenu bar notes={selection} {labels} {me} reminders={remindersByNote} onfinish={() => selected.clear()} />
             <span class="mx-1 h-6 w-px bg-line"></span>
+            <button class="icon-button size-10 rounded-full" aria-label="Select all" disabled={selection.length >= visible.length} onclick={selectAll} {@attach tip('Select all')}><CheckCheck class="size-4" /></button>
             <button class="icon-button size-10 rounded-full" aria-label="Clear selection" onclick={() => selected.clear()}><X class="size-4" /></button>
         </div>
     {:else}

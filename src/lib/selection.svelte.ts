@@ -23,6 +23,10 @@ export class Selection {
         this.#anchor = id
     }
 
+    add(ids: string[]){
+        for(const id of ids) this.#ids.add(id)
+    }
+
     // The stretch from the anchor to this note follows the note: picked when it wasn't, dropped when it was
     toggleRange(id: string, order: string[]){
         const from = this.#anchor && this.#ids.size ? order.indexOf(this.#anchor) : -1
