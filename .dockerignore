@@ -4,4 +4,6 @@ build
 .env
 .git
 Dockerfile
-pocketbase
+pocketbase/*
+!pocketbase/pb_schema.json
+src-tauri

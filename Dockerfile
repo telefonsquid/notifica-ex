@@ -14,7 +14,14 @@ ARG ORIGIN
 ENV ORIGIN=$ORIGIN
 COPY . .
 RUN bun prepare
-RUN bun node_modules/vite/bin/vite.js build
+
+# The build validates env.ts once, placeholders pass it and the real values come at runtime
+RUN PUBLIC_POCKETBASE_URL=http://pocketbase.invalid \
+    INTERNAL_POCKETBASE_URL=http://pocketbase.invalid \
+    POCKETBASE_SUPERUSER_EMAIL=build@notifica.invalid \
+    POCKETBASE_SUPERUSER_PASSWORD=build-placeholder \
+    SERVER_AUTH_SECRET=build-placeholder-secret \
+    bun node_modules/vite/bin/vite.js build
 
 # Keep only production dependencies
 RUN rm -rf node_modules \
