@@ -69,7 +69,19 @@ export type User = RecordModel & z.infer<typeof userInputSchema> & {
     appResumed?: string;        // What the phones missed before this stays missed
     limits?: LimitOverrides | null;
     streamEpoch?: number;
+    noteLock?: NoteLock | null;
 }
+
+// NOTE LOCK | the key of locked notes, itself locked by the account password
+export type NoteLock = z.infer<typeof noteLockSchema>;
+const base64url = (length: number) => z.string().length(length).regex(/^[\w-]+$/)
+export const noteLockSchema = z.object({
+    id: base64url(12),                                  // Sealed bodies name the key they need
+    salt: base64url(22),
+    iterations: z.number().int().min(100_000).max(10_000_000),
+    iv: base64url(16),
+    key: base64url(64)                                  // The note key, encrypted with one derived from the password
+});
 
 // What the user admin gets to see of every account
 export type UserSummary = Pick<User, 'id' | 'name' | 'email' | 'authorizationLevel' | 'state'>;
@@ -93,6 +105,19 @@ export type PushSubscriptionRecord = RecordModel & z.infer<typeof pushSubscripti
 export const loginInputSchema = z.object({
     email: userInputSchema.shape.email,
     password: limitedText('Password', LIMITS.PASSWORD).min(1, 'Password is required')
+});
+
+export const changePasswordSchema = z.object({
+    oldPassword: loginInputSchema.shape.password,
+    password: z.string()
+        .min(LIMITS.PASSWORD_MIN, `Password must be at least ${LIMITS.PASSWORD_MIN} characters`)
+        .max(LIMITS.PASSWORD, `Password must be less than ${LIMITS.PASSWORD} characters`),
+    noteLock: noteLockSchema.nullable()                 // Locked again with the new password, null while nothing is locked
+});
+
+export const startNoteLockSchema = z.object({
+    password: loginInputSchema.shape.password,
+    noteLock: noteLockSchema
 });
 
 export const setPasswordSchema = z.object({

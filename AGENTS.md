@@ -86,6 +86,7 @@ Tokens, themes, note colours and device preferences: `theming` skill. Everything
 ## Decisions
 
 - **No encryption** beyond TLS for now. E2E was considered and dropped (2026-10-31): too costly for search, sharing and reminder text.
+- **Locked notes** are the one exception (2026-11-08): the owner locks a single note, the browser encrypts its body with a key wrapped by the account password, the server never sees the text. Unshared and without files only, title, labels and reminders stay readable. Changing the password in Settings rewraps the key, a reset by mail loses the text. The key lives in the tab's memory and goes on reload, logout or 5 minutes hidden. Android biometrics and passkeys are planned next. Details in the `data-model` skill.
 - **Groups are labels**: a note can carry several, groups act as filters. Each label has a colour from the note palette and shows as a folder tab on the card's edge, named only on hover.
 - **Accounts by admin invite** with a set-password link, as in fsd-flight-check. No open signup.
 - **Android via Tauri 2 mobile**: a shell whose webview opens the server, asked once on a bundled connect page. Other apps share text and images into a new note. Details in the `android` skill.

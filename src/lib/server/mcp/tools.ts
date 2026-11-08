@@ -75,7 +75,7 @@ const searchNotes = tool({
 const getNote = tool({
     name: 'get_note',
     title: 'Read a note',
-    description: 'The full note: markdown body, labels, checklist state and the reminders the user set on it. tasks lists every checklist item in reading order, its position is the index set_task takes.',
+    description: 'The full note: markdown body, labels, checklist state and the reminders the user set on it. A locked note has an empty body, its text is encrypted and only the user can read it. tasks lists every checklist item in reading order, its position is the index set_task takes.',
     readOnly: true,
     input: z.object({ id: idSchema }),
     run: async ({ id }, user) => {
@@ -133,6 +133,7 @@ const updateNote = tool({
         const touchesLabels = replaced || add_labels || remove_labels
 
         // Said out loud instead of dropped, so the model doesn't think it worked
+        if(note.sealed && changes.body !== undefined) error(403, 'This note is locked, only the user can change its text.')
         if(!owned && (touchesLabels || changes.pinned !== undefined || changes.archived !== undefined)) error(403, 'Only the owner can change pin, archive and labels of this note.')
 
         const update: Partial<Note> = owned ? { ...changes } : collaboratorChanges(changes)
@@ -155,6 +156,7 @@ const setTask = tool({
     input: z.object({ id: idSchema, index: z.number().int().min(0), done: z.boolean() }),
     run: async ({ id, index, done }, user) => {
         const note = await requireNote(id, user.id)
+        if(note.sealed) error(403, 'This note is locked, only the user can check off its items.')
         const tasks = tasksOf(note.body)
         if(index >= tasks.length) error(400, `The note has ${tasks.length} checklist items.`)
         if(tasks[index] === done) return { id, tasks }
@@ -260,6 +262,7 @@ function summaryOf(note: Note, labels: Label[], user: User) {
         id: note.id,
         title: note.title,
         preview: note.body.slice(0, 200),
+        locked: !!note.sealed,                  // Its text is encrypted in the browser, the body stays empty here
         labels: note.labels.flatMap((id) => labels.find((label) => label.id === id)?.name ?? []),
         color: note.color,
         pinned: note.pinned,

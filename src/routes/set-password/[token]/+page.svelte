@@ -22,4 +22,5 @@
 <AuthPage title="Set password" action="Set password" onsubmit={submit}>
     <Input id="password" label="New password, at least 8 characters" type="password" autocomplete="new-password" minlength={8} required bind:value={password} />
     <Input id="password-confirm" label="Repeat password" type="password" autocomplete="new-password" required bind:value={passwordConfirm} />
+    <p class="type-meta text-ink-faint">Notes locked with an earlier password can't be opened after this. Change the password in Settings to keep them.</p>
 </AuthPage>

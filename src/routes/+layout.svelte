@@ -5,6 +5,7 @@
     import { closeOverlay } from '#lib/back.ts'
     import { prefetchRoute } from '#lib/prefetch.ts'
     import type { User } from '#lib/schemas/users.ts';
+    import PasswordDialog from '#lib/components/PasswordDialog.svelte'
     import ConfirmDialog from '#lib/components/ConfirmDialog.svelte'
     import ImageViewer from '#lib/components/ImageViewer.svelte'
     import NavigationProgress from '#lib/components/NavigationProgress.svelte'
@@ -76,6 +77,9 @@
 
 <!-- CONFIRM DIALOG -->
 <ConfirmDialog />
+
+<!-- PASSWORD DIALOG -->
+<PasswordDialog />
 
 <!-- IMAGE VIEWER -->
 <ImageViewer />

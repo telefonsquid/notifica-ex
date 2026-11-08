@@ -36,6 +36,9 @@ export const noteContentSchema = z.object({
     archived: z.boolean()
 });
 
+// A locked body as the browser encrypted it, see #lib/note_lock.svelte.ts
+export const sealedSchema = limitedText('Locked text', LIMITS.NOTE_SEALED).regex(/^v1\.[\w-]{8,32}\.[\w-]{16}\.[\w-]+$/, 'Locked text is malformed.');
+
 // Name pocketbase gave an uploaded file
 export const fileNameSchema = limitedText('File name', LIMITS.FILE_NAME).regex(/^[\w.-]+$/, 'File name may only contain letters, numbers, dots, underscores and dashes.');
 
@@ -49,6 +52,8 @@ export type Note = RecordModel & NoteContent & {
     attachments: string[]; // Uploaded through /api/notes/[id]/attachments, likewise
     fileInfo: FileInfo | null; // Sizes of both, what storage limits count
     shared: string[]; // People who may see and edit it besides the owner
+    sealed: string; // The encrypted body of a locked note, its body stays empty meanwhile
+    unreadable?: boolean; // Browser only, a locked note whose text isn't decrypted
 }
 
 // What the others on a shared note get to know about someone

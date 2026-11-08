@@ -39,6 +39,7 @@ Invariants:
 4. A card that is open never changes under the person typing. A save brings along fields the card left alone, they show once the card closes where an editor holds its own text (Tiptap, a focused title).
 5. Every unsaved `draft` has a backup, see [Draft backup](#draft-backup).
 6. A save never writes a field the person did not change here (see [SM-1](#sm-1-saves-overwrite-changes-made-elsewhere)).
+7. A locked note saves its body sealed, an unreadable one leaves it out (see [Note lock](#note-lock)).
 
 | From | Event | To | Notes |
 |---|---|---|---|---|
@@ -82,6 +83,7 @@ Invariants:
 3. A note changed elsewhere meanwhile is never overwritten by a restore, the edits become a note of their own (`restoreOf`).
 4. One bad entry never blocks the others (see [SM-6](#sm-6-drafts-that-can-never-be-saved)).
 5. An entry the server can never accept doesn't stay forever (see [SM-6](#sm-6-drafts-that-can-never-be-saved)).
+6. Locked notes get no entry, the text would sit readable in storage.
 
 | From | Event | To |
 |---|---|---|
@@ -137,6 +139,40 @@ Archive has no state of its own: `archiveChange()` in `#lib/notes.ts` sets it an
 Invariant: nobody but the owner changes pin, archive, labels, order or membership, the server strips those fields.
 
 PocketBase sends no realtime event to someone who just lost view access, so their card stays until the next load or their next action on it (see [SM-2](#sm-2-losing-a-note-loses-what-was-typed)).
+
+## Note lock
+
+`notes.sealed` on the note, `users.noteLock` on the account, `src/lib/note_lock.svelte.ts` in the browser.
+
+| State | Means |
+|---|---|
+| Open text | `sealed` empty, `body` holds the text |
+| Locked | `sealed` holds the text encrypted under the account key, `body` empty |
+| Lost | `sealed` names a key id other than `noteLock.id`, a mail reset dropped that key |
+
+Invariants:
+
+1. A locked note never reaches the server, a draft backup or the MCP tools readable. `sealBody()` throws without the key.
+2. Only the owner locks or unlocks, and only an unshared note without files. The server refuses sharing, uploads and plain body updates on a locked note (409).
+3. An unreadable card never sends its body, its empty draft would replace the text.
+
+| From | Event | To | Notes |
+|---|---|---|---|
+| Open text | Lock (card or menu) | Locked | Asks for the password first when the tab holds no key, the very first time sets up `noteLock` |
+| Locked | Unlock | Open text | Needs the key, the decrypted text goes back into `body` |
+| Locked | password changed in Settings | Locked | `relock()` wraps the same key anew, nothing gets encrypted again |
+| Locked | password reset by mail | Lost | `setPassword` clears `noteLock` |
+| Lost | delete | removed | Nothing else is offered |
+
+## Tab key
+
+The account key in memory of one tab (`state` in `note_lock.svelte.ts`).
+
+| From | Event | To |
+|---|---|---|
+| Closed | right password in the dialog | Open, cards decrypt and show their text |
+| Open | reload, logout | Closed |
+| Open | tab hidden over 5 minutes, no locked note open | Closed |
 
 ---
 

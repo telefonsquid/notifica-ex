@@ -1,6 +1,7 @@
 import type { SharedNote } from '#lib/android_share.ts';
 import { duration, easing, rise, stagger } from '#lib/motion.ts';
 import { noteEditor } from '#lib/note_editor.svelte.ts';
+import { readable } from '#lib/note_lock.svelte.ts';
 import type { NoteGrid } from '#lib/note_grid.svelte.ts';
 import { bodyOf, cellOf, floatCell, forgetCell } from '#lib/relayout.ts';
 import type { Note } from '#lib/schemas/notes.ts';
@@ -40,7 +41,11 @@ export class NoteOpening {
         this.#ids = ids
     }
 
-    edit = (note: Note | null, focus?: string) => this.#open(note, focus, null)
+    // A locked note asks for the password first, the card opens with its text or not at all
+    edit = async (note: Note | null, focus?: string) => {
+        if(note?.unreadable && !await readable(note)) return
+        this.#open(note, focus, null)
+    }
 
     // Shared from another app into a new note
     openShared = (shared: SharedNote) => this.#open(null, undefined, shared)

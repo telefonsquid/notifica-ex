@@ -18,6 +18,7 @@
     import { takeShare } from '#lib/android_share.ts';
     import { restoreDrafts } from '#lib/draft_restore.ts'
     import { keepEvents } from '#lib/note_list.ts'
+    import { reveal } from '#lib/note_lock.svelte.ts'
     import { notify } from '#lib/notifications.svelte.ts'
     import { dialogOpen, menuOpen, typing } from '#lib/overlays.ts'
     import { onCollectionChange } from '#lib/realtime.ts'
@@ -41,7 +42,7 @@
 
     // DATA | saves and realtime events merge single notes into the list, the rest refresh
     let [stored, labels, reminders, views, people] = $derived(await Promise.all([getNotes(), getLabels(), getReminders(), getViews(), getPeople()]))
-    let notes = $derived(hiddenNotes.size ? stored.filter((note) => !hiddenNotes.has(note.id)) : stored)
+    let notes = $derived(reveal(hiddenNotes.size ? stored.filter((note) => !hiddenNotes.has(note.id)) : stored))      // Locked notes with their text once unlocked
     let me: string = $derived(page.data.user.id)
 
     let remindersByNote = $derived(groupReminders(reminders))

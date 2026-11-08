@@ -1,6 +1,7 @@
 import { beforeNavigate, goto } from '$app/navigation';
 import { afterSave, changedFields, fitted, forgetDraft, holdSave, keepDraft, rescued, sameContent, thisTab } from '#lib/drafts.ts';
 import { dropNotes, kept } from '#lib/note_list.ts';
+import { revealOne, sealBody, unlockNotes } from '#lib/note_lock.svelte.ts';
 import { offerArchiveUndo, removeNotes } from '#lib/note_removal.ts';
 import { archiveChange, contentOf, emptyNote, isEmpty } from '#lib/notes.ts';
 import { notify } from '#lib/notifications.svelte.ts';
@@ -8,7 +9,7 @@ import { safeAction } from '#lib/safe_action.ts';
 import type { Note, NoteContent } from '#lib/schemas/notes.ts';
 import { serverStatus } from '#lib/singletons/server_status.svelte.ts';
 import { untrack } from 'svelte';
-import { createNote, updateNote } from '../routes/api/notes.remote';
+import { createNote, lockNote, unlockNote, updateNote } from '../routes/api/notes.remote';
 
 // A page still here after this long stayed, a download link for example
 const LEAVE_GRACE = 10_000
@@ -39,6 +40,7 @@ export class NoteSession {
 
     #saved = $state.raw<NoteContent | null>(null)     // Empty while nothing of this draft is stored
     #savedAt = ''
+    #unreadable = false             // Locked and not decrypted, its text arrives once the key does
     #deleted = false
     #signedOut = false
     #edited = false                 // Drafts only change on an open card, so the rest of the grid stays out of all this
@@ -54,6 +56,7 @@ export class NoteSession {
         this.draft = initial ? contentOf(initial) : { ...emptyNote(), ...untrack(options.fresh) }
         this.#saved = untrack(options.unsaved) ? null : $state.snapshot(this.draft)
         this.#savedAt = initial?.updated ?? ''
+        this.#unreadable = !!initial?.unreadable
         this.#backupKey = `${initial?.id ?? `new-${Math.random().toString(36).slice(2)}`}.${thisTab}`     // Per tab, a save in one must not drop what another still holds
 
         this.#follow()
@@ -66,13 +69,16 @@ export class NoteSession {
         return !!this.#saved && sameContent(this.draft, this.#saved)
     }
 
-    // Changes from elsewhere land while closed and nothing is waiting to be saved | a copy not newer than the last save has nothing new
+    // Changes from elsewhere land while closed and nothing is waiting to be saved | a copy not newer than the last save has nothing new, unless its text just got decrypted or locked away
     #follow(){
         const { note: current, open } = this.#options
 
         $effect.pre(() => {
             const note = current()
-            if(open() || !note || note.updated <= this.#savedAt) return
+            if(!note) return
+            const unlocked = this.#unreadable !== !!note.unreadable
+            this.#unreadable = !!note.unreadable
+            if(!unlocked && (open() || note.updated <= this.#savedAt)) return
             const saved = this.#saved
             if(!saved || !untrack(() => sameContent(this.draft, saved))) return
 
@@ -88,11 +94,12 @@ export class NoteSession {
 
     // Whatever isn't stored yet also waits in this browser, see #lib/drafts.ts
     #backUp(){
-        const { open, me } = this.#options
+        const { open, me, note } = this.#options
 
+        // Locked text never lands readable in storage
         $effect(() => {
             if(!open() && !this.#edited) return
-            if(this.#deleted || this.#isSaved() || (!this.id && isEmpty(this.draft))){
+            if(note()?.sealed || this.#deleted || this.#isSaved() || (!this.id && isEmpty(this.draft))){
                 if(!this.#leaving) forgetDraft(this.#backupKey)
             }
             else keepDraft(this.#backupKey, { owner: me(), id: this.id, base: this.#saved ?? undefined, content: $state.snapshot(this.draft) })
@@ -175,18 +182,44 @@ export class NoteSession {
             const content = $state.snapshot(this.draft)
             const base = id && this.#saved ? this.#saved : content
             const sent = id ? changedFields(base, content) : content
-            const result = await safeAction(id ? kept(updateNote({ id, ...sent })).catch((err) => this.#gone(err, content, sent)) : kept(createNote(content)))
+            const result = await safeAction(id ? this.#sealed(sent).then((change) => kept(updateNote({ id, ...change }))).catch((err) => this.#gone(err, content, sent)) : kept(createNote(content)))
             if(result){
                 if(!id) this.#options.created(result.id)
                 this.id = result.id
                 this.#savedAt = result.updated
 
-                const settled = afterSave(base, sent, $state.snapshot(this.draft), result)
+                const settled = afterSave(base, sent, $state.snapshot(this.draft), revealOne(result))
                 Object.assign(this.draft, settled.adopted)
                 this.#saved = settled.saved
                 if(!this.#leaving && this.#isSaved()) forgetDraft(this.#backupKey)      // The card may be gone by now, its effect above with it
             }
             return this.#deleted ? null : this.id ?? null
+        })
+        this.#queue = run
+        return run
+    }
+
+    // A locked note sends its text encrypted | an unreadable one has none to send, its empty draft must not replace it
+    async #sealed(sent: Partial<NoteContent>): Promise<Partial<NoteContent> & { sealed?: string }> {
+        if(!this.#options.note()?.sealed || sent.body === undefined) return sent
+        const { body, ...rest } = sent
+        if(this.#unreadable) return rest
+        return { ...rest, sealed: await sealBody(body) }
+    }
+
+    // Saved first, the lock wraps what the note shows | false when the password was not given or the server refused
+    setLocked = async (locked: boolean): Promise<boolean> => {
+        if(locked ? !await unlockNotes() : this.#unreadable) return false
+        const noteId = await this.store()
+        if(!noteId) return false
+
+        const run = this.#queue.then(async () => {
+            const body = $state.snapshot(this.draft.body)
+            const result = await safeAction(kept(locked ? sealBody(body).then((sealed) => lockNote({ id: noteId, sealed })) : unlockNote({ id: noteId, body })))
+            if(!result) return false
+            this.#savedAt = result.updated
+            forgetDraft(this.#backupKey)
+            return true
         })
         this.#queue = run
         return run

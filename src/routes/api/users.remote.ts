@@ -1,8 +1,8 @@
 import { idSchema } from '#lib/schemas/base.ts';
 import type { Person } from '#lib/schemas/notes.ts';
-import { setPasswordSchema, userEditSchema, userInputSchema, userStateSchema, type User, type UserSummary } from '#lib/schemas/users.ts';
+import { changePasswordSchema, setPasswordSchema, startNoteLockSchema, userEditSchema, userInputSchema, userStateSchema, type User, type UserSummary } from '#lib/schemas/users.ts';
 import { endStreams } from '#lib/server/app_stream.ts';
-import { confirmPasswordReset, renewStreamKey, requestPasswordReset } from '#lib/server/accounts.ts';
+import { confirmPasswordReset, login, passwordMatches, renewStreamKey, requestPasswordReset, userOfToken } from '#lib/server/accounts.ts';
 import { findOne, getAll, getOne, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { orNull, unwrap } from '#lib/server/result.ts';
@@ -123,10 +123,46 @@ export const setPassword = command(setPasswordSchema, async ({ token, password, 
     unwrap(await confirmPasswordReset(token, password, passwordConfirm), 'This link has expired or was already used.')
 
     // Phones that held the old password's key have to log in again | the token is proven by now
-    const user = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString()).id as string
+    const user = userOfToken(token)!
     unwrap(await renewStreamKey(user), 'The password changed, but phones stay connected. Try again later.')
     endStreams(user)
 
+    // Locked notes stay sealed under the old key, nobody can open them now
+    unwrap(await updateOnePartial('users', user, { noteLock: null }), 'The password changed, but locked notes could not be closed.')
+
+    return true
+
+});
+
+// Signed in again with the new password, so this browser keeps its session | locked notes keep their key, the browser locked it anew
+export const changePassword = command(changePasswordSchema, async ({ oldPassword, password, noteLock }) => {
+
+    const me = signedIn()
+    if(!await passwordMatches(me.email, oldPassword)) error(400, 'The current password is wrong.')
+    if(me.noteLock?.id !== noteLock?.id) error(409, 'Locked notes changed meanwhile, reload the page and try again.')
+
+    unwrap(await updateOnePartial('users', me.id, { password, passwordConfirm: password, noteLock }), 'Could not change the password.')
+    unwrap(await login(me.email, password), 'The password changed, log in again with the new one.')
+
+    // Phones that held the old password's key have to log in again
+    unwrap(await renewStreamKey(me.id), 'The password changed, but phones stay connected. Try again later.')
+    endStreams(me.id)
+
+    return true
+
+});
+
+
+
+// NOTE LOCK ============================================================
+// The browser made the key, the password proves it is the account's own
+export const startNoteLock = command(startNoteLockSchema, async ({ password, noteLock }) => {
+
+    const me = signedIn()
+    if(me.noteLock) error(409, 'Locked notes are set up already, reload the page.')
+    if(!await passwordMatches(me.email, password)) error(400, 'Wrong password.')
+
+    unwrap(await updateOnePartial('users', me.id, { noteLock }), 'Could not set up locked notes.')
     return true
 
 });

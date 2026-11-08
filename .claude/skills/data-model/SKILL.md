@@ -11,9 +11,9 @@ Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas/` holds zod for what 
 
 | Collection | Fields | List/view rule |
 |---|---|---|
-| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it), appPaused, appResumed (phone reminders, see the `reminders` skill), limits (json, per user overrides) | own record, admins all (names for sharing come from `getPeople()` on the server) |
+| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it), appPaused, appResumed (phone reminders, see the `reminders` skill), limits (json, per user overrides), noteLock (json, the wrapped key for locked notes) | own record, admins all (names for sharing come from `getPeople()` on the server) |
 | `labels` | owner, name, color, autoColor, colorPriority (order in the auto color chart, lowest first) | owner |
-| `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images and attachments (protected files), fileInfo (json, original name and size per file), shared (users, max 20) | `owner = @request.auth.id \|\| shared.id ?= @request.auth.id` (a multi relation needs `.id ?=`, plain `?=` silently matches nothing) |
+| `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images and attachments (protected files), fileInfo (json, original name and size per file), shared (users, max 20), sealed (the body encrypted, body empty then) | `owner = @request.auth.id \|\| shared.id ?= @request.auth.id` (a multi relation needs `.id ?=`, plain `?=` silently matches nothing) |
 | `reminders` | note, owner, at, repeat, weekdays, until, every, timezone, task, next, open | owner, so a collaborator's reminders stay private |
 | `occurrences` | owner, note, reminder, at, rule, timezone, task, done, comment | owner, the reminder history |
 | `views` | owner, name, icon (lucide name, text), position, filter (json), sort (json) | owner |
@@ -37,6 +37,13 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 - `removeNote` deletes for the owner and leaves for a collaborator (removes them from `shared`), both through `removeFor` in `#lib/server/note_access.ts`. Its `ACCESS` filter mirrors the notes list and view rules, a contract test keeps them equal. `removeFile` drops an image or attachment. Duplicating someone else's note drops their labels.
 - Leaving, or being taken off a note, deletes that person's reminders on it (`deleteRemindersOn`), and dispatch drops any reminder whose owner lost the note. Their history stays.
 - UI: `owned = note.owner === me` decides which actions show.
+
+## Locked notes
+
+- The browser encrypts, the server only stores. `#lib/note_crypto.ts` holds the format: a random AES-GCM account key, wrapped by PBKDF2 from the account password into `users.noteLock`. Sealed bodies read `v1.<keyId>.<iv>.<ct>`.
+- `lockNote` and `unlockNote` in `notes.remote.ts` switch a note, owner only, unshared and without files. `updateNote` takes `sealed` in place of `body` for a locked note and refuses a plain body (409). Share, uploads and MCP body changes are refused, MCP reports the note as `locked`.
+- `changePassword` takes a rewrapped lock (`relock()` in the browser), `setPassword` from a mail link clears `noteLock`, which leaves sealed notes unreadable. Duplicate copies `sealed`.
+- States: [Note lock](../../../docs/state-machines.md#note-lock).
 
 ## Images
 

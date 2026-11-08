@@ -1,4 +1,4 @@
-import { getAll, importCollections, insertOnePartial } from '#lib/server/queries.ts';
+import { getAll, getCollection, importCollections, insertOnePartial, updateCollection } from '#lib/server/queries.ts';
 import { unwrap } from '#lib/server/result.ts';
 import type { CollectionModel } from 'pocketbase';
 import pbSchema from '../../../pocketbase/pb_schema.json';
@@ -12,7 +12,8 @@ import pbSchema from '../../../pocketbase/pb_schema.json';
 type Migration = { version: string, run: () => Promise<void> }
 
 const MIGRATIONS: Migration[] = [
-    { version: '0.3.0', run: () => addCollections('api_keys') }
+    { version: '0.3.0', run: () => addCollections('api_keys') },
+    { version: '0.3.0-locked-notes', run: async () => { await addFields('notes', 'sealed'); await addFields('users', 'noteLock') } }
 ]
 
 
@@ -52,4 +53,12 @@ async function record(version: string) {
 async function addCollections(...names: string[]) {
     const added = (pbSchema as unknown as CollectionModel[]).filter((collection) => names.includes(collection.name))
     unwrap(await importCollections(added), `Could not add ${names.join(', ')}.`)
+}
+
+// Keeps the collection's other fields, its rules and its data
+async function addFields(collection: 'notes' | 'users', ...names: string[]) {
+    const live = unwrap(await getCollection(collection), `Could not read ${collection}.`)
+    const wanted = (pbSchema as unknown as CollectionModel[]).find((model) => model.name === collection)?.fields ?? []
+    const missing = wanted.filter((field) => names.includes(field.name) && !live.fields.some((have) => have.name === field.name))
+    if(missing.length) unwrap(await updateCollection(collection, { fields: [...live.fields, ...missing] }), `Could not add ${names.join(', ')} to ${collection}.`)
 }

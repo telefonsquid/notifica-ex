@@ -2,6 +2,7 @@ import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import { stopDeviceNotifications } from '#lib/device_notifications.ts';
 import { saveOpenNotes } from '#lib/drafts.ts';
+import { forgetKey } from '#lib/note_lock.svelte.ts';
 import { finishRemovals } from '#lib/note_removal.ts';
 import { disconnectRealtime } from '#lib/realtime.ts';
 import { safeAction } from '#lib/safe_action.ts';
@@ -17,5 +18,6 @@ export async function logout(){
     if(!done) return
 
     disconnectRealtime()
+    forgetKey()
     await goto(resolve('/login'), { refreshAll: true })
 }

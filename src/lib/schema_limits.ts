@@ -27,6 +27,7 @@ export const LIMITS = {
     // TEXT => NOTES
     NOTE_TITLE: 200,
     NOTE_BODY: 20000,
+    NOTE_SEALED: 81000,                 // a locked body, encrypted text runs up to four times longer
     OCCURRENCE_COMMENT: 500,            // a note on one check in the reminder history
     OCCURRENCE_RULE: 200,               // the rule line as it read then, many rules run longer
 

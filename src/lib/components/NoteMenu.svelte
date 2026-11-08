@@ -8,9 +8,10 @@
     import type { Reminder } from '#lib/schemas/reminders.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
-    import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, History, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, BellOff, BellPlus, Check, ChevronRight, Copy, History, Lock, LockOpen, LogOut, Minus, Palette, Pin, PinOff, SquareCheck, Tag, Trash2, X } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
     import { kept } from '#lib/note_list.ts';
+    import { lost, toggleLock } from '#lib/note_lock.svelte.ts';
     import { duplicateNote, updateNote } from '../../routes/api/notes.remote';
     import { removeReminder } from '../../routes/api/reminders.remote';
 
@@ -83,6 +84,13 @@
         onfinish?.()
     }
 
+    // One owned note at a time, the password prompt is about a single one
+    let lockable = $derived(!!single && single.owner === me && !lost(single) && (!!single.sealed || !single.shared.length && !single.images.length && !single.attachments.length))
+
+    function lock(){
+        if(single) toggleLock(single)
+    }
+
     function removeReminders(){
         Promise.all(attached.map((reminder) => safeAction(removeReminder(reminder.id))))
     }
@@ -96,6 +104,7 @@
     let actions = $derived([
         { shown: owned.length > 0, label: allPinned ? 'Unpin' : 'Pin', icon: allPinned ? PinOff : Pin, run: pin },
         { shown: true, label: 'Duplicate', icon: Copy, run: duplicate },
+        { shown: lockable, label: single?.sealed ? 'Unlock' : 'Lock', icon: single?.sealed ? LockOpen : Lock, run: lock },
         { shown: owned.length > 0, label: allArchived ? 'Unarchive' : 'Archive', icon: allArchived ? ArchiveRestore : Archive, run: archive },
         { shown: true, label: removeLabel, detail: notes.length > 1 ? ` ${notes.length} notes` : '', icon: owned.length ? Trash2 : LogOut, run: remove }
     ].filter((action) => action.shown))

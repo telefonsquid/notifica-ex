@@ -14,6 +14,7 @@
     import { noteEditor } from '#lib/note_editor.svelte.ts';
     import { NoteExtras } from '#lib/note_extras.svelte.ts';
     import { kept } from '#lib/note_list.ts';
+    import { holdKey, lost, sealBody } from '#lib/note_lock.svelte.ts';
     import { NoteSession } from '#lib/note_session.svelte.ts';
     import { closeOnOutside } from '#lib/overlays.ts';
     import { autoColorOrder, shownColor } from '#lib/auto_colors.ts';
@@ -24,7 +25,7 @@
     import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Paperclip, Pin, SquareCheck, Trash2 } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, ImagePlus, Lock, LockKeyhole, LockOpen, LogOut, Paperclip, Pin, SquareCheck, Trash2 } from '@lucide/svelte';
     import { untrack } from 'svelte';
     import { updateNote } from '../../routes/api/notes.remote';
 
@@ -99,6 +100,16 @@
         if(open) noteEditor.load()
     })
 
+    // LOCK | only the owner's stored notes, unshared and without files | a new card never learns of its lock
+    let locked = $derived(!!note?.sealed)
+    let unreadable = $derived(!!note?.unreadable)
+    let gone = $derived(!!note && lost(note))
+
+    // An open locked note keeps the tab from locking again
+    $effect(() => {
+        if(open && locked) return holdKey()
+    })
+
     // FILES AND PEOPLE
     let limits: FileLimits = $derived(page.data.limits)
     const extras = new NoteExtras({ session, note: () => note, limits: () => limits })
@@ -113,13 +124,14 @@
     let names = $derived(new Map(people.map((person) => [person.id, person.name])))
     let others = $derived((owned ? extras.shared : [note!.owner, ...extras.shared.filter((person) => person !== me)]).map((person) => ({ id: person, name: names.get(person) ?? 'Someone' })))
     let othersTip = $derived(owned ? `Shared with ${others.map((person) => person.name).join(', ')}` : `From ${others[0]?.name}`)
+    let lockable = $derived(!!note && owned && (locked || !extras.shared.length && !extras.images.length && !extras.attachments.length && !extras.uploads.length && !extras.sending.length))
 
     // Pasted or dropped onto the open note | caught before the editor, which would ignore them or paste a file name
     function catchFiles(event: Event, list?: FileList | null){
         const files = [...list ?? []]
         const pictures = imagesIn(files)
         const others = limits.attachments ? files.filter((file) => !pictures.includes(file)) : []
-        if(!open || (!pictures.length && !others.length)) return
+        if(!open || locked || (!pictures.length && !others.length)) return
 
         event.preventDefault()
         event.stopPropagation()
@@ -153,9 +165,11 @@
     // CARD CLICKS | checkboxes and the hover buttons sit above the cover button
     function clickTask(event: MouseEvent){
         const box = event.target
-        if(open || !note || !(box instanceof HTMLInputElement) || !box.classList.contains('task')) return
+        if(open || !note || unreadable || !(box instanceof HTMLInputElement) || !box.classList.contains('task')) return
         const tasks = [...(event.currentTarget as HTMLElement).querySelectorAll('input.task')]
-        safeAction(kept(updateNote({ id: note.id, body: toggleTask(note.body, tasks.indexOf(box)) })))
+        const { id } = note
+        const body = toggleTask(note.body, tasks.indexOf(box))
+        safeAction(kept(locked ? sealBody(body).then((sealed) => updateNote({ id, sealed })) : updateNote({ id, body })))
     }
 
     function pinClosed(){
@@ -164,16 +178,23 @@
 </script>
 
 {#snippet actions()}
-    <button class="icon-button" aria-label="Add images" onclick={() => picker?.click()} {@attach tip('Add images')}>
-        <ImagePlus class="size-4" />
-    </button>
-    {#if limits.attachments}
-        <button class="icon-button" aria-label="Attach files" onclick={() => filePicker?.click()} {@attach tip('Attach files')}>
-            <Paperclip class="size-4" />
+    {#if !locked}
+        <button class="icon-button" aria-label="Add images" onclick={() => picker?.click()} {@attach tip('Add images')}>
+            <ImagePlus class="size-4" />
         </button>
+        {#if limits.attachments}
+            <button class="icon-button" aria-label="Attach files" onclick={() => filePicker?.click()} {@attach tip('Attach files')}>
+                <Paperclip class="size-4" />
+            </button>
+        {/if}
+        {#if owned}
+            <ShareEditor people={people.filter((person) => person.id !== me)} shared={extras.shared} onchange={extras.share} />
+        {/if}
     {/if}
-    {#if owned}
-        <ShareEditor people={people.filter((person) => person.id !== me)} shared={extras.shared} onchange={extras.share} />
+    {#if lockable}
+        <button class="icon-button" aria-label={locked ? 'Unlock' : 'Lock'} onclick={() => session.setLocked(!locked)} {@attach tip(locked ? 'Unlock note' : 'Lock with your password')}>
+            {#if locked}<LockOpen class="size-4" />{:else}<Lock class="size-4" />{/if}
+        </button>
     {/if}
     <ColorPicker value={draft.color} {auto} onpick={(color) => draft.color = color} label="Note color" class="ml-1 mr-2" />
     {#if owned}
@@ -237,7 +258,7 @@
         }} />
 
         <!-- TITLE | colour, archive and delete join the pin up here once the note is wide enough -->
-        {#if open || draft.title || draft.pinned || others.length}
+        {#if open || draft.title || draft.pinned || others.length || locked}
             <header class={['flex items-start gap-2', !open && 'pointer-events-none']} in:appear out:unfold>
                 <h3
                     class={['title type-title min-w-0 flex-1 text-lg leading-snug break-words outline-none', !draft.title && 'blank']}
@@ -250,6 +271,9 @@
                 >{initialTitle}</h3>
                 <!-- One row with the pin, so every button keeps the same distance -->
                 <div class="-my-1 -mr-2 flex items-center gap-0.5">
+                    {#if locked && !open}
+                        <span class="pointer-events-auto relative z-10 grid size-8 place-items-center text-ink-faint" role="img" aria-label="Locked" {@attach tip('Locked with your password')}><LockKeyhole class="size-4" /></span>
+                    {/if}
                     {#if others.length}
                         <!-- The others on a shared note, the owner first when it's someone else's -->
                         <span class="pointer-events-auto relative z-10 mr-1 flex -space-x-1.5" role="img" aria-label={othersTip} {@attach tip(othersTip)}>
@@ -299,6 +323,11 @@
                     {/if}
                 {/if}
             </div>
+        {/if}
+
+        <!-- Locked and not open, the text waits for the password -->
+        {#if unreadable && !open}
+            <p class="type-meta text-ink-faint" in:appear out:unfold>{gone ? 'Locked before a password reset, its text is lost.' : 'Locked, open it with your password.'}</p>
         {/if}
 
         <!-- ATTACHMENTS -->

@@ -205,6 +205,16 @@
                 "required": false,
                 "system": false,
                 "type": "number"
+            },
+            {
+                "hidden": false,
+                "id": "json1700015844",
+                "maxSize": 2000,
+                "name": "noteLock",
+                "presentable": false,
+                "required": false,
+                "system": false,
+                "type": "json"
             }
         ],
         "indexes": [
@@ -838,6 +848,20 @@
                 "name": "shared",
                 "required": false,
                 "type": "relation"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "autogeneratePattern": "",
+                "id": "text1700105001",
+                "max": 81000,
+                "min": 0,
+                "name": "sealed",
+                "pattern": "",
+                "primaryKey": false,
+                "required": false,
+                "type": "text"
             },
             {
                 "hidden": false,

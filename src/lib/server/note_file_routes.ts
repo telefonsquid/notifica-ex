@@ -66,6 +66,7 @@ export function uploadRoute(field: FileField) {
         const me = signedIn()
         if(!isId(params.id)) error(400, 'Malformed request.')
         const note = await requireNote(params.id, me.id)
+        if(note.sealed) error(400, 'Locked notes hold no files, their text alone is encrypted.')
 
         const limits = await limitsFor(me)
         if(policy.turnedOff?.(limits)) error(403, 'File attachments are turned off for your account.')

@@ -2,7 +2,9 @@ import z from 'zod';
 import { contentOf } from '#lib/notes.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { idSchema } from '#lib/schemas/base.ts';
-import { fileNameSchema, noteContentSchema, notePositionSchema } from '#lib/schemas/notes.ts';
+import { keyOf } from '#lib/note_crypto.ts';
+import { fileNameSchema, noteContentSchema, notePositionSchema, sealedSchema } from '#lib/schemas/notes.ts';
+import { error } from '@sveltejs/kit';
 import { collaboratorChanges, deleteRemindersOn, getAllNotesFor, ownLabels, removeFor, requireNote, requireOwnNote } from '#lib/server/note_access.ts';
 import { duplicateWithFiles, removeNoteFile } from '#lib/server/note_files.ts';
 import { getAll, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
@@ -37,17 +39,46 @@ export const duplicateNote = command(idSchema, async (id) => {
 
     const content = contentOf(stored)
     const labels = await ownLabels(me.id, content.labels)
-    return await duplicateWithFiles(stored, { ...content, labels, owner: me.id })
+    return await duplicateWithFiles(stored, { ...content, labels, owner: me.id, sealed: stored.sealed })
 
 });
 
-export const updateNote = command(noteContentSchema.partial().extend({ id: idSchema }), async ({ id, ...changes }) => {
+// A locked note takes its text sealed only, locking and unlocking go through the commands below
+export const updateNote = command(noteContentSchema.partial().extend({ id: idSchema, sealed: sealedSchema.optional() }), async ({ id, ...changes }) => {
 
     const me = signedIn()
     const stored = await requireNote(id, me.id) // Deleted or unshared meanwhile, the 404 tells the open note's writer
 
+    if(stored.sealed && changes.body !== undefined) error(409, 'This note is locked, reload the page to edit it.')
+    if(changes.sealed !== undefined && (!stored.sealed || stored.owner !== me.id)) error(400, 'This note is not locked.')
+
     const update = stored.owner !== me.id ? collaboratorChanges(changes) : { ...changes, ...(changes.labels ? { labels: await ownLabels(me.id, changes.labels) } : {}) }
     return unwrap(await updateOnePartial('notes', id, update), 'Could not save the note.')
+
+});
+
+// LOCKING | locked notes stay private and hold no files, the browser alone can read them
+export const lockNote = command(z.object({ id: idSchema, sealed: sealedSchema }), async ({ id, sealed }) => {
+
+    const me = signedIn()
+    const stored = await requireOwnNote(id, me.id)
+
+    if(stored.sealed) error(409, 'This note is locked already.')
+    if(stored.shared.length) error(400, 'Shared notes cannot be locked, stop sharing it first.')
+    if(stored.images.length || stored.attachments.length) error(400, 'Notes with files cannot be locked, remove the files first.')
+    if(!me.noteLock || keyOf(sealed) !== me.noteLock.id) error(409, 'Locked notes changed meanwhile, reload the page and try again.')
+
+    return unwrap(await updateOnePartial('notes', id, { sealed, body: '' }), 'Could not lock the note.')
+
+});
+
+export const unlockNote = command(z.object({ id: idSchema, body: noteContentSchema.shape.body }), async ({ id, body }) => {
+
+    const me = signedIn()
+    const stored = await requireOwnNote(id, me.id)
+    if(!stored.sealed) error(409, 'This note is not locked.')
+
+    return unwrap(await updateOnePartial('notes', id, { sealed: '', body }), 'Could not unlock the note.')
 
 });
 
@@ -88,6 +119,7 @@ export const shareNote = command(z.object({ id: idSchema, people: z.array(idSche
 
     const me = signedIn()
     const stored = await requireOwnNote(id, me.id)
+    if(stored.sealed && people.length) error(400, 'Locked notes cannot be shared, unlock it first.')
 
     const active = new Set(unwrap(await getAll('users', { filter: 'state = "active"', fields: 'id' }), 'Could not load people.').map((user) => user.id))
     const shared = [...new Set(people)].filter((person) => person !== me.id && active.has(person))
