@@ -7,7 +7,11 @@ RUN apk add --no-cache \
     ca-certificates
 
 # Download PocketBase in a cached step | ADD asks GitHub again on every build and a GitHub hiccup failed the deploy
-RUN wget -q --tries=5 --waitretry=10 -O /tmp/pb.zip https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip \
+# Retry by hand, busybox wget has no --tries
+RUN for attempt in 1 2 3 4 5; do \
+        wget -q -T 30 -O /tmp/pb.zip https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip && break; \
+        rm -f /tmp/pb.zip; sleep 10; \
+    done \
     && unzip /tmp/pb.zip -d /pb/ \
     && rm /tmp/pb.zip
 
