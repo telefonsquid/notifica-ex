@@ -42,6 +42,17 @@ description: The Android app, a Tauri 2 mobile shell in src-tauri that opens the
 - Rust targets: `aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android`.
 - `src-tauri/gen/android` is created by `bun tauri android init` and checked in, Tauri expects edits to it (manifest, icons).
 
+## Release builds and F-Droid
+
+- Phones get the app from an F-Droid repo at `https://telefonsquid.github.io/notifica-ex/repo`, fingerprint `447BC75EE4E4E98F1AE78A96C5D8AC35632ACADDA58C610FF84911D56D794888`. The source repo is public for it.
+- `.github/workflows/android.yml` runs on every `v*` tag (and by hand): signed universal APK for arm64 and armv7, `fdroid update` on `fdroid/`, Pages deploy, GitHub release with the APK. Only the newest APK is in the repo. The release's CHANGELOG section becomes the client's changelog.
+- `fdroid/metadata/ex.notifica.app.yml` holds the listing text. `config.yml` is written in CI and never committed.
+- Signing: one keystore with alias `app` (the APK) and `repo` (the index), same password for both. The original is in `%USERPROFILE%\.keys
+otifica-ex` (`release.jks`, `password.txt`), CI has it as the secrets `ANDROID_KEYSTORE` (base64) and `ANDROID_KEYSTORE_PASSWORD`. Losing it means phones can't update, only reinstall.
+- Gradle reads `src-tauri/gen/android/keystore.properties` (gitignored) for release signing, without it release builds come out unsigned. Locally it points at the keystore above.
+- `versionCode` is `major * 1000000 + minor * 1000 + patch`, Tauri derives it from the version. It must rise, so every release bumps the version.
+- A debug build and the release are signed differently: switching between them needs an uninstall, which drops the saved server and settings.
+
 ## Run on the phone
 
 - USB debugging on, `adb devices` lists it. Docker Desktop running, PocketBase and ntfy live in its containers.

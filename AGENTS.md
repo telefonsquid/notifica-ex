@@ -35,6 +35,8 @@ Servers deploy only tagged releases (`vX.Y.Z`), not master. A release:
 2. Set the version in `package.json`, `src-tauri/tauri.conf.json` and `src-tauri/Cargo.toml`.
 3. Commit as `released X.Y.Z`, tag `vX.Y.Z` on it, push the commit and the tag.
 
+The tag push runs `.github/workflows/android.yml`: it builds the signed APK, publishes it to the F-Droid repo on Pages and attaches it to a GitHub release. Phones update through F-Droid. Details in the `android` skill.
+
 ## State machines
 
 `docs/state-machines.md` lists every machine in the app, with states, invariants and transitions, and the issues the audit found. A change to a machine updates its table in the same commit.

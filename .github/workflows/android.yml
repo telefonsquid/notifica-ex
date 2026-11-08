@@ -1,0 +1,112 @@
+name: android
+
+# A release tag builds the signed APK and publishes it to the F-Droid repo on Pages
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: android
+  cancel-in-progress: false
+
+env:
+  NDK_VERSION: 29.0.14206865
+  REPO_URL: https://telefonsquid.github.io/notifica-ex/repo
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: github-pages
+    steps:
+      - uses: actions/checkout@v5
+
+      # TOOLCHAIN
+      - uses: actions/setup-java@v5
+        with:
+          distribution: microsoft
+          java-version: '17'
+      - uses: oven-sh/setup-bun@v2
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Android SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;$NDK_VERSION" "platforms;android-37" > /dev/null
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      # SIGNING
+      - name: Keystore
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          echo "$KEYSTORE" | base64 -d > "$RUNNER_TEMP/release.jks"
+          printf 'storeFile=%s\nstorePassword=%s\nkeyAlias=app\nkeyPassword=%s\n' \
+            "$RUNNER_TEMP/release.jks" "$KEYSTORE_PASSWORD" "$KEYSTORE_PASSWORD" > src-tauri/gen/android/keystore.properties
+
+      # BUILD
+      - run: bun install --frozen-lockfile
+      - run: bun tauri android build --apk --target aarch64 armv7
+
+      # F-DROID REPO
+      - name: Version
+        run: |
+          version=$(jq -r .version src-tauri/tauri.conf.json)
+          IFS=. read -r major minor patch <<< "$version"
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          echo "VERSION_CODE=$((major * 1000000 + minor * 1000 + patch))" >> "$GITHUB_ENV"
+      - name: Repo
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        working-directory: fdroid
+        run: |
+          pipx install fdroidserver > /dev/null
+          mkdir -p repo/icons "metadata/ex.notifica.app/en-US/changelogs"
+          cp ../src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk "repo/notifica-ex-$VERSION.apk"
+          cp ../src-tauri/icons/128x128@2x.png repo/icons/icon.png
+
+          # The release's section of CHANGELOG.md, shown in the client
+          awk '/^## /{ if (found) exit; found = 1; next } found' ../CHANGELOG.md | sed '/^$/d' \
+            > "metadata/ex.notifica.app/en-US/changelogs/$VERSION_CODE.txt"
+          cp "metadata/ex.notifica.app/en-US/changelogs/$VERSION_CODE.txt" "$RUNNER_TEMP/notes.md"
+
+          cat > config.yml <<CONFIG
+          repo_url: $REPO_URL
+          repo_name: notifica-ex
+          repo_description: The notifica-ex Android app, built from tagged releases.
+          repo_icon: icon.png
+          repo_keyalias: repo
+          keystore: $RUNNER_TEMP/release.jks
+          keystorepass: $KEYSTORE_PASSWORD
+          keypass: $KEYSTORE_PASSWORD
+          sdk_path: $ANDROID_HOME
+          CONFIG
+          chmod 600 config.yml
+          fdroid update --pretty
+          rm config.yml
+
+          mkdir -p "$RUNNER_TEMP/site"
+          cp -r repo "$RUNNER_TEMP/site/repo"
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ runner.temp }}/site
+      - uses: actions/deploy-pages@v4
+
+      # GITHUB RELEASE
+      - name: Release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          apk="fdroid/repo/notifica-ex-$VERSION.apk"
+          gh release create "$GITHUB_REF_NAME" "$apk" --title "$VERSION" --notes-file "$RUNNER_TEMP/notes.md" \
+            || gh release upload "$GITHUB_REF_NAME" "$apk" --clobber
