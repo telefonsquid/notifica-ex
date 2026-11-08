@@ -11,7 +11,8 @@ export const DEFAULT_LIMITS: FileLimits = {
     attachments: true,
     attachmentBytes: LIMITS.UPLOAD_BYTES,
     imageBytes: 15 * MB,
-    storageBytes: GB
+    storageBytes: GB,
+    aiAccess: true
 }
 
 export function effectiveLimits(defaults: FileLimits, overrides?: LimitOverrides | null): FileLimits {

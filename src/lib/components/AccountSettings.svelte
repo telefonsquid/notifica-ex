@@ -1,6 +1,7 @@
 <script lang="ts">
     import { invalidateAll } from '$app/navigation';
     import { page } from '$app/state';
+    import ApiKeys from '#lib/components/ApiKeys.svelte';
     import { androidApp } from '#lib/device_notifications.ts';
     import { unfold } from '#lib/motion.ts';
     import { notify } from '#lib/notifications.svelte.ts';
@@ -82,3 +83,7 @@
         </div>
     {/if}
 </form>
+
+{#if page.data.limits.aiAccess}
+    <ApiKeys />
+{/if}

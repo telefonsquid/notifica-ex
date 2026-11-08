@@ -1,6 +1,6 @@
 import type { FetchOptions } from '#lib/schemas/base.ts';
 import type { Note, NoteContent } from '#lib/schemas/notes.ts';
-import { deleteOne, getOwned, run } from '#lib/server/queries.ts';
+import { deleteOne, getAllOwned, getOwned, run } from '#lib/server/queries.ts';
 import { OK, unwrap, type Result } from '#lib/server/result.ts';
 import type PocketBase from 'pocketbase';
 
@@ -44,6 +44,13 @@ export async function requireOwnNote(id: string, user: string) {
 // Pin, archive and labels stay the owner's, the others edit only what the note says
 export function collaboratorChanges({ title, body, color }: Partial<NoteContent>): Partial<NoteContent> {
     return { title, body, color }
+}
+
+// Drops label ids of other users, a note may only point at its owner's labels
+export async function ownLabels(owner: string, ids: string[]): Promise<string[]> {
+    if(!ids.length) return []
+    const own = new Set(unwrap(await getAllOwned('labels', owner), 'Could not load labels.').map((label) => label.id))
+    return [...new Set(ids)].filter((id) => own.has(id))
 }
 
 // Reminders people set on a note they no longer see | their history stays theirs

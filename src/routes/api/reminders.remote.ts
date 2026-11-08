@@ -1,14 +1,15 @@
 import { resolve } from '$app/paths';
-import { firstOccurrence, normalizeRule, TEST_CHANNELS } from '#lib/reminders.ts';
+import { TEST_CHANNELS } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { idSchema } from '#lib/schemas/base.ts';
-import { reminderRuleSchema, type ReminderRule } from '#lib/schemas/reminders.ts';
+import { reminderRuleSchema } from '#lib/schemas/reminders.ts';
 import { ntfyTopicSchema, pushSubscriptionSchema } from '#lib/schemas/users.ts';
 import { streamSubject } from '#lib/server/app_stream.ts';
 import { deliverTest } from '#lib/server/delivery.ts';
 import { requireNote } from '#lib/server/note_access.ts';
 import { getNewestOpenOccurrence, getOccurrences, getOpenOccurrences, setDone } from '#lib/server/occurrences.ts';
 import { deleteOne, findOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { ruleFields } from '#lib/server/reminder_rules.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { orNull, unwrap } from '#lib/server/result.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
@@ -121,20 +122,6 @@ export const checkOffHistory = command(z.object({ note: idSchema }), async ({ no
     return open.length
 
 });
-
-
-
-// HELPERS ============================================================
-function ruleFields(sent: ReminderRule) {
-    const rule = normalizeRule(sent)
-    if(rule.repeat === 'weekdays' && !rule.weekdays.length) error(400, 'Pick at least one day.')
-    if(rule.until && new Date(rule.until) < new Date(rule.at)) error(400, 'The end lies before the start.')
-
-    // A time already passed is kept as finished
-    const next = firstOccurrence(rule, new Date())
-
-    return { ...rule, until: rule.until && new Date(rule.until).toISOString(), at: new Date(rule.at).toISOString(), next: next?.toISOString() ?? '' }
-}
 
 
 

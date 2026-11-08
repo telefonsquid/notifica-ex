@@ -1,3 +1,4 @@
+import type { ApiKey } from '#lib/schemas/api_keys.ts';
 import type { RecordModel } from '#lib/schemas/base.ts';
 import type { Label, Note } from '#lib/schemas/notes.ts';
 import type { Occurrence, Reminder } from '#lib/schemas/reminders.ts';
@@ -15,6 +16,7 @@ export type CollectionMap = {
     'views': View;
     'push_subscriptions': PushSubscriptionRecord;
     'app_settings': AppSettings;
+    'api_keys': ApiKey;
     '_superusers': RecordAuthResponse<RecordModel>;
 }
 

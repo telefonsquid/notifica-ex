@@ -3,9 +3,9 @@ import { contentOf } from '#lib/notes.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { idSchema } from '#lib/schemas/base.ts';
 import { fileNameSchema, noteContentSchema, notePositionSchema } from '#lib/schemas/notes.ts';
-import { collaboratorChanges, deleteRemindersOn, getAllNotesFor, removeFor, requireNote, requireOwnNote } from '#lib/server/note_access.ts';
+import { collaboratorChanges, deleteRemindersOn, getAllNotesFor, ownLabels, removeFor, requireNote, requireOwnNote } from '#lib/server/note_access.ts';
 import { duplicateWithFiles, removeNoteFile } from '#lib/server/note_files.ts';
-import { getAll, getAllOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { getAll, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { unwrap } from '#lib/server/result.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
@@ -100,14 +100,3 @@ export const shareNote = command(z.object({ id: idSchema, people: z.array(idSche
     return note
 
 });
-
-
-
-// HELPERS ============================================================
-
-// Drops label ids of other users, a note may only point at its owner's labels
-async function ownLabels(owner: string, ids: string[]): Promise<string[]> {
-    if(!ids.length) return []
-    const own = new Set(unwrap(await getAllOwned('labels', owner), 'Could not load labels.').map((label) => label.id))
-    return [...new Set(ids)].filter((id) => own.has(id))
-}

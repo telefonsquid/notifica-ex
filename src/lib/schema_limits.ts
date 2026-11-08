@@ -14,6 +14,7 @@ export const LIMITS = {
     AUTO_COLORS: 500,                   // labels in the auto color chart
     VIEW_NAME: 64,
     VIEW_ICON: 64,                      // a lucide icon name
+    API_KEY_NAME: 64,
     NTFY_TOPIC: 64,                     // ntfy rejects longer topics
     PUSH_ENDPOINT: 1024,                // address a browser hands out for web push
     PUSH_P256DH: 256,                   // public key of a web push subscription
@@ -39,9 +40,11 @@ export const LIMITS = {
     NOTE_SHARES: 20,                    // matches maxSelect of the shared field
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them
+    API_KEYS: 20,                       // keys per user
 
     // NUMBERS
     PAGE_SIZE: 200,                     // records one fetch may pull
+    API_KEY_DAYS: 3650,                 // longest a key may live before it expires
     REMINDER_EVERY: 999,                // largest step between two reminders, in the chosen unit
     REMINDER_RULES: 20,                 // only and except limits on one reminder
     VIEW_AMOUNT: 999,                   // days, weeks or months a date filter reaches back or ahead

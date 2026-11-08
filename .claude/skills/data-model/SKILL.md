@@ -17,6 +17,7 @@ Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas/` holds zod for what 
 | `reminders` | note, owner, at, repeat, weekdays, until, every, timezone, task, next, open | owner, so a collaborator's reminders stay private |
 | `occurrences` | owner, note, reminder, at, rule, timezone, task, done, comment | owner, the reminder history |
 | `views` | owner, name, icon (lucide name, text), position, filter (json), sort (json) | owner |
+| `api_keys` | owner, name, prefix (first 10 chars, shown in the list), hash (sha256 of the key, unique), scope (read or write), expires, lastUsed (written at most once a minute) | superuser only, the key itself is never stored |
 | `push_subscriptions` | owner, endpoint (unique), p256dh, auth | superuser only, one per browser |
 | `app_settings` | limits (json, server defaults, one row, none until first changed) | superuser only |
 | `migrations` | bookkeeping | superuser only |
@@ -69,7 +70,7 @@ Sort `manual` is the default. `position` stays 0 until a note is dragged, `posit
 
 ## Schema changes
 
-- No versioned migrations before the first release. Edit `pb_schema.json`, then `POST /api/migration` with `SERVER_AUTH_SECRET`: `bootstrap.ts` imports the schema and drops fields it no longer lists (the import alone keeps them).
+- Edit `pb_schema.json`, then `POST /api/migration` with `SERVER_AUTH_SECRET`. A fresh install and dev import the whole schema (dev also drops fields it no longer lists) and record every migration as done.
+- An existing install only runs what `MIGRATIONS` in `#lib/server/migrations.ts` lists and hasn't recorded yet, oldest first, each named by the release that brings it. Every schema change that ships needs an entry there, i.e. `addCollections('api_keys')` for 0.3.0. Never edit an entry that already went out, add a new one.
 - A new field touches `pb_schema.json`, `#lib/schemas/`, the queries that write it, and any remote function schema that accepts it.
 - PocketBase refuses to change a field's type. Give the field a new id in `pb_schema.json` and add a dev one off in `bootstrap.ts` that reads the values, drops the old field, adds the new one and refills them. Delete it once every dev database ran it.
-- After the first release, data changes become versioned migrations run from the same endpoint.

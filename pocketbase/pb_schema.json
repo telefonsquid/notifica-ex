@@ -1463,5 +1463,147 @@
             "CREATE INDEX `idx_push_subscriptions_owner` ON `push_subscriptions` (`owner`)"
         ],
         "system": false
+    },
+    {
+        "id": "pbc_2400000001",
+        "listRule": null,
+        "viewRule": null,
+        "createRule": null,
+        "updateRule": null,
+        "deleteRule": null,
+        "name": "api_keys",
+        "type": "base",
+        "fields": [
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": true,
+                "autogeneratePattern": "[a-z0-9]{15}",
+                "id": "text3208210256",
+                "max": 15,
+                "min": 15,
+                "name": "id",
+                "pattern": "^[a-z0-9]+$",
+                "primaryKey": true,
+                "required": true,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "cascadeDelete": true,
+                "collectionId": "_pb_users_auth_",
+                "id": "relation2400000002",
+                "maxSelect": 1,
+                "minSelect": 0,
+                "name": "owner",
+                "required": true,
+                "type": "relation"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "autogeneratePattern": "",
+                "id": "text2400000003",
+                "max": 64,
+                "min": 0,
+                "name": "name",
+                "pattern": "",
+                "primaryKey": false,
+                "required": true,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "autogeneratePattern": "",
+                "id": "text2400000004",
+                "max": 16,
+                "min": 0,
+                "name": "prefix",
+                "pattern": "",
+                "primaryKey": false,
+                "required": true,
+                "type": "text"
+            },
+            {
+                "hidden": true,
+                "presentable": false,
+                "system": false,
+                "autogeneratePattern": "",
+                "id": "text2400000005",
+                "max": 64,
+                "min": 0,
+                "name": "hash",
+                "pattern": "",
+                "primaryKey": false,
+                "required": true,
+                "type": "text"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "id": "select2400000006",
+                "maxSelect": 1,
+                "name": "scope",
+                "required": true,
+                "type": "select",
+                "values": [
+                    "read",
+                    "write"
+                ]
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "id": "date2400000007",
+                "max": "",
+                "min": "",
+                "name": "expires",
+                "required": false,
+                "type": "date"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "id": "date2400000008",
+                "max": "",
+                "min": "",
+                "name": "lastUsed",
+                "required": false,
+                "type": "date"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "id": "autodate2990389176",
+                "name": "created",
+                "onCreate": true,
+                "onUpdate": false,
+                "type": "autodate"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
+                "id": "autodate3332085495",
+                "name": "updated",
+                "onCreate": true,
+                "onUpdate": true,
+                "type": "autodate"
+            }
+        ],
+        "indexes": [
+            "CREATE UNIQUE INDEX `idx_api_keys_hash` ON `api_keys` (`hash`)",
+            "CREATE INDEX `idx_api_keys_owner` ON `api_keys` (`owner`)"
+        ],
+        "system": false
     }
 ]

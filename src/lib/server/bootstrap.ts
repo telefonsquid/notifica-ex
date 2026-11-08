@@ -1,6 +1,7 @@
 import { dev } from '$app/env';
 import * as env from '$app/env/private';
 import type { CollectionMap } from '#lib/schemas/collections.ts';
+import { runMigrations, skipMigrations } from '#lib/server/migrations.ts';
 import { findOne, getCollection, importCollections, insertOnePartial, updateCollection, updateSettings } from '#lib/server/queries.ts';
 import { orNull, unwrap } from '#lib/server/result.ts';
 import type { CollectionModel } from 'pocketbase';
@@ -8,13 +9,18 @@ import pbSchema from '../../../pocketbase/pb_schema.json';
 
 export async function bootstrap(){ // setup for a fresh pocketbase install
 
-    // CREATE SCHEMA ON FRESH INSTALL
+    // CREATE SCHEMA ON FRESH INSTALL, MIGRATE AN EXISTING ONE
     if(await isFreshInstall()){
         await createSchema()
+        await skipMigrations()
     }
     else if(dev){
-        await createSchema() // no versioned migrations before the first release, local dev follows pb_schema.json
+        await createSchema() // local dev follows pb_schema.json between releases
         await dropRetiredFields()
+        await skipMigrations()
+    }
+    else {
+        await runMigrations()
     }
 
     // CREATE REQUIRED DATABASE ENTRIES

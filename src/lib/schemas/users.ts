@@ -14,7 +14,8 @@ const fileLimitsSchema = z.object({
     attachments: z.boolean(),           // May attach files besides images
     attachmentBytes: uploadBytesSchema, // One attachment
     imageBytes: uploadBytesSchema,      // One image
-    storageBytes: storageBytesSchema    // Everything on the notes they own
+    storageBytes: storageBytesSchema,   // Everything on the notes they own
+    aiAccess: z.boolean()               // May reach their notes through API keys and the MCP server
 });
 
 export const defaultLimitChangesSchema = fileLimitsSchema.partial();
@@ -24,7 +25,8 @@ export const userLimitChangesSchema = z.object({
     attachments: fileLimitsSchema.shape.attachments.nullable(),
     attachmentBytes: uploadBytesSchema.nullable(),
     imageBytes: uploadBytesSchema.nullable(),
-    storageBytes: storageBytesSchema.nullable()
+    storageBytes: storageBytesSchema.nullable(),
+    aiAccess: fileLimitsSchema.shape.aiAccess.nullable()
 }).partial();
 
 

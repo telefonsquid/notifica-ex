@@ -11,7 +11,7 @@
 
     type Changes = { [K in keyof FileLimits]?: FileLimits[K] | null }
 
-    // The four file limits of the server, or of one account when overrides are given
+    // The limits of the server, or of one account when overrides are given
 
     // PROPS
     let {
@@ -80,4 +80,11 @@
             </dd>
         </div>
     {/each}
+    <div class="flex min-h-14 items-center justify-between gap-3 bg-card py-2 pr-3 pl-card">
+        <dt class="min-w-0 flex-1 text-ink-muted">API keys and MCP</dt>
+        <dd class="flex items-center gap-2">
+            {@render back('aiAccess')}
+            <Switch checked={values.aiAccess} label="API keys and MCP" onchange={(checked) => change('aiAccess', checked)} />
+        </dd>
+    </div>
 </dl>
