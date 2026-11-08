@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.0 · 2026-11-08
+
+- added an mcp server with per user api keys
+- fixed api key row layout
+- fixed settings scrolling sideways
+- added google keep and tasks import
+- added select all
+- selected notes got a still shade
+- added hover select and pin buttons
+- added match case filter
+- added locked notes
+- added agent-cli with stack, pb, migrate, verify and versions commands
+- locked notes now unlock one at a time and show grey stripes while closed
+- select moved to a circle on the card corner
+- the lock and faces step aside for the hover pin
+- silenced the reactivity lint on the pending decrypt set
+
 ## 0.2.0 · 2026-11-08
 
 - added about and changelog to the settings
