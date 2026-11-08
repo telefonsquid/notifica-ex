@@ -5,13 +5,14 @@ import type { Note } from '#lib/schemas/notes.ts';
 import { kept } from '#lib/note_list.ts';
 import { safeAction } from '#lib/safe_action.ts';
 import { askPassword } from '#lib/singletons/password.svelte.ts';
-import { SvelteMap } from 'svelte/reactivity';
+import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { lockNote, unlockNote } from '../routes/api/notes.remote';
 import { startNoteLock } from '../routes/api/users.remote';
 
 /*
-    The unlocked state of locked notes in this tab. The key lives in memory only, a reload or a long
-    absence forgets it. Bodies get decrypted once and cached by their ciphertext.
+    The unlocked state of locked notes in this tab. Each note opens with its own password entry and stays
+    open until the key goes. The key lives in memory only, a reload or a long absence forgets it.
+    Bodies get decrypted once and cached by their ciphertext.
 */
 
 // A tab hidden this long locks again, unless a locked note is open in it
@@ -19,6 +20,7 @@ const RELOCK_AFTER = 5 * 60_000
 
 const state = $state({ key: null as CryptoKey | null, id: '' })
 const bodies = new SvelteMap<string, string | null>()      // Null for ones this key can't open
+const revealed = new SvelteSet<string>()                    // Ids of notes unlocked in this tab
 const pending = new Set<string>()
 let holds = 0
 
@@ -46,6 +48,7 @@ export function reveal<T extends Note>(notes: T[]): T[] {
 
 export function revealOne<T extends Note>(note: T): T {
     if(!note.sealed) return note
+    if(!revealed.has(note.id)) return { ...note, body: '', unreadable: true }
     const body = bodies.get(note.sealed)
     if(typeof body === 'string') return { ...note, body, unreadable: false }
     if(body === undefined) open(note.sealed)
@@ -65,15 +68,36 @@ function open(sealed: string){
     })
 }
 
-// Unlocks and decrypts before a card opens, false when the note stays closed
-export async function readable(note: Pick<Note, 'sealed'>): Promise<boolean> {
-    if(!note.sealed) return true
-    if(lost(note) || !await unlockNotes()) return false
-    if(typeof bodies.get(note.sealed) === 'string') return true
+// Asks the password for this one note before its card opens, false when it stays closed
+export async function readable(note: Pick<Note, 'id' | 'sealed'>): Promise<boolean> {
+    const { sealed } = note
+    if(!sealed) return true
+    if(lost(note)) return false
+    if(revealed.has(note.id) && typeof bodies.get(sealed) === 'string') return true
 
-    const body = await unseal(state.key!, note.sealed)
-    bodies.set(note.sealed, body)
-    return body !== null
+    const stored = page.data.user?.noteLock
+    if(!stored) return false
+    return askPassword({
+        title: 'Unlock note',
+        message: 'Your account password opens this note.',
+        action: 'Unlock',
+        check: async (password) => {
+            const key = await openLock(stored, password)
+            if(!key) return 'Wrong password.'
+            take(key, stored.id)
+
+            const body = bodies.get(sealed) ?? await unseal(key, sealed)
+            if(body === null) return 'This note does not open with your password.'
+            bodies.set(sealed, body)
+            revealed.add(note.id)
+            return null
+        }
+    })
+}
+
+// A note locked in this tab stays readable here
+export function markRevealed(id: string){
+    revealed.add(id)
 }
 
 // Throws without a key, a locked body must never go out readable
@@ -94,22 +118,23 @@ export async function toggleLock(note: Note): Promise<Note | null> {
         if(!await readable(note)) return null
         return safeAction(kept(unlockNote({ id: note.id, body: bodies.get(note.sealed)! })))
     }
-    if(!await unlockNotes()) return null
+    if(!await ensureKey()) return null
+    markRevealed(note.id)
     return safeAction(kept(sealBody(note.body).then((sealed) => lockNote({ id: note.id, sealed }))))
 }
 
 
 
-// UNLOCKING ==================================================================================================
-// Asks for the account password, the first time it sets the lock up
-export async function unlockNotes(): Promise<boolean> {
+// KEY ======================================================================================================
+// The key for sealing, asked for once per tab | the first time it sets the lock up
+export async function ensureKey(): Promise<boolean> {
     if(state.key) return true
     const stored = page.data.user?.noteLock
 
     if(stored) return askPassword({
-        title: 'Unlock notes',
-        message: 'Your account password opens your locked notes in this tab.',
-        action: 'Unlock',
+        title: 'Lock note',
+        message: 'Your account password locks this note.',
+        action: 'Lock',
         check: async (password) => {
             const key = await openLock(stored, password)
             if(!key) return 'Wrong password.'
@@ -138,6 +163,7 @@ export async function unlockNotes(): Promise<boolean> {
 
 // After a password change the same key stays, only the lock around it changed
 export function take(key: CryptoKey, id: string){
+    if(state.key && state.id === id) return
     if(state.id !== id) bodies.clear()
     state.key = key
     state.id = id
@@ -147,6 +173,7 @@ export function forgetKey(){
     state.key = null
     state.id = ''
     bodies.clear()
+    revealed.clear()
     pending.clear()
 }
 

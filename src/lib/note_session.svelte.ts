@@ -1,7 +1,7 @@
 import { beforeNavigate, goto } from '$app/navigation';
 import { afterSave, changedFields, fitted, forgetDraft, holdSave, keepDraft, rescued, sameContent, thisTab } from '#lib/drafts.ts';
 import { dropNotes, kept } from '#lib/note_list.ts';
-import { revealOne, sealBody, unlockNotes } from '#lib/note_lock.svelte.ts';
+import { ensureKey, markRevealed, revealOne, sealBody } from '#lib/note_lock.svelte.ts';
 import { offerArchiveUndo, removeNotes } from '#lib/note_removal.ts';
 import { archiveChange, contentOf, emptyNote, isEmpty } from '#lib/notes.ts';
 import { notify } from '#lib/notifications.svelte.ts';
@@ -209,9 +209,10 @@ export class NoteSession {
 
     // Saved first, the lock wraps what the note shows | false when the password was not given or the server refused
     setLocked = async (locked: boolean): Promise<boolean> => {
-        if(locked ? !await unlockNotes() : this.#unreadable) return false
+        if(locked ? !await ensureKey() : this.#unreadable) return false
         const noteId = await this.store()
         if(!noteId) return false
+        if(locked) markRevealed(noteId)
 
         const run = this.#queue.then(async () => {
             const body = $state.snapshot(this.draft.body)

@@ -287,7 +287,7 @@
     {#if selection.length}
         <!-- SELECTION BAR | stands in for the toolbar while notes are selected -->
         <div class="pointer-events-auto flex min-w-0 items-center gap-0.5 rounded-full border border-line bg-raised p-1 pl-4 shadow-xl sm:gap-1 sm:pl-5" in:rise={{ y: 8, duration: 'base' }}>
-            <span class="type-meta mr-1 text-ink sm:mr-2">{selection.length}<span class="max-sm:hidden"> selected</span></span>
+            <span class="type-meta mr-1 text-ink sm:mr-2">{selection.length}<span class="ml-[0.3em] max-sm:hidden">selected</span></span>
             <NoteMenu bar notes={selection} {labels} {me} reminders={remindersByNote} onfinish={() => selected.clear()} />
             <span class="mx-1 h-6 w-px bg-line"></span>
             <button class="icon-button size-10 rounded-full" aria-label="Select all" disabled={selection.length >= visible.length} onclick={selectAll} {@attach tip('Select all')}><CheckCheck class="size-4" /></button>

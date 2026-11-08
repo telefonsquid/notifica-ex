@@ -10,7 +10,7 @@
     import { IMAGE_TYPES } from '#lib/schema_limits.ts';
     import { longPress } from '#lib/long_press.ts';
     import { toggleTask } from '#lib/markdown.ts';
-    import { appear, rise, unfold } from '#lib/motion.ts';
+    import { appear, unfold } from '#lib/motion.ts';
     import { noteEditor } from '#lib/note_editor.svelte.ts';
     import { NoteExtras } from '#lib/note_extras.svelte.ts';
     import { kept } from '#lib/note_list.ts';
@@ -25,7 +25,7 @@
     import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, ImagePlus, Lock, LockKeyhole, LockOpen, LogOut, Paperclip, Pin, SquareCheck, Trash2 } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, ImagePlus, Lock, LockKeyhole, LockOpen, LogOut, Paperclip, Pin, Trash2 } from '@lucide/svelte';
     import { untrack } from 'svelte';
     import { updateNote } from '../../routes/api/notes.remote';
 
@@ -211,10 +211,17 @@
 <!-- The tabs sit beside the colored card, not on it, so they keep the page ink -->
 <div class={['note relative', open && 'open', (closing || !open) && 'folded']} data-flip-body data-note-open={open ? '' : undefined} {@attach open ? closeOnOutside(() => onclose?.()) : null}>
 
-    {#if selected}
-        <span class="badge pointer-events-none absolute -top-2 -right-2 z-10 grid size-6 place-items-center rounded-full bg-accent text-on-accent shadow-md" in:rise={{ y: 0, scale: 0.6, duration: 'fast' }}>
+    <!-- SELECT | on the corner, faint on hover, filled once selected -->
+    {#if !open}
+        <button
+            class={['select-mark absolute -top-2 -right-2 z-20 grid size-6 place-items-center rounded-full border', selected ? 'selected border-accent bg-accent text-on-accent shadow-md' : 'border-line-strong bg-raised text-ink-faint hover:text-accent']}
+            aria-label={selected ? 'Deselect' : 'Select'}
+            aria-pressed={selected}
+            onclick={onselect}
+            {@attach tip(selected ? 'Deselect' : 'Select')}
+        >
             <Check class="size-3.5" strokeWidth={3} />
-        </span>
+        </button>
     {/if}
 
     <NoteTabs bind:picked={draft.labels} {labels} {open} {owned} onfilter={onlabel} />
@@ -233,17 +240,14 @@
         {#if !open}
             <button class="cover absolute inset-0 rounded-card" aria-label={`Open ${draft.title || 'note'}`} aria-pressed={selected || undefined} onpointerenter={noteEditor.load} onfocus={noteEditor.load} onclick={onopen}></button>
 
-            <!-- Above the cover, the pin aligned with the header one -->
-            <div class="hover-actions absolute top-[calc(var(--spacing-card)-0.25rem)] right-[calc(var(--spacing-card)-0.5rem)] z-10 flex items-center gap-0.5">
-                <button class={['icon-button', selected && 'text-accent hover:text-accent']} aria-label={selected ? 'Deselect' : 'Select'} aria-pressed={selected} onclick={onselect} {@attach tip(selected ? 'Deselect' : 'Select')}>
-                    <SquareCheck class="size-4" />
-                </button>
-                {#if owned}
+            <!-- Above the cover, aligned with the header pin -->
+            {#if owned}
+                <div class="hover-actions absolute top-[calc(var(--spacing-card)-0.25rem)] right-[calc(var(--spacing-card)-0.5rem)] z-10 flex items-center">
                     <button class={['icon-button', draft.pinned && 'text-accent hover:text-accent']} aria-label={draft.pinned ? 'Unpin' : 'Pin'} aria-pressed={draft.pinned} onclick={pinClosed} {@attach tip(draft.pinned ? 'Unpin' : 'Pin to the top')}>
                         <Pin class="size-4" fill={draft.pinned ? 'currentColor' : 'none'} />
                     </button>
-                {/if}
-            </div>
+                </div>
+            {/if}
         {/if}
 
         <!-- IMAGES | on top, edge to edge, the pickers sit hidden for the buttons among the actions -->
@@ -270,9 +274,9 @@
                     {@attach titleField}
                 >{initialTitle}</h3>
                 <!-- One row with the pin, so every button keeps the same distance -->
-                <div class="-my-1 -mr-2 flex items-center gap-0.5">
+                <div class={['-my-1 -mr-2 flex items-center gap-0.5', !open && owned && !draft.pinned && 'pin-room']}>
                     {#if locked && !open}
-                        <span class="pointer-events-auto relative z-10 grid size-8 place-items-center text-ink-faint" role="img" aria-label="Locked" {@attach tip('Locked with your password')}><LockKeyhole class="size-4" /></span>
+                        <span class="pointer-events-auto relative z-10 grid size-8 place-items-center text-ink-faint" role="img" aria-label={gone ? 'Text lost' : 'Locked'} {@attach tip(gone ? 'Locked before a password reset, its text is lost' : 'Locked with your password')}><LockKeyhole class={unreadable ? 'size-5' : 'size-4'} /></span>
                     {/if}
                     {#if others.length}
                         <!-- The others on a shared note, the owner first when it's someone else's -->
@@ -325,9 +329,9 @@
             </div>
         {/if}
 
-        <!-- Locked and not open, the text waits for the password -->
-        {#if unreadable && !open}
-            <p class="type-meta text-ink-faint" in:appear out:unfold>{gone ? 'Locked before a password reset, its text is lost.' : 'Locked, open it with your password.'}</p>
+        <!-- Stripes over a locked note until its password opens it -->
+        {#if locked}
+            <div class={['veil', unreadable && !open && 'shown']} aria-hidden="true"></div>
         {/if}
 
         <!-- ATTACHMENTS -->
@@ -373,7 +377,38 @@
         opacity: 0.32;
     }
 
-    /* HOVER ACTIONS | select and pin over a closed card, they take over from the header pin meanwhile */
+    /* VEIL | faint grey stripes over a locked note until it opens */
+    .veil {
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background: repeating-linear-gradient(-45deg, color-mix(in oklab, var(--theme-ink-faint) 16%, transparent) 0 2px, transparent 2px 10px);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--duration-base) var(--ease-out);
+    }
+
+    .veil.shown {
+        opacity: 1;
+    }
+
+    /* SELECT MARK | stays while selected, else shows on hover only */
+    .select-mark {
+        transition: opacity var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out);
+    }
+
+    .select-mark:not(.selected) {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .note:hover .select-mark,
+    .note:focus-within .select-mark {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* HOVER ACTIONS | the pin over a closed card, it takes over from the header pin meanwhile */
     .hover-actions {
         opacity: 0;
         pointer-events: none;
@@ -394,9 +429,20 @@
         opacity: 0;
     }
 
+    /* Lock and faces step aside for the hover pin, a moved box would repack the grid */
+    .pin-room {
+        transition: translate var(--duration-fast) var(--ease-out);
+    }
+
+    .card:is(:hover, :focus-within) .pin-room {
+        translate: -2rem 0;
+    }
+
     /* Fingers have no hover, they select by long press */
     @media (hover: none) {
         .hover-actions { display: none; }
+        .select-mark:not(.selected) { display: none; }
+        .card:is(:hover, :focus-within) .pin-room { translate: none; }
     }
 
     /* RESIZING | the card fills the box that glides to its new size, see glide() in #lib/relayout.ts */

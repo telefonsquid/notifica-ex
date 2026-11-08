@@ -166,13 +166,15 @@ Invariants:
 
 ## Tab key
 
-The account key in memory of one tab (`state` in `note_lock.svelte.ts`).
+The account key in memory of one tab (`state` in `note_lock.svelte.ts`) and the notes unlocked with it (`revealed`). Each locked note asks the password itself, the key alone shows no text.
 
 | From | Event | To |
 |---|---|---|
-| Closed | right password in the dialog | Open, cards decrypt and show their text |
-| Open | reload, logout | Closed |
-| Open | tab hidden over 5 minutes, no locked note open | Closed |
+| Closed | right password on opening a locked note | Open, that one note decrypts and shows its text |
+| Closed | right password on locking a note | Open, the note just locked stays readable |
+| Open | right password on another locked note | Open, that note joins the readable ones |
+| Open | reload, logout | Closed, every note shows its lock again |
+| Open | tab hidden over 5 minutes, no locked note open | Closed, every note shows its lock again |
 
 ---
 
