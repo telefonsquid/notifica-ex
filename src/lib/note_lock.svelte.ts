@@ -21,7 +21,8 @@ const RELOCK_AFTER = 5 * 60_000
 const state = $state({ key: null as CryptoKey | null, id: '' })
 const bodies = new SvelteMap<string, string | null>()      // Null for ones this key can't open
 const revealed = new SvelteSet<string>()                    // Ids of notes unlocked in this tab
-const pending = new Set<string>()
+// eslint-disable-next-line svelte/prefer-svelte-reactivity
+const pending = new Set<string>()                           // Plain on purpose | written while a derived runs, a reactive set would throw there
 let holds = 0
 
 export const noteLock = {
