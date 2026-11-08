@@ -3,7 +3,8 @@ import type { Person } from '#lib/schemas/notes.ts';
 import { changePasswordSchema, setPasswordSchema, startNoteLockSchema, userEditSchema, userInputSchema, userStateSchema, type User, type UserSummary } from '#lib/schemas/users.ts';
 import { endStreams } from '#lib/server/app_stream.ts';
 import { confirmPasswordReset, login, passwordMatches, renewStreamKey, requestPasswordReset, userOfToken } from '#lib/server/accounts.ts';
-import { findOne, getAll, getOne, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { removeFor } from '#lib/server/note_access.ts';
+import { deleteOne, findOne, getAll, getOne, insertOnePartial, run, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { orNull, unwrap } from '#lib/server/result.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
@@ -98,6 +99,29 @@ export const setUserState = command(z.object({ id: idSchema, state: userStateSch
 
     await getUsers().refresh()
     return summary(user)
+
+});
+
+// DELETE | everything the account owns cascades with it, notes of others only lose them from sharing
+export const deleteUser = command(idSchema, async (id) => {
+
+    const me = signedIn('admin')
+    if(id === me.id) error(400, 'You cannot delete yourself.')
+
+    const user = unwrap(await getOne('users', id), 'User not found.')
+    const admins = unwrap(await getAll('users', { filter: 'authorizationLevel = "admin" && state = "active"', fields: 'id' }), 'Could not check the admins.')
+    if(user.authorizationLevel === 'admin' && admins.every((admin) => admin.id === id)) error(400, 'You cannot delete the last admin.')
+
+    // Leave notes of others first, the way a collaborator would
+    const shared = unwrap(await run((pb) => pb.collection('notes').getFullList({ filter: pb.filter('shared.id ?= {:id}', { id }), fields: 'id' })), 'Could not load the notes shared with them.')
+    for(const note of shared) unwrap(await removeFor(note.id, id), 'Could not take them off a shared note.')
+
+    unwrap(await deleteOne('users', id), 'Could not delete the user.')
+    endStreams(id)
+
+    await getUsers().refresh()
+    await getPeople().refresh()
+    return true
 
 });
 

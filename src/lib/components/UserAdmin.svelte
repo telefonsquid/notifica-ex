@@ -9,8 +9,8 @@
     import Button from '#lib/ui/Button.svelte'
     import InlineInput from '#lib/ui/InlineInput.svelte'
     import Input from '#lib/ui/Input.svelte'
-    import { KeyRound, RotateCcw, Send, UserX } from '@lucide/svelte'
-    import { getUsers, inviteUser, sendPasswordLink, setUserState, updateUser } from '../../routes/api/users.remote';
+    import { KeyRound, RotateCcw, Send, Trash2, UserX } from '@lucide/svelte'
+    import { deleteUser, getUsers, inviteUser, sendPasswordLink, setUserState, updateUser } from '../../routes/api/users.remote';
 
     // PROPS
     let { userId }: { userId: string } = $props();   // the acting admin, locked against changing their own role
@@ -69,6 +69,15 @@
         })
         if (confirmed) await safeAction(setUserState({ id: user.id, state: 'inactive' }))
     }
+
+    async function remove(user: UserSummary) {
+        const confirmed = await confirmAction({
+            title: `Delete ${user.name}?`,
+            message: `${user.name} (${user.email}) and everything they own go for good: notes, files, labels, views, reminders and keys. Notes others shared with them stay with their owners. This cannot be undone.`,
+            action: 'Delete user'
+        })
+        if (confirmed && await safeAction(deleteUser(user.id))) notify(`${user.name} was deleted.`)
+    }
 </script>
 
 {#snippet roles(current: AuthorizationLevel, onpick: (role: AuthorizationLevel) => void, locked = false)}
@@ -121,10 +130,13 @@
                             <KeyRound class="size-4" />
                         </button>
                         {#if self}
-                            <span class="type-meta w-9 text-center text-ink-faint">You</span>
+                            <span class="type-meta w-17 text-center text-ink-faint">You</span>
                         {:else}
                             <button class="icon-button" aria-label={`Deactivate ${user.name}`} {@attach tip('Deactivate')} onclick={() => deactivate(user)}>
                                 <UserX class="size-4" />
+                            </button>
+                            <button class="icon-button" aria-label={`Delete ${user.name}`} {@attach tip('Delete')} onclick={() => remove(user)}>
+                                <Trash2 class="size-4" />
                             </button>
                         {/if}
                     </div>
@@ -145,6 +157,9 @@
                             <span class="truncate text-sm text-ink-faint">{user.email}</span>
                         </div>
                         <Button style="ghost" icon={RotateCcw} onclick={() => safeAction(setUserState({ id: user.id, state: 'active' }))}>Reactivate</Button>
+                        <button class="icon-button" aria-label={`Delete ${user.name}`} {@attach tip('Delete')} onclick={() => remove(user)}>
+                            <Trash2 class="size-4" />
+                        </button>
                     </li>
                 {/each}
             </ul>

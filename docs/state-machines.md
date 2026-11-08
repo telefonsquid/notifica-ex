@@ -315,7 +315,7 @@ Doubles get dropped by `seen`, the cursor only moves forward. Unverified race: `
 | Invited | Created active with a set password link, no password of their own yet |
 | Active | Can log in |
 | Inactive | Rejected on every request, token key rotated |
-| Deleted | Row gone, notes and reminders cascade |
+| Deleted | Row gone, everything they own cascades, shared notes of others left first |
 
 | From | Event | To | Effect |
 |---|---|---|---|---|
@@ -323,6 +323,7 @@ Doubles get dropped by `seen`, the cursor only moves forward. Unverified race: `
 | Active | admin deactivates | Inactive | `tokenKey` rotates, streams end (see [SM-3](#sm-3-stream-can-crash-the-server)) |
 | Inactive | admin reactivates | Active | Stream key stays good, the phone has to retry |
 | Active | password change | Active | `streamEpoch` moves, streams end, phone gets a new key on next open |
+| Active, Inactive | admin deletes (not themself, not the last admin) | Deleted | Leaves every shared note through `removeFor`, row deleted, streams end. Cookie and stream key answer 404 from then on |
 
 Invariant: an inactive user never gets a push and never gets past `hooks.server.ts`. Their reminders move on without logging.
 

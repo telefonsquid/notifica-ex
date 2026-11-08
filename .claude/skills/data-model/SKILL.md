@@ -29,6 +29,7 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 - The server talks to PocketBase as superuser, so **the query layer enforces ownership**: every query takes the user id and filters by it. Collection rules matter for realtime, which runs in the browser with the user's token.
 - Every new collection needs list/view rules before anything subscribes to it.
 - `hooks.server.ts` re-verifies the cookie on every request and rejects deactivated users.
+- Every per user collection has `owner` with `cascadeDelete`, so `deleteUser` (`users.remote.ts`) only leaves the notes shared with them and deletes the user row, PocketBase takes the rest with their files. A new per user collection needs the same cascade.
 
 ## Sharing
 
