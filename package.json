@@ -1,7 +1,7 @@
 {
 	"name": "notifica-ex",
 	"private": true,
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"type": "module",
 	"imports": {
 		"#lib/*": "./src/lib/*"

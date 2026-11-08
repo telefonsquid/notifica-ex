@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.1 · 2026-11-09
+
+- added release signing for the android app
+- release tags now publish the apk to an f-droid repo on pages
+- fixed the sdk platform name in the android workflow
+- renamed the android app to Notifica Ex
+
 ## 0.3.0 · 2026-11-08
 
 - added an mcp server with per user api keys
