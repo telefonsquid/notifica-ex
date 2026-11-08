@@ -82,7 +82,7 @@
     // NEW VIEW | starts empty and opened, so its filters can be set right away
     let creating = $state(false)
 
-    async function add(){
+    export async function add(){
         creating = true
         const taken = new Set(views.map((view) => view.name.toLowerCase()))
         let number = views.length + 1

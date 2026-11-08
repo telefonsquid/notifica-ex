@@ -72,6 +72,11 @@
     let filter = $derived(draft?.filter ?? view?.filter ?? emptyFilter())
     let sort = $derived(draft?.sort ?? view?.sort ?? defaultSort());
 
+    // A label picked on a card's tab narrows the view to it, the Filter popover can save or clear that
+    function showOnly(id: string){
+        draft = { filter: { ...filter, include: [id], exclude: filter.exclude.filter((item) => item !== id) }, sort }
+    }
+
     // EDITING | one card at a time opens, the grid holds its order meanwhile
     const grid = new NoteGrid()
     const opening = new NoteOpening(grid, () => visible.map((note) => note.id))
@@ -234,6 +239,7 @@
                                 focus={open ? editing?.focus : undefined}
                                 onopen={() => (selection.length ? selected.toggle(note.id) : opening.edit(note))}
                                 onlongpress={() => selected.toggle(note.id)}
+                                onlabel={showOnly}
                                 onclose={opening.close}
                             />
                         </ContextMenu.Trigger>

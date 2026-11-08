@@ -1,5 +1,9 @@
 <script lang="ts">
+    import { unfold } from '#lib/motion.ts';
+    import { ChevronDown } from '@lucide/svelte';
     import type { Component } from 'svelte';
+
+    type Section = { id: string, label: string, icon: Component<{ class?: string, strokeWidth?: number }>, group?: string }
 
     // PROPS
     let {
@@ -7,7 +11,7 @@
         current,
         onpick
     }: {
-        sections: { id: string, label: string, icon: Component<{ class?: string, strokeWidth?: number }>, group?: string }[]
+        sections: Section[]
         current: string
         onpick: (id: string) => void
     } = $props()
@@ -15,6 +19,9 @@
     let tablist = $state<HTMLElement>()
     let indicator = $state({ x: 0, y: 0, width: 0, height: 0 })
     let ready = $state(false)
+
+    let open = $state(false)        // The phone list
+    let shown = $derived(sections.find((item) => item.id === current) ?? sections[0])
 
     function buttonOf(id: string){
         return tablist?.querySelector<HTMLElement>(`[data-tab="${id}"]`)
@@ -48,15 +55,54 @@
         onpick(next.id)
         buttonOf(next.id)?.focus()
     }
+
+    function pick(id: string){
+        open = false
+        onpick(id)
+    }
+
+    // Back and Escape fold the list before anything else
+    function close(event: KeyboardEvent){
+        if(!open || event.key !== 'Escape') return
+        event.preventDefault()
+        open = false
+    }
 </script>
 
-<!-- A column on wide screens, an even row on tablets, an icon bar in the bottom row on phones -->
+<svelte:window onkeydown={close} />
+
+{#snippet breakBefore(index: number)}
+    {#if index > 0 && sections[index].group !== sections[index - 1].group}
+        <span class="break" aria-hidden="true"></span>
+    {/if}
+{/snippet}
+
+<!-- PHONES | the current section names the list, the chevron folds the others out -->
+<nav class="picker sm:hidden" aria-label="Settings sections">
+    <button class="head" aria-expanded={open} aria-controls="settings-picker" onclick={() => (open = !open)}>
+        <shown.icon class="size-5 shrink-0" strokeWidth={1.75} />
+        <span class="min-w-0 flex-1 truncate text-left">{shown.label}</span>
+        <ChevronDown class={['chevron size-5 shrink-0', open && 'open']} strokeWidth={1.75} />
+    </button>
+
+    {#if open}
+        <div id="settings-picker" class="list" transition:unfold>
+            {#each sections as item, index (item.id)}
+                {@render breakBefore(index)}
+                <button class={['item', current === item.id && 'active']} aria-current={current === item.id} onclick={() => pick(item.id)}>
+                    <item.icon class="size-5 shrink-0" strokeWidth={1.75} />
+                    <span class="truncate">{item.label}</span>
+                </button>
+            {/each}
+        </div>
+    {/if}
+</nav>
+
+<!-- WIDER SCREENS | a row on tablets, a column on wide screens -->
 <div bind:this={tablist} class={['tabs', ready && 'ready']} role="tablist" aria-label="Settings sections" tabindex="-1" onkeydown={step}>
     <span class="indicator" style:--x="{indicator.x}px" style:--y="{indicator.y}px" style:--width="{indicator.width}px" style:--height="{indicator.height}px"></span>
     {#each sections as item, index (item.id)}
-        {#if index > 0 && item.group !== sections[index - 1].group}
-            <span class="break" aria-hidden="true"></span>
-        {/if}
+        {@render breakBefore(index)}
         <button
             role="tab"
             data-tab={item.id}
@@ -66,40 +112,69 @@
             tabindex={current === item.id ? 0 : -1}
             onclick={() => onpick(item.id)}
         >
-            <item.icon class="icon size-5 shrink-0" strokeWidth={1.75} />
-            <span class="max-w-full truncate max-sm:sr-only">{item.label}</span>
+            <item.icon class="size-5 shrink-0" strokeWidth={1.75} />
+            <span class="max-w-full truncate">{item.label}</span>
         </button>
     {/each}
 </div>
 
 <style>
-    /* On phones they share the bottom row with the rail's menu button, at its height */
-    .tabs {
-        position: fixed;
-        right: var(--layout-content-gutter);
-        bottom: var(--layout-bottom-row);
-        left: calc(var(--layout-content-gutter) + var(--layout-menu-button) + 0.5rem);
-        z-index: 30;
-        display: flex;
-        height: var(--layout-menu-button);
-        padding: 0.375rem;
+    /* PHONE LIST */
+    .picker {
+        overflow: hidden;
         border: 1px solid var(--theme-line-strong);
-        border-radius: 999px;
+        border-radius: var(--layout-radius-card);
         background: var(--theme-raised);
+    }
+
+    .head,
+    .item {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        width: 100%;
+        padding: 0.75rem 1rem;
+    }
+
+    .head {
+        color: var(--theme-ink);
+    }
+
+    .picker :global(.chevron) {
+        color: var(--theme-ink-muted);
+        transition: rotate var(--duration-base) var(--ease-in-out);
+    }
+
+    .picker :global(.chevron.open) {
+        rotate: 180deg;
+    }
+
+    .list {
+        display: grid;
+        padding: 0 0.375rem 0.375rem;
+    }
+
+    .item {
+        border-radius: var(--layout-radius-control);
+        color: var(--theme-ink-muted);
+    }
+
+    .item.active {
+        color: var(--theme-accent);
+    }
+
+    /* TABS */
+    .tabs {
+        position: relative;
+        display: flex;
+        gap: 0.25rem;
         outline: none;
     }
 
-    @media (width >= 40rem) {
+    /* Phones get the list instead | a utility class loses against the display above */
+    @media (width < 40rem) {
         .tabs {
-            position: relative;
-            inset: auto;
-            z-index: auto;
-            gap: 0.25rem;
-            height: auto;
-            padding: 0;
-            border: 0;
-            border-radius: 0;
-            background: none;
+            display: none;
         }
     }
 
@@ -111,20 +186,21 @@
         }
     }
 
-    /* GROUP BREAK | a hairline with room around it, across the column on wide screens */
+    /* GROUP BREAK | a hairline with room around it, across the list on phones and wide screens */
     .break {
         flex: none;
         align-self: center;
         width: 1px;
         height: 60%;
-        margin-inline: 0.25rem;
+        margin-inline: 0.5rem;
         background: var(--theme-line-strong);
     }
 
-    @media (width >= 40rem) {
-        .break {
-            margin-inline: 0.5rem;
-        }
+    .list .break {
+        align-self: stretch;
+        width: auto;
+        height: 1px;
+        margin: 0.375rem 0.625rem;
     }
 
     @media (width >= 64rem) {
@@ -136,28 +212,21 @@
         }
     }
 
+    /* Long names take more of the row, nine tabs no longer fit in equal shares */
     .tab {
         position: relative;
         display: flex;
-        flex: 1 1 0;
+        flex: 1 1 auto;
         flex-direction: column;
         gap: 0.25rem;
         align-items: center;
         justify-content: center;
         min-width: 0;
-        border-radius: 999px;
+        padding: 0.5rem 0.375rem;
+        border-radius: var(--layout-radius-control);
         color: var(--theme-ink-muted);
+        font-size: 0.75rem;
         transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
-    }
-
-    @media (width >= 40rem) {
-        /* Long names take more of the row, nine tabs no longer fit in equal shares */
-        .tab {
-            flex: 1 1 auto;
-            padding: 0.5rem 0.375rem;
-            border-radius: var(--layout-radius-control);
-            font-size: 0.75rem;
-        }
     }
 
     @media (width >= 64rem) {
@@ -172,7 +241,8 @@
         }
     }
 
-    .tab:hover {
+    .tab:hover,
+    .item:hover {
         color: var(--theme-ink);
         background: var(--theme-line);
     }
@@ -189,35 +259,16 @@
         background: var(--theme-accent);
     }
 
-    .tab :global(.icon) {
-        transition: scale var(--duration-base) var(--ease-spring);
-    }
-
-    .tab:hover :global(.icon),
-    .tab.active :global(.icon) {
-        scale: 1.08;
-    }
-
-    .tab:active :global(.icon) {
-        scale: 0.88;
-    }
-
     .indicator {
         position: absolute;
         top: 0;
         left: 0;
         width: var(--width);
         height: var(--height);
-        border-radius: 999px;
+        border-radius: var(--layout-radius-control);
         background: var(--theme-accent);
         translate: var(--x) var(--y);
         opacity: 0;
-    }
-
-    @media (width >= 40rem) {
-        .indicator {
-            border-radius: var(--layout-radius-control);
-        }
     }
 
     .tabs.ready .indicator {

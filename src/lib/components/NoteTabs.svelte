@@ -4,8 +4,8 @@
     import { deleteLabelEverywhere } from '#lib/deletions.ts';
     import { appear, unfold } from '#lib/motion.ts';
     import type { Label } from '#lib/schemas/notes.ts';
-    import { Pencil, Trash2, X } from '@lucide/svelte';
-    import { ContextMenu } from 'bits-ui';
+    import { ListFilter, Pencil, Trash2, X } from '@lucide/svelte';
+    import { ContextMenu, DropdownMenu } from 'bits-ui';
 
     /*
         A note's labels as folder tabs on the top or bottom edge of its card, named on hover
@@ -17,18 +17,21 @@
         picked = $bindable(),
         labels,
         open,
-        owned
+        owned,
+        onfilter
     }: {
-        picked: string[]        // Label ids on the note
+        picked: string[]                    // Label ids on the note
         labels: Label[]
         open: boolean
-        owned: boolean          // Only the owner gets to add labels
+        owned: boolean                      // Only the owner gets to add labels
+        onfilter?: (id: string) => void     // Narrows the view to this label
     } = $props()
 
     let tabs = $derived(picked.flatMap((id) => labels.find((label) => label.id === id) ?? []))
 
-    // The tab menu opens the same editor as a click on the tab name
+    // Both tab menus open the same editor, it hangs from the tab
     let editing = $state<string | null>(null)
+    let anchors = $state<Record<string, HTMLElement>>({})
 
     function drop(id: string){
         picked = picked.filter((item) => item !== id)
@@ -47,18 +50,35 @@
             <ContextMenu.Root>
                 <ContextMenu.Trigger disabled={!open}>
                     {#snippet child({ props })}
-                        <li {...props} class="tab note-mark type-meta flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
+                        <li {...props} bind:this={anchors[label.id]} class="tab note-mark type-meta flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
+                            <!-- The name offers editing the label or narrowing the view to it, open or closed -->
+                            <DropdownMenu.Root>
+                                <DropdownMenu.Trigger class="name truncate text-left uppercase hover:underline" aria-label={`Label ${label.name}`}>
+                                    {label.name}
+                                </DropdownMenu.Trigger>
+                                <DropdownMenu.Portal>
+                                    <DropdownMenu.Content class="menu" collisionPadding={12}>
+                                        <DropdownMenu.Item class="menu-item" onSelect={() => edit(label.id)}>
+                                            <Pencil class="size-4" />Edit label
+                                        </DropdownMenu.Item>
+                                        {#if onfilter}
+                                            <DropdownMenu.Item class="menu-item" onSelect={() => onfilter(label.id)}>
+                                                <ListFilter class="size-4" />Show only this label
+                                            </DropdownMenu.Item>
+                                        {/if}
+                                    </DropdownMenu.Content>
+                                </DropdownMenu.Portal>
+                            </DropdownMenu.Root>
+                            <LabelEditor
+                                {label}
+                                anchor={anchors[label.id]}
+                                bind:open={() => editing === label.id, (value) => editing = value ? label.id : null}
+                                ondelete={open ? () => drop(label.id) : undefined}
+                            />
                             {#if open}
-                                <LabelEditor
-                                    {label}
-                                    bind:open={() => editing === label.id, (value) => editing = value ? label.id : null}
-                                    ondelete={() => drop(label.id)}
-                                />
                                 <button class="remove -mr-2 grid shrink-0 place-items-center rounded-full p-0.5" aria-label={`Remove ${label.name}`} onclick={() => drop(label.id)} in:appear out:unfold={{ axis: 'x' }}>
                                     <X class="size-3" />
                                 </button>
-                            {:else}
-                                <span class="name truncate">{label.name}</span>
                             {/if}
                         </li>
                     {/snippet}
@@ -103,9 +123,12 @@
         pointer-events: auto;
     }
 
+    /* Clips the name while it shrinks | a closed card's name still takes a click */
     .tab {
         height: 0.3125rem;
+        overflow: hidden;
         border-radius: 0.375rem 0.375rem 0 0;
+        pointer-events: auto;
         transition: height var(--duration-base) var(--ease-spring);
     }
 
@@ -125,11 +148,6 @@
         border-radius: 0 0 0.375rem 0.375rem;
     }
 
-    .name {
-        opacity: 0;
-        transition: opacity var(--duration-fast) var(--ease-out);
-    }
-
     :global(.note:hover) .tab,
     :global(.note:focus-within) .tab {
         height: 1.25rem;
@@ -139,8 +157,14 @@
         height: var(--layout-note-tab);
     }
 
-    :global(.note:hover) .name,
-    :global(.note:focus-within) .name {
+    .tab :global(.name) {
+        opacity: 0;
+        transition: opacity var(--duration-fast) var(--ease-out);
+    }
+
+    :global(.note.open) .tab :global(.name),
+    :global(.note:hover) .tab :global(.name),
+    :global(.note:focus-within) .tab :global(.name) {
         opacity: 1;
         transition-delay: calc(var(--duration-fast) * 0.5);
     }

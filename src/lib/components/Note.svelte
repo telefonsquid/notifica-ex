@@ -48,6 +48,7 @@
         focus,
         onopen,
         onlongpress,
+        onlabel,
         oncreate,
         onclose
     }: {
@@ -64,6 +65,7 @@
         focus?: string                                          // reminder to open right away, see ReminderList
         onopen?: () => void                                     // a click on the closed card, opens it or joins the selection
         onlongpress?: () => void                                // mouse only, a finger opens the context menu instead
+        onlabel?: (id: string) => void                          // narrows the view to a label picked on a tab
         oncreate?: (id: string) => void                         // a new note got stored, the page follows it by id from then on
         onclose?: () => void
     } = $props()
@@ -192,7 +194,7 @@
         </span>
     {/if}
 
-    <NoteTabs bind:picked={draft.labels} {labels} {open} {owned} />
+    <NoteTabs bind:picked={draft.labels} {labels} {open} {owned} onfilter={onlabel} />
 
     <article
         bind:this={card}

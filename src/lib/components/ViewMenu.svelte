@@ -4,8 +4,8 @@
     import { deleteSavedView } from '#lib/deletions.ts';
     import type { View } from '#lib/schemas/views.ts';
     import { viewParams } from '#lib/views.ts';
-    import { viewSettingsLink } from '#lib/links.ts';
-    import { ArrowRight, ChevronDown, ChevronUp, Pencil, Trash2 } from '@lucide/svelte';
+    import { newViewLink, viewSettingsLink } from '#lib/links.ts';
+    import { ArrowRight, ChevronDown, ChevronUp, Pencil, Plus, Trash2 } from '@lucide/svelte';
     import { DropdownMenu as Menu } from 'bits-ui';
 
     /*
@@ -34,6 +34,11 @@
         goto(viewSettingsLink(view.id))
     }
 
+    function create(){
+        // eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved in links.ts
+        goto(newViewLink())
+    }
+
     // The menu is gone by the time the answer comes, so the view is held on to first
     async function remove(){
         const leaving = current
@@ -46,6 +51,9 @@
 </Menu.Item>
 <Menu.Item class="menu-item" onSelect={edit}>
     <Pencil class="size-4" />Edit view
+</Menu.Item>
+<Menu.Item class="menu-item" onSelect={create}>
+    <Plus class="size-4" />New view
 </Menu.Item>
 
 <Menu.Separator class="menu-separator" />

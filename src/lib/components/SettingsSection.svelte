@@ -42,9 +42,11 @@
         border-top: 1px solid var(--theme-line-strong);
     }
 
-    /* The last one fills the stage so it can still reach the top */
-    .section:last-child {
-        min-height: calc(100cqh - var(--peek));
+    /* The last one fills the stage so it can still snap to the top | phones scroll freely */
+    @media (width >= 40rem) {
+        .section:last-child {
+            min-height: calc(100cqh - var(--peek));
+        }
     }
 
     .body {

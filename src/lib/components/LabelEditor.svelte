@@ -7,12 +7,14 @@
     // PROPS
     let {
         label,
+        anchor,
         open = $bindable(false),
         ondelete
     }: {
         label: Label
-        open?: boolean                  // the tab's right click menu opens it too
-        ondelete?: () => void           // the label is gone from every note, the open one drops it too
+        anchor: HTMLElement | undefined     // the tab it hangs from
+        open?: boolean                      // the tab's menus open it
+        ondelete?: () => void               // the label is gone from every note, the open one drops it too
     } = $props()
 
     async function remove(){
@@ -21,13 +23,11 @@
     }
 </script>
 
-<!-- The tab's name opens it, changes apply to the label on every note -->
+<!-- Changes apply to the label on every note -->
 <Popover.Root bind:open>
-    <Popover.Trigger class="truncate text-left uppercase hover:underline" aria-label={`Edit label ${label.name}`}>
-        {label.name}
-    </Popover.Trigger>
     <Popover.Portal>
         <Popover.Content
+            customAnchor={anchor}
             side="top"
             align="start"
             sideOffset={8}
