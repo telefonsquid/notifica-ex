@@ -6,9 +6,10 @@ RUN apk add --no-cache \
     unzip \
     ca-certificates
 
-# download and unzip PocketBase
-ADD https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip /tmp/pb.zip
-RUN unzip /tmp/pb.zip -d /pb/
+# Download PocketBase in a cached step | ADD asks GitHub again on every build and a GitHub hiccup failed the deploy
+RUN wget -q --tries=5 --waitretry=10 -O /tmp/pb.zip https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip \
+    && unzip /tmp/pb.zip -d /pb/ \
+    && rm /tmp/pb.zip
 
 # add cronjobs
 COPY ./cronjobs /pb/pb_hooks
