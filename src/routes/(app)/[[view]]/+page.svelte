@@ -248,6 +248,7 @@
                                 focus={open ? editing?.focus : undefined}
                                 onopen={() => (selection.length ? selected.toggle(note.id) : opening.edit(note))}
                                 onlongpress={() => selected.toggle(note.id)}
+                                onselect={() => selected.toggle(note.id)}
                                 onlabel={showOnly}
                                 onclose={opening.close}
                             />

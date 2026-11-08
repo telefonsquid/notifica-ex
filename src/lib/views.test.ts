@@ -40,6 +40,13 @@ describe('filters', () => {
         expect(matches(groceries, { words: 'milk', titleOnly: true })).toBe(false)
     })
 
+    test('match case tells Milk from milk', () => {
+        const groceries = note({ title: 'Groceries', body: 'Milk and bread' })
+        expect(matches(groceries, { words: 'Milk', matchCase: true })).toBe(true)
+        expect(matches(groceries, { words: 'milk', matchCase: true })).toBe(false)
+        expect(matches(groceries, { without: 'BREAD', matchCase: true })).toBe(true)
+    })
+
     test('labels combine as any or all, excluded ones win', () => {
         const both = note({ labels: ['a', 'b'] })
         expect(matches(both, { include: ['a', 'c'] })).toBe(true)

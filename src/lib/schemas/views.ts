@@ -29,6 +29,7 @@ export const viewFilterSchema = z.object({
     words: limitedText('Words', LIMITS.VIEW_WORDS).default(''), // All of them have to appear
     without: limitedText('Words', LIMITS.VIEW_WORDS).default(''), // None of them may appear
     titleOnly: z.boolean().default(false),
+    matchCase: z.boolean().default(false),
     include: z.array(idSchema).max(LIMITS.VIEW_LABELS).default([]),
     exclude: z.array(idSchema).max(LIMITS.VIEW_LABELS).default([]),
     labelMatch: z.enum(['any', 'all']).default('any'), // How included labels combine

@@ -24,7 +24,7 @@
     import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import Markdown from '#lib/ui/Markdown.svelte';
-    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Paperclip, Pin, Trash2 } from '@lucide/svelte';
+    import { Archive, ArchiveRestore, Check, ImagePlus, LogOut, Paperclip, Pin, SquareCheck, Trash2 } from '@lucide/svelte';
     import { untrack } from 'svelte';
     import { updateNote } from '../../routes/api/notes.remote';
 
@@ -48,6 +48,7 @@
         focus,
         onopen,
         onlongpress,
+        onselect,
         onlabel,
         oncreate,
         onclose
@@ -65,6 +66,7 @@
         focus?: string                                          // reminder to open right away, see ReminderList
         onopen?: () => void                                     // a click on the closed card, opens it or joins the selection
         onlongpress?: () => void                                // mouse only, a finger opens the context menu instead
+        onselect?: () => void                                   // the select button on a hovered card
         onlabel?: (id: string) => void                          // narrows the view to a label picked on a tab
         oncreate?: (id: string) => void                         // a new note got stored, the page follows it by id from then on
         onclose?: () => void
@@ -87,10 +89,6 @@
     let auto = $derived(shownColor({ color: '', labels: draft.labels }, autoColorOrder(labels)))
     let shown = $derived(draft.color || auto)
     let card = $state<HTMLElement>()
-
-    // Starts the breathing wash in phase with every other selected card, timed from page load
-    const BREATH = 2400
-    let breathOffset = $derived(selected ? `-${Math.round(performance.now() % BREATH)}ms` : undefined)
 
     // For the page, which waits on a new note before it hands the card over
     export function flush(): Promise<string | null> {
@@ -152,12 +150,16 @@
         card?.querySelector<HTMLElement>('[data-note-text]')?.focus()
     }
 
-    // CARD CLICKS | only the checkboxes sit above the cover button
+    // CARD CLICKS | checkboxes and the hover buttons sit above the cover button
     function clickTask(event: MouseEvent){
         const box = event.target
         if(open || !note || !(box instanceof HTMLInputElement) || !box.classList.contains('task')) return
         const tasks = [...(event.currentTarget as HTMLElement).querySelectorAll('input.task')]
         safeAction(kept(updateNote({ id: note.id, body: toggleTask(note.body, tasks.indexOf(box)) })))
+    }
+
+    function pinClosed(){
+        if(note) safeAction(kept(updateNote({ id: note.id, pinned: !note.pinned })))
     }
 </script>
 
@@ -199,8 +201,6 @@
     <article
         bind:this={card}
         data-flip-card
-        style:--breath={selected ? `${BREATH}ms` : undefined}
-        style:--breath-offset={breathOffset}
         class={['card note-surface relative flex flex-col gap-3 rounded-card border p-card text-ink', open ? 'border-line-strong shadow-2xl' : 'border-line hover:border-line-strong', selected && 'selected']}
         data-note={shown || undefined}
         aria-label={open ? (id ? 'Edit note' : 'New note') : undefined}
@@ -211,6 +211,18 @@
     >
         {#if !open}
             <button class="cover absolute inset-0 rounded-card" aria-label={`Open ${draft.title || 'note'}`} aria-pressed={selected || undefined} onpointerenter={noteEditor.load} onfocus={noteEditor.load} onclick={onopen}></button>
+
+            <!-- Above the cover, the pin aligned with the header one -->
+            <div class="hover-actions absolute top-[calc(var(--spacing-card)-0.25rem)] right-[calc(var(--spacing-card)-0.5rem)] z-10 flex items-center gap-0.5">
+                <button class={['icon-button', selected && 'text-accent hover:text-accent']} aria-label={selected ? 'Deselect' : 'Select'} aria-pressed={selected} onclick={onselect} {@attach tip(selected ? 'Deselect' : 'Select')}>
+                    <SquareCheck class="size-4" />
+                </button>
+                {#if owned}
+                    <button class={['icon-button', draft.pinned && 'text-accent hover:text-accent']} aria-label={draft.pinned ? 'Unpin' : 'Pin'} aria-pressed={draft.pinned} onclick={pinClosed} {@attach tip(draft.pinned ? 'Unpin' : 'Pin to the top')}>
+                        <Pin class="size-4" fill={draft.pinned ? 'currentColor' : 'none'} />
+                    </button>
+                {/if}
+            </div>
         {/if}
 
         <!-- IMAGES | on top, edge to edge, the pickers sit hidden for the buttons among the actions -->
@@ -254,7 +266,7 @@
                     {/if}
                     {#if (open && owned) || draft.pinned}
                         <button
-                            class={['icon-button', draft.pinned ? 'text-accent hover:text-accent' : 'open-only']}
+                            class={['header-pin icon-button', draft.pinned ? 'text-accent hover:text-accent' : 'open-only']}
                             tabindex={open ? 0 : -1}
                             disabled={!owned}
                             aria-label={draft.pinned ? 'Unpin' : 'Pin'}
@@ -328,18 +340,34 @@
         transition: opacity var(--duration-base) var(--ease-out);
     }
 
-    /* Breathes through its colour so the opacity fade in stays untouched */
     .card.selected::after {
-        opacity: 0.18;
-        animation: breathe var(--breath) var(--ease-in-out) var(--breath-offset, 0s) infinite;
+        opacity: 0.32;
     }
 
-    @keyframes breathe {
-        50% { background: color-mix(in oklab, var(--theme-signature) 45%, transparent); }
+    /* HOVER ACTIONS | select and pin over a closed card, they take over from the header pin meanwhile */
+    .hover-actions {
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--duration-fast) var(--ease-out);
     }
 
-    @media (prefers-reduced-motion: reduce) {
-        .card.selected::after { animation: none; }
+    .card:hover .hover-actions,
+    .card:focus-within .hover-actions {
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .header-pin {
+        transition: opacity var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+    }
+
+    .card:has(.hover-actions):is(:hover, :focus-within) .header-pin {
+        opacity: 0;
+    }
+
+    /* Fingers have no hover, they select by long press */
+    @media (hover: none) {
+        .hover-actions { display: none; }
     }
 
     /* RESIZING | the card fills the box that glides to its new size, see glide() in #lib/relayout.ts */

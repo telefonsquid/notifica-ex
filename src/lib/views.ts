@@ -20,6 +20,7 @@ export const emptyFilter = (): ViewFilter => ({
     words: '',
     without: '',
     titleOnly: false,
+    matchCase: false,
     include: [],
     exclude: [],
     labelMatch: 'any',
@@ -75,6 +76,7 @@ const FILTER_FIELDS: Record<FilterField, { section: FilterSection, simple?: (fil
     words: { section: 'words', simple: () => true },
     without: { section: 'words' },
     titleOnly: { section: 'words' },
+    matchCase: { section: 'words' },
     include: { section: 'labels', simple: () => true },
     exclude: { section: 'labels' },
     labelMatch: { section: 'labels', simple: (filter) => filter.include.length <= 1 },
@@ -175,18 +177,18 @@ export function matchesView(note: Note, filter: ViewFilter, context: MatchContex
 
     // WORDS
     if(!filter.words && !filter.without) return true
-    const text = noteText(note, filter.titleOnly)
-    return wordsOf(filter.words).every((word) => text.includes(word)) && !wordsOf(filter.without).some((word) => text.includes(word))
+    const text = noteText(note, filter.titleOnly, filter.matchCase)
+    return wordsOf(filter.words, filter.matchCase).every((word) => text.includes(word)) && !wordsOf(filter.without, filter.matchCase).some((word) => text.includes(word))
 }
 
-// Lowercased, ready to look for words in
-export function noteText(note: Note, titleOnly = false): string {
-    if(titleOnly) return note.title.toLowerCase()
-    return `${note.title} ${note.body}`.toLowerCase()
+// Lowercased unless the case has to match, ready to look for words in
+export function noteText(note: Note, titleOnly = false, matchCase = false): string {
+    const text = titleOnly ? note.title : `${note.title} ${note.body}`
+    return matchCase ? text : text.toLowerCase()
 }
 
-export function wordsOf(value: string): string[] {
-    return value.toLowerCase().split(/\s+/).filter(Boolean)
+export function wordsOf(value: string, matchCase = false): string[] {
+    return (matchCase ? value : value.toLowerCase()).split(/\s+/).filter(Boolean)
 }
 
 // Finished needs every reminder of the note through, the rest just one match

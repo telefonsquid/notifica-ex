@@ -7,7 +7,7 @@
     import { clearSection, countAdvancedOnly, emptyFilter, flipToggle, isSectionActive, isToggled, sameFilter, type FilterSection } from '#lib/views.ts';
     import type { Label } from '#lib/schemas/notes.ts';
     import type { DateRange, ViewFilter } from '#lib/schemas/views.ts';
-    import { Archive, Bell, CalendarRange, CaseSensitive, Check, ChevronDown, ListChecks, Minus, Palette, Pin, RotateCcw, SlidersHorizontal, Tag, TextSearch, X } from '@lucide/svelte';
+    import { Archive, Bell, CalendarRange, CaseSensitive, Check, ChevronDown, Heading, ListChecks, Minus, Palette, Pin, RotateCcw, SlidersHorizontal, Tag, TextSearch, X } from '@lucide/svelte';
     import { untrack, type Snippet } from 'svelte';
     import { fade } from 'svelte/transition';
 
@@ -103,9 +103,9 @@
     </button>
 {/snippet}
 
-{#snippet toggleChip(Icon: Icon | null, text: string, on: boolean, flip: () => void)}
-    <button type="button" class={['chip', on && 'on']} aria-pressed={on} onclick={flip}>
-        {#if Icon}<Icon class="size-3.5" />{/if}{text}
+{#snippet flag(Icon: Icon, text: string, on: boolean, flip: () => void)}
+    <button type="button" class={['flag', on && 'on']} aria-pressed={on} onclick={flip}>
+        <Icon class="size-3.5" />{text}
     </button>
 {/snippet}
 
@@ -197,7 +197,7 @@
 <!-- ADVANCED ==================================================================================================== -->
 {#snippet advanced()}
     <div class="grid">
-        {@render section('Words', TextSearch, 'words', words)}
+        {@render section('Content', TextSearch, 'words', words)}
         {@render section('Labels', Tag, 'labels', labelFilters)}
         {@render section('State', SlidersHorizontal, 'state', states)}
         {@render section('Reminder', Bell, 'reminder', reminders)}
@@ -211,8 +211,9 @@
         <input class="field min-w-0" value={filter.words} placeholder="Contains all of" aria-label="Words the note contains" oninput={(event) => update({ words: event.currentTarget.value })} />
         <input class="field min-w-0" value={filter.without} placeholder="Leaves out" aria-label="Words the note leaves out" oninput={(event) => update({ without: event.currentTarget.value })} />
     </div>
-    <div class="mt-2">
-        {@render toggleChip(CaseSensitive, 'Title only', filter.titleOnly, () => update({ titleOnly: !filter.titleOnly }))}
+    <div class="flags mt-2" role="group" aria-label="How words match">
+        {@render flag(Heading, 'Title only', filter.titleOnly, () => update({ titleOnly: !filter.titleOnly }))}
+        {@render flag(CaseSensitive, 'Match case', filter.matchCase, () => update({ matchCase: !filter.matchCase }))}
     </div>
 {/snippet}
 
@@ -237,9 +238,9 @@
 
 {#snippet states()}
     <div>
-        <div class="row"><span>Pinned</span><Glider name="Pinned" options={PINNED} value={filter.pinned} onpick={(pinned) => update({ pinned })} /></div>
-        <div class="row"><span>Archive</span><Glider name="Archived" options={ARCHIVED} value={filter.archived} onpick={(archived) => update({ archived })} /></div>
-        <div class="row"><span>Checklist</span><Glider name="Checklist" options={CHECKLIST} value={filter.list} onpick={(list) => update({ list })} /></div>
+        <div class="row"><span><Pin class="size-3.5" />Pinned</span><Glider name="Pinned" options={PINNED} value={filter.pinned} onpick={(pinned) => update({ pinned })} /></div>
+        <div class="row"><span><Archive class="size-3.5" />Archive</span><Glider name="Archived" options={ARCHIVED} value={filter.archived} onpick={(archived) => update({ archived })} /></div>
+        <div class="row"><span><ListChecks class="size-3.5" />Checklist</span><Glider name="Checklist" options={CHECKLIST} value={filter.list} onpick={(list) => update({ list })} /></div>
     </div>
 {/snippet}
 
@@ -299,19 +300,25 @@
             {@const range = filter[date.key]}
             <div class="flex flex-wrap items-center gap-2">
                 <span class="w-24 shrink-0 text-sm text-ink-muted">{date.name}</span>
-                <select class="field min-w-0" value={range.mode} aria-label={`${date.name} filter`} onchange={(event) => updateRange(date.key, { mode: event.currentTarget.value as DateRange['mode'] })}>
-                    <option value="any">Any time</option>
-                    <option value="within">{date.within}</option>
-                    <option value="beyond">{date.beyond}</option>
-                    <option value="between">Between</option>
-                </select>
+                <span class="choice w-40">
+                    <select class="field w-full" value={range.mode} aria-label={`${date.name} filter`} onchange={(event) => updateRange(date.key, { mode: event.currentTarget.value as DateRange['mode'] })}>
+                        <option value="any">Any time</option>
+                        <option value="within">{date.within}</option>
+                        <option value="beyond">{date.beyond}</option>
+                        <option value="between">Between</option>
+                    </select>
+                    <ChevronDown class="size-3.5" />
+                </span>
                 {#if range.mode === 'within' || range.mode === 'beyond'}
                     <NumberField bind:value={() => range.amount, (amount) => updateRange(date.key, { amount })} label="Amount" class="w-20" />
-                    <select class="field min-w-0" value={range.unit} aria-label="Unit" onchange={(event) => updateRange(date.key, { unit: event.currentTarget.value as DateRange['unit'] })}>
-                        <option value="days">days</option>
-                        <option value="weeks">weeks</option>
-                        <option value="months">months</option>
-                    </select>
+                    <span class="choice w-28">
+                        <select class="field w-full" value={range.unit} aria-label="Unit" onchange={(event) => updateRange(date.key, { unit: event.currentTarget.value as DateRange['unit'] })}>
+                            <option value="days">days</option>
+                            <option value="weeks">weeks</option>
+                            <option value="months">months</option>
+                        </select>
+                        <ChevronDown class="size-3.5" />
+                    </span>
                 {:else if range.mode === 'between'}
                     <input class="field min-w-0" type="date" value={range.from} aria-label="From" onchange={(event) => updateRange(date.key, { from: event.currentTarget.value })} />
                     <span class="text-ink-faint">and</span>
@@ -340,8 +347,62 @@
     .row:not(:first-child) { margin-top: 0.75rem; }
 
     .row > span {
+        display: flex;
+        align-items: center;
+        gap: 0.375rem;
         font-size: 0.875rem;
         color: var(--theme-ink-muted);
+    }
+
+    .row > span > :global(svg) { color: var(--theme-ink-faint); }
+
+    /* FLAGS | one joined pill, each half lights up on its own */
+    .flags {
+        display: inline-flex;
+        border: 1px solid var(--theme-line);
+        border-radius: 999px;
+        overflow: hidden;
+    }
+
+    .flag {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        height: 1.875rem;
+        padding-inline: 0.75rem;
+        color: var(--theme-ink-muted);
+        font-size: 0.8125rem;
+        white-space: nowrap;
+        transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+    }
+
+    .flag + .flag { border-left: 1px solid var(--theme-line); }
+    .flag:hover { color: var(--theme-ink); background: var(--theme-line); }
+
+    .flag.on {
+        background: var(--theme-accent-soft);
+        color: var(--theme-accent);
+    }
+
+    /* CHOICES | own chevron with room to the edge, the browser's sat too close */
+    .choice {
+        position: relative;
+        display: block;
+        flex-shrink: 0;
+    }
+
+    .choice select {
+        appearance: none;
+        padding-right: 2rem;
+    }
+
+    .choice > :global(svg) {
+        position: absolute;
+        top: 50%;
+        right: 0.75rem;
+        translate: 0 -50%;
+        color: var(--theme-ink-faint);
+        pointer-events: none;
     }
 
     .hint {
