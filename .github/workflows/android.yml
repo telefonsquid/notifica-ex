@@ -81,8 +81,8 @@ jobs:
 
           cat > config.yml <<CONFIG
           repo_url: $REPO_URL
-          repo_name: notifica-ex
-          repo_description: The notifica-ex Android app, built from tagged releases.
+          repo_name: Notifica Ex
+          repo_description: The Notifica Ex Android app, built from tagged releases.
           repo_icon: icon.png
           repo_keyalias: repo
           keystore: $RUNNER_TEMP/release.jks

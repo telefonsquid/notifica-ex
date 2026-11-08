@@ -1,4 +1,4 @@
-Name: notifica-ex
+Name: Notifica Ex
 AuthorName: Alya Henkys
 Categories:
   - Writing
@@ -6,10 +6,10 @@ SourceCode: https://github.com/telefonsquid/notifica-ex
 IssueTracker: https://github.com/telefonsquid/notifica-ex/issues
 Changelog: https://github.com/telefonsquid/notifica-ex/blob/master/CHANGELOG.md
 
-Summary: Notes and reminders from your own notifica-ex server
+Summary: Notes and reminders from your own Notifica Ex server
 Description: |-
-  The Android app for a self hosted notifica-ex server. It opens your server,
+  The Android app for a self hosted Notifica Ex server. It opens your server,
   takes text and images shared from other apps into a new note and shows
   reminders in the background.
 
-  Needs a running notifica-ex server and an account on it.
+  Needs a running Notifica Ex server and an account on it.
