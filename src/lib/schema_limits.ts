@@ -22,6 +22,7 @@ export const LIMITS = {
     FILE_NAME: 128,                     // pocketbase stores a sanitized name plus a random suffix
     ATTACHMENT_NAME: 200,               // the name an attachment came with
     TIMEZONE: 64,                       // iana zone name like America/Argentina/Buenos_Aires
+    IMPORT_SOURCE: 300,                 // where an imported note came from, like keep:Shopping.json
 
     // TEXT => NOTES
     NOTE_TITLE: 200,
@@ -41,6 +42,8 @@ export const LIMITS = {
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them
     API_KEYS: 20,                       // keys per user
+    IMPORT_BATCH: 25,                   // notes one import call creates
+    IMPORT_REMINDERS: 100,              // reminders an imported note brings along
 
     // NUMBERS
     PAGE_SIZE: 200,                     // records one fetch may pull

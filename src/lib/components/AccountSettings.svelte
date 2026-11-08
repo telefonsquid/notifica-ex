@@ -2,6 +2,7 @@
     import { invalidateAll } from '$app/navigation';
     import { page } from '$app/state';
     import ApiKeys from '#lib/components/ApiKeys.svelte';
+    import GoogleImport from '#lib/components/GoogleImport.svelte';
     import { androidApp } from '#lib/device_notifications.ts';
     import { unfold } from '#lib/motion.ts';
     import { notify } from '#lib/notifications.svelte.ts';
@@ -87,3 +88,5 @@
 {#if page.data.limits.aiAccess}
     <ApiKeys />
 {/if}
+
+<GoogleImport />

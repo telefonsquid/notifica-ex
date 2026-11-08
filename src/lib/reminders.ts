@@ -112,6 +112,24 @@ export function snoozeUntil(choice: SnoozeChoice, now: Date, timezone: string): 
     return fromWallClock({ ...wall, day: wall.day + 1, hour: 9, minute: 0, second: 0 }, timezone)
 }
 
+// That hour on a day like 2026-12-31, on the clock of the zone
+export function dayAt(date: string, hour: number, timezone: string): Date {
+    const [year, month, day] = date.split('-').map(Number)
+    return fromWallClock({ year, month, day, hour, minute: 0, second: 0 }, timezone)
+}
+
+// The clock time of one moment, on another day like 2026-12-31
+export function sameClockOn(date: string, like: Date, timezone: string): Date {
+    const [year, month, day] = date.split('-').map(Number)
+    return fromWallClock({ ...wallClock(like, timezone), year, month, day }, timezone)
+}
+
+// Hour and minute a clock in that zone shows at this moment
+export function clockOf(date: Date, timezone: string) {
+    const { hour, minute } = wallClock(date, timezone)
+    return { hour, minute }
+}
+
 // First time of a rule being saved now | the form picks whole minutes, so the current one still counts
 export function firstOccurrence(rule: Rule, now: Date): Date | null {
     return occurrenceAfter(rule, new Date(Math.floor(now.getTime() / MINUTE) * MINUTE - 1))

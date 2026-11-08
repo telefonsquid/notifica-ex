@@ -89,6 +89,11 @@
     padding-left: 1.2em;
 }
 
+/* Subtasks start below their parent's text, the items' own pull back would leave them flush */
+.markdown li:has(> input.task, > p > input.task) > ul {
+    padding-left: 2.7em;
+}
+
 .markdown input[type='checkbox'] {
     appearance: none;
     position: relative;

@@ -5,7 +5,8 @@ import { idSchema, limitedText } from '#lib/schemas/base.ts';
 import { labelNameSchema, noteColorSchema, noteContentSchema, type Label, type Note } from '#lib/schemas/notes.ts';
 import { reminderRuleSchema, type Reminder } from '#lib/schemas/reminders.ts';
 import type { User } from '#lib/schemas/users.ts';
-import { collaboratorChanges, getAllNotesFor, ownLabels, requireNote } from '#lib/server/note_access.ts';
+import { findLabel, labelIds, labelsOf } from '#lib/server/label_names.ts';
+import { collaboratorChanges, getAllNotesFor, requireNote } from '#lib/server/note_access.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { ruleFields } from '#lib/server/reminder_rules.ts';
 import { unwrap } from '#lib/server/result.ts';
@@ -52,7 +53,7 @@ const searchNotes = tool({
         limit: z.number().int().min(1).max(100).default(20)
     }),
     run: async (input, user) => {
-        const [notes, labels] = await Promise.all([notesOf(user), labelsOf(user)])
+        const [notes, labels] = await Promise.all([notesOf(user), labelsOf(user.id)])
         const label = input.label ? findLabel(labels, input.label) : null
         if(input.label && !label) error(404, `No label called ${input.label}.`)
 
@@ -78,7 +79,7 @@ const getNote = tool({
     readOnly: true,
     input: z.object({ id: idSchema }),
     run: async ({ id }, user) => {
-        const [note, labels, reminders] = await Promise.all([requireNote(id, user.id), labelsOf(user), remindersOf(user)])
+        const [note, labels, reminders] = await Promise.all([requireNote(id, user.id), labelsOf(user.id), remindersOf(user)])
         return {
             ...summaryOf(note, labels, user),
             body: note.body,
@@ -104,9 +105,9 @@ const createNote = tool({
     }),
     run: async ({ labels: wanted, ...content }, user) => {
         if(!content.title && !content.body) error(400, 'A note needs a title or a body.')
-        const labels = await labelIds(user, wanted)
+        const labels = await labelIds(user.id, wanted)
         const note = unwrap(await insertOnePartial('notes', { ...content, labels, archived: false, owner: user.id }), 'Could not save the note.')
-        return summaryOf(note, await labelsOf(user), user)
+        return summaryOf(note, await labelsOf(user.id), user)
     }
 })
 
@@ -136,13 +137,13 @@ const updateNote = tool({
 
         const update: Partial<Note> = owned ? { ...changes } : collaboratorChanges(changes)
         if(touchesLabels){
-            const removed = new Set(await labelIds(user, remove_labels ?? [], false))
-            const kept = replaced ? await labelIds(user, replaced) : note.labels
-            update.labels = [...new Set([...kept, ...await labelIds(user, add_labels ?? [])])].filter((label) => !removed.has(label))
+            const removed = new Set(await labelIds(user.id, remove_labels ?? [], false))
+            const kept = replaced ? await labelIds(user.id, replaced) : note.labels
+            update.labels = [...new Set([...kept, ...await labelIds(user.id, add_labels ?? [])])].filter((label) => !removed.has(label))
         }
 
         const saved = unwrap(await updateOnePartial('notes', id, update), 'Could not save the note.')
-        return summaryOf(saved, await labelsOf(user), user)
+        return summaryOf(saved, await labelsOf(user.id), user)
     }
 })
 
@@ -173,7 +174,7 @@ const listLabels = tool({
     readOnly: true,
     input: z.object({}),
     run: async (_, user) => {
-        const [labels, notes] = await Promise.all([labelsOf(user), notesOf(user)])
+        const [labels, notes] = await Promise.all([labelsOf(user.id), notesOf(user)])
         return labels.map((label) => ({ id: label.id, name: label.name, color: label.color, notes: notes.filter((note) => note.labels.includes(label.id)).length }))
     }
 })
@@ -248,32 +249,8 @@ async function notesOf(user: User) {
     return notes.sort((a, b) => Number(b.pinned) - Number(a.pinned) || b.updated.localeCompare(a.updated))
 }
 
-async function labelsOf(user: User) {
-    return unwrap(await getAllOwned('labels', user.id, { sort: 'name' }), 'Could not load labels.')
-}
-
 async function remindersOf(user: User) {
     return unwrap(await getAllOwned('reminders', user.id, { sort: 'next' }), 'Could not load reminders.')
-}
-
-function findLabel(labels: Label[], wanted: string) {
-    return labels.find((label) => label.id === wanted) ?? labels.find((label) => label.name.toLowerCase() === wanted.toLowerCase())
-}
-
-// Names or ids to ids of the user's own labels, unknown names become new labels unless told otherwise
-async function labelIds(user: User, wanted: string[], create = true) {
-    const labels = await labelsOf(user)
-    const ids: string[] = []
-    for(const name of wanted){
-        const found = findLabel(labels, name)
-        if(found){ ids.push(found.id); continue }
-        if(!create) continue
-
-        const label = unwrap(await insertOnePartial('labels', { name: labelNameSchema.parse(name), color: '', owner: user.id }), `Could not create the label ${name}.`)
-        labels.push(label)
-        ids.push(label.id)
-    }
-    return ownLabels(user.id, ids)
 }
 
 // Labels of someone else's note stay theirs, so only the user's own show
