@@ -2,6 +2,9 @@ FROM alpine:3.24.1
 
 ARG PB_VERSION=0.40.6
 
+# Shown on the About page through pb_hooks/about.pb.js
+ENV PB_VERSION=${PB_VERSION}
+
 RUN apk add --no-cache \
     unzip \
     ca-certificates

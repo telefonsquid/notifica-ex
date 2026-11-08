@@ -48,6 +48,10 @@ export const variables = defineEnvVars({
         schema: z.url().optional(),
         description: 'ntfy as the phone app reaches it, shown in the settings for subscribing',
     },
+    NTFY_VERSION: {
+        schema: z.string().optional(),
+        description: 'Version of the ntfy image, shown to admins on the About page since ntfy keeps it to itself',
+    },
 
     // WEB PUSH | optional, browser notifications stay off without them | bunx web-push generate-vapid-keys
     PUBLIC_VAPID_KEY: {

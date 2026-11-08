@@ -7,7 +7,7 @@
         current,
         onpick
     }: {
-        sections: { id: string, label: string, icon: Component<{ class?: string, strokeWidth?: number }> }[]
+        sections: { id: string, label: string, icon: Component<{ class?: string, strokeWidth?: number }>, group?: string }[]
         current: string
         onpick: (id: string) => void
     } = $props()
@@ -53,7 +53,10 @@
 <!-- A column on wide screens, an even row on tablets, an icon bar in the bottom row on phones -->
 <div bind:this={tablist} class={['tabs', ready && 'ready']} role="tablist" aria-label="Settings sections" tabindex="-1" onkeydown={step}>
     <span class="indicator" style:--x="{indicator.x}px" style:--y="{indicator.y}px" style:--width="{indicator.width}px" style:--height="{indicator.height}px"></span>
-    {#each sections as item (item.id)}
+    {#each sections as item, index (item.id)}
+        {#if index > 0 && item.group !== sections[index - 1].group}
+            <span class="break" aria-hidden="true"></span>
+        {/if}
         <button
             role="tab"
             data-tab={item.id}
@@ -64,7 +67,7 @@
             onclick={() => onpick(item.id)}
         >
             <item.icon class="icon size-5 shrink-0" strokeWidth={1.75} />
-            <span class="max-sm:sr-only">{item.label}</span>
+            <span class="max-w-full truncate max-sm:sr-only">{item.label}</span>
         </button>
     {/each}
 </div>
@@ -108,6 +111,31 @@
         }
     }
 
+    /* GROUP BREAK | a hairline with room around it, across the column on wide screens */
+    .break {
+        flex: none;
+        align-self: center;
+        width: 1px;
+        height: 60%;
+        margin-inline: 0.25rem;
+        background: var(--theme-line-strong);
+    }
+
+    @media (width >= 40rem) {
+        .break {
+            margin-inline: 0.5rem;
+        }
+    }
+
+    @media (width >= 64rem) {
+        .break {
+            align-self: stretch;
+            width: auto;
+            height: 1px;
+            margin: 1rem 0.875rem;
+        }
+    }
+
     .tab {
         position: relative;
         display: flex;
@@ -123,8 +151,10 @@
     }
 
     @media (width >= 40rem) {
+        /* Long names take more of the row, nine tabs no longer fit in equal shares */
         .tab {
-            padding: 0.5rem 0.25rem;
+            flex: 1 1 auto;
+            padding: 0.5rem 0.375rem;
             border-radius: var(--layout-radius-control);
             font-size: 0.75rem;
         }

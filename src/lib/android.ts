@@ -16,6 +16,7 @@ declare global {
             hasShare?(): boolean
             takeShare?(): string | null
             sharedImage?(index: number): string | null
+            appVersion?(): string
         }
     }
 }

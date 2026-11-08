@@ -1,8 +1,10 @@
 <script lang="ts">
     import { page } from '$app/state'
+    import AboutSettings from '#lib/components/AboutSettings.svelte'
     import AccountSettings from '#lib/components/AccountSettings.svelte'
     import Administration from '#lib/components/Administration.svelte'
     import AutoColorPriority from '#lib/components/AutoColorPriority.svelte'
+    import ChangelogSettings from '#lib/components/ChangelogSettings.svelte'
     import ImageFitPicker from '#lib/components/ImageFitPicker.svelte'
     import LabelFields from '#lib/components/LabelFields.svelte'
     import LabelPositionPicker from '#lib/components/LabelPositionPicker.svelte'
@@ -16,7 +18,7 @@
     import { onCollectionChange } from '#lib/realtime.ts'
     import { SettingsScroll } from '#lib/settings_scroll.svelte.ts'
     import { hasPermission } from '#lib/user.ts'
-    import { Bell, CircleUserRound, Palette, PanelsTopLeft, ShieldCheck, Tag, Users } from '@lucide/svelte'
+    import { Bell, CircleUserRound, Info, Palette, PanelsTopLeft, ScrollText, ShieldCheck, Tag, Users } from '@lucide/svelte'
     import { getLabels } from '../../api/labels.remote'
     import type { PageProps } from './$types';
 
@@ -28,7 +30,7 @@
 
     $effect(() => onCollectionChange('labels', () => getLabels().refresh()));
 
-    // SECTIONS | each one lives here, the tabs and the stage follow
+    // SECTIONS | each one lives here, the tabs and the stage follow | the app group sits apart from the settings
     const SECTIONS = [
         { id: 'appearance', label: 'Appearance', icon: Palette, body: appearanceSection },
         { id: 'views', label: 'Views', icon: PanelsTopLeft, body: viewsSection },
@@ -36,7 +38,9 @@
         { id: 'notifications', label: 'Notifications', icon: Bell, body: notificationsSection },
         { id: 'account', label: 'Account', icon: CircleUserRound, body: accountSection },
         { id: 'users', label: 'Users', icon: Users, body: usersSection, admin: true },
-        { id: 'administration', label: 'Administration', icon: ShieldCheck, body: administrationSection, admin: true }
+        { id: 'about', label: 'About', icon: Info, body: aboutSection, group: 'app' },
+        { id: 'changelog', label: 'Changelog', icon: ScrollText, body: changelogSection, group: 'app' },
+        { id: 'administration', label: 'Administration', icon: ShieldCheck, body: administrationSection, admin: true, group: 'app' }
     ]
 
     let sections = $derived(SECTIONS.filter((section) => !section.admin || hasPermission(data.user, 'admin')))
@@ -100,6 +104,14 @@
 
 {#snippet usersSection()}
     <UserAdmin userId={data.user.id} />
+{/snippet}
+
+{#snippet aboutSection()}
+    <AboutSettings />
+{/snippet}
+
+{#snippet changelogSection()}
+    <ChangelogSettings />
 {/snippet}
 
 {#snippet administrationSection()}

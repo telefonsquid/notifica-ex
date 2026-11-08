@@ -19,6 +19,7 @@ services:
       - "NTFY_URL=http://ntfy:80" # internal ntfy access, do not change!
       - "NTFY_TOKEN=<NTFY_TOKEN_HERE>" # token of an ntfy user allowed to publish, see README
       - "PUBLIC_NTFY_URL=http://localhost:8092" # same as NTFY_BASE_URL below, shown in the settings for subscribing
+      - "NTFY_VERSION=${NTFY_VERSION:-v2.11.0}" # shown on the About page, keep the default in step with the ntfy image below
       - "PUBLIC_VAPID_KEY=" # browser notifications stay off while empty, bunx web-push generate-vapid-keys
       - "VAPID_PRIVATE_KEY="
       - "TZ=Europe/Berlin" # force docker timezone
@@ -77,7 +78,7 @@ services:
 
   ntfy:
     container_name: notifica-ex-ntfy
-    image: binwiederhier/ntfy:v2.11.0
+    image: binwiederhier/ntfy:${NTFY_VERSION:-v2.11.0} # set NTFY_VERSION in .env to update ntfy and its About entry together
     command: serve
     ports:
       - "8092:80" # EXPOSED-NTFY-PORT:CONTAINER-PORT, the phone app subscribes here

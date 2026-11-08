@@ -190,6 +190,10 @@ class MainActivity : TauriActivity() {
       @JavascriptInterface
       fun changingServer() = prefs.takeChanging()
 
+      // Shown on the About page
+      @JavascriptInterface
+      fun appVersion(): String = BuildConfig.VERSION_NAME
+
       @JavascriptInterface
       fun hasShare() = pendingShare != null
 
