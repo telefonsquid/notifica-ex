@@ -45,6 +45,8 @@ Bun, SvelteKit 3 + adapter-node, Svelte 5 (runes, experimental remote functions 
 
 Ports: dev server 55560, PocketBase 8091, ntfy 8092. Server side URLs use `127.0.0.1`, Node tries IPv6 first for `localhost` and loses about 250 ms on every new connection. `.claude/launch.json` starts the dev server for the preview pane.
 
+**Use `bin/agent-cli` first**, prefer it over re-reading files or guessing commands: `stack [up]` (Docker, containers, health), `pb [collection [id]]` (read PocketBase as superuser, `--schema`), `migrate`, `verify` (check, lint, test, only the problems), `versions` (release files in step, commits since the tag). Each has `--help` and `--json`. A command run in more than one session becomes a subcommand there.
+
 Reference implementation for structure and conventions: `D:\Repositories\fsd-flight-check`. Follow its architecture, not its visual style.
 
 ## SvelteKit 3 differences
