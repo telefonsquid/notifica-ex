@@ -79,7 +79,7 @@
 
     <dl class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
         <div class="flex items-center justify-between gap-4 bg-card py-3 pr-3 pl-card">
-            <dt class="text-ink-muted">MCP address</dt>
+            <dt class="shrink-0 text-ink-muted">MCP address</dt>
             <dd class="flex min-w-0 items-center gap-2">
                 <code class="min-w-0 truncate text-ink">{address}</code>
                 <button type="button" class="icon-button" aria-label="Copy address" onclick={() => copy(address)} {@attach tip('Copy address')}><Copy class="size-4" /></button>
@@ -90,7 +90,7 @@
             <div class="flex items-center gap-4 bg-card py-3 pr-3 pl-card" transition:unfold>
                 <span class="min-w-0 flex-1">
                     <span class="type-title block truncate text-ink">{key.name}</span>
-                    <span class="type-meta block truncate text-ink-faint"><code>{key.prefix}…</code> · {details(key)}</span>
+                    <span class="type-meta block text-ink-faint"><code class="normal-case">{key.prefix}…</code> · {details(key)}</span>
                 </span>
                 <button type="button" class="icon-button" aria-label="Revoke {key.name}" onclick={() => revoke(key)} {@attach tip('Revoke')}><Trash2 class="size-4" /></button>
             </div>
