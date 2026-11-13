@@ -29,8 +29,8 @@
     // STYLES | primary and secondary are printed like the logo
     type ButtonStyle = 'primary' | 'secondary' | 'ghost'
     const styles: Record<ButtonStyle, string> = {
-        primary:   'riso-plate riso-ink riso-press',
-        secondary: 'riso-sheet riso-press text-ink',
+        primary:   'riso-print riso-print-ink',
+        secondary: 'riso-print riso-print-paper',
         ghost:     'sinks text-ink-muted hover:text-ink hover:bg-accent-soft',
     }
 </script>

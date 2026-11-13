@@ -125,44 +125,8 @@
         background: var(--theme-riso-field);
     }
 
-    /* SUBMIT | orange over a pink pass, both as layers since the button's own background paints under its children */
+    /* SUBMIT | the one button on the page speaks a little louder */
     .sheet :global(.submit) {
-        position: relative;
-        isolation: isolate;
-        background: transparent;
-        box-shadow: none;
-        color: var(--theme-riso-on-ink);
-        text-shadow: none;
         font-size: 1rem;
-    }
-
-    .sheet :global(.submit)::before,
-    .sheet :global(.submit)::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        border-radius: inherit;
-    }
-
-    .sheet :global(.submit)::before {
-        background: var(--theme-riso-pink);
-        translate: 4px 3px;
-        transition: translate var(--duration-base) var(--ease-spring);
-    }
-
-    .sheet :global(.submit)::after {
-        background: var(--theme-riso-orange);
-        mix-blend-mode: var(--theme-riso-ink-blend);
-    }
-
-    /* Drums drift apart on hover, a press brings them back in register */
-    .sheet :global(.submit:hover)::before {
-        translate: 6px 4.5px;
-    }
-
-    .sheet :global(.submit:active)::before {
-        translate: 0 0;
-        transition-duration: var(--duration-instant);
     }
 </style>

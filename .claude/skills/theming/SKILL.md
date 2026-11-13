@@ -50,7 +50,8 @@ The look of the logo: flat ink, a second pass in a darker tone slipped 1 to 2px 
 - `--riso-x` and `--riso-y` on `:root` set the slip. Elements change them for hover and press, never the shadow itself.
 - Utilities in `app.css`: `riso-plate` (fill, halftone grain, ghost shadow, forces multiply so dark ink stays on it in Charcoal), `riso-sheet` (paper inside a rule), `riso-ink` (ghost text shadow), `riso-press` (hover slips further, press closes the gap and moves the element onto its ghost).
 - `#lib/ui/RisoIcon.svelte` prints a lucide icon twice. `--riso-ghost` (0 to 1) hides or shows the slipped pass, the rail shows it only on hover and the open view.
-- Used by primary and secondary `Button`, the create button, the rail, toasts, the settings tabs and the auth page. Ghost buttons have no print and sink instead.
+- Used by the create button, the rail, toasts and the settings tabs. Ghost buttons have no print and sink instead.
+- `riso-print` is the new look: a fill over a pass slipped bottom right, as `::after` over `::before` (it takes both pseudo elements), drifting on hover and back in register on press. `riso-print-ink` paints it orange over pink with paper white letters (primary `Button`), `riso-print-paper` the field paper over a blue pass, unblended (secondary `Button`). Icons inside print once.
 
 ## Rules
 

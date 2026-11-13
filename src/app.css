@@ -428,6 +428,62 @@
     text-shadow: var(--riso-x) var(--riso-y) 0 var(--theme-riso-ghost);
 }
 
+/* OVERPRINT | the loop logo's inks: a fill over a pass slipped bottom right, both layers since the element's own background paints under its children */
+@utility riso-print {
+    position: relative;
+    isolation: isolate;
+    background: transparent;
+    box-shadow: none;
+    text-shadow: none;
+    --riso-ghost: 0;   /* Icons inside print once, the fill is the second pass already */
+    --theme-riso-blend: normal;   /* White letters would vanish into the fill under multiply */
+
+    &::before,
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        border-radius: inherit;
+    }
+
+    &::before {
+        background: var(--print-pass);
+        translate: 4px 3px;
+        transition: translate var(--duration-base) var(--ease-spring), background-color var(--duration-fast) var(--ease-out);
+    }
+
+    &::after {
+        background: var(--print-fill);
+        mix-blend-mode: var(--print-blend, var(--theme-riso-ink-blend));
+    }
+
+    /* Drums drift apart on hover, a press brings them back in register */
+    &:hover::before {
+        translate: 6px 4.5px;
+    }
+
+    &:active::before {
+        translate: 0 0;
+        transition-duration: var(--duration-instant);
+    }
+}
+
+/* Orange ink over a pink pass, paper white letters */
+@utility riso-print-ink {
+    --print-fill: var(--theme-riso-orange);
+    --print-pass: var(--theme-riso-pink);
+    color: var(--theme-riso-on-ink);
+}
+
+/* Bare paper over a blue pass like the login fields, paper covers what lies under it */
+@utility riso-print-paper {
+    --print-fill: var(--theme-riso-field);
+    --print-pass: var(--theme-riso-blue);
+    --print-blend: normal;
+    color: var(--theme-ink);
+}
+
 /* SCRIM | dims the page behind a dialog */
 @utility scrim {
     background: rgb(0 0 0 / 0.4);
