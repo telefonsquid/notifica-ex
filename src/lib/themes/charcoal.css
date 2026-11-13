@@ -29,6 +29,14 @@
     --theme-riso-paper: var(--color-charcoal-850);
     --theme-riso-rule: color-mix(in oklab, var(--color-platinum-200) 70%, transparent);
 
+    /* RISO INKS | deeper drums on the dark sheet, bright ones glared */
+    --theme-riso-orange: var(--color-tangerine-600);
+    --theme-riso-pink: var(--color-grape-600);
+    --theme-riso-blue: var(--color-cobalt-600);
+    --theme-riso-ink-blend: hard-light;   /* Overlaps keep the ink's colour, screen glowed magenta and multiply went muddy */
+    --theme-riso-field: var(--color-black);
+    --theme-riso-on-ink: var(--color-platinum-50);   /* Letters knocked out of an ink, paper white in both themes */
+
     /* NOTE TINTS | a faint tint over the card, ink stays readable on all of them */
     --theme-note-lemon: color-mix(in oklab, var(--color-lemon-400) 14%, var(--color-charcoal-850));
     --theme-note-ochre: color-mix(in oklab, var(--color-ochre-400) 15%, var(--color-charcoal-850));

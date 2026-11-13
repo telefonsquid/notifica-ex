@@ -43,6 +43,9 @@ Same pattern as the theme: a cookie per device, rendered into an `<html data-*>`
 
 The look of the logo: flat ink, a second pass in a darker tone slipped 1 to 2px off register.
 
+- **The slipped pass always sits bottom right of its ink**, the top left edge shows the ink alone. Every element, text shadows and hover drift included, never mirrored. A press brings it back to zero, never past it.
+- Login page and logo (being redone element by element): the loop logo's three inks `--theme-riso-orange`, `-pink` (fluoro pink on Platinum, a darker grape on Charcoal, the pass under orange, and under blue for the tick and Ex) and `-blue`, `--theme-riso-on-ink` for letters on an ink. Inks blend through `--theme-riso-ink-blend` (multiply on Platinum, hard-light on Charcoal, where screen glowed magenta and multiply went muddy), but only inside an isolated layer (`isolation: isolate` on the element), so they overprint each other and never mix with the page. The ink sits above its pass and carries the blend, hard-light depends on the order. Fields take `--theme-riso-field`, white or black, with a blue pass, orange while focused.
+
 - Theme tokens: `--theme-riso-plate` (Tangerine fill), `-on-plate` (ink on it), `-ghost` (the slipped pass, Ember at about 45%), `-blend` (multiply on paper, screen on Charcoal), `-paper` and `-rule` (sheet fill and its 1.5px outline).
 - `--riso-x` and `--riso-y` on `:root` set the slip. Elements change them for hover and press, never the shadow itself.
 - Utilities in `app.css`: `riso-plate` (fill, halftone grain, ghost shadow, forces multiply so dark ink stays on it in Charcoal), `riso-sheet` (paper inside a rule), `riso-ink` (ghost text shadow), `riso-press` (hover slips further, press closes the gap and moves the element onto its ghost).

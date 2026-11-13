@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/syne/wght.css';
 /* Default first, a chosen theme has to win over its :root */
 @import './lib/themes/platinum.css';
 @import './lib/themes/charcoal.css';
@@ -71,6 +71,10 @@
     --color-powder-900: #3a484b;
     --color-powder-950: #232e30;
 
+    /* FLUORO PINK | the riso pass under the Tangerine ink */
+    --color-fluoro-500: #ff4f9a;
+    --color-grape-600: #7a2ccc;   /* The pass on the dark sheet, where pink fought the orange */
+
     /* NOTE COLORS | 400 is the soft base themes mix into their cards, 600 the solid with white ink */
     --color-rose-400: #d98a96;
     --color-rose-600: #c23a5a;
@@ -132,7 +136,7 @@
     --color-neon: #0d0a1c;
 
     /* TYPE */
-    --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Syne Variable', ui-sans-serif, system-ui, sans-serif;
 
     /* EASING | mirrored in JS by #lib/motion.ts, which reads these at runtime */
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -263,22 +267,19 @@
 
 }
 
-/* TYPE ROLES | Archivo's width axis carries the hierarchy, wide for display and narrow for metadata */
+/* TYPE ROLES | Syne widens as it gets heavier, so weight alone carries the hierarchy */
 @utility type-display {
-    font-stretch: 125%;
-    font-weight: 780;
-    letter-spacing: -0.035em;
+    font-weight: 800;
+    letter-spacing: -0.02em;
     line-height: 0.95;
 }
 
 @utility type-title {
-    font-stretch: 112%;
-    font-weight: 650;
-    letter-spacing: -0.015em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
 }
 
 @utility type-meta {
-    font-stretch: 72%;
     font-weight: 600;
     font-size: 0.6875rem;
     letter-spacing: 0.12em;
@@ -601,7 +602,6 @@ body:has([data-sorting]) * {
         background: var(--theme-canvas);
         color: var(--theme-ink);
         font-family: var(--font-sans);
-        font-stretch: 100%;
         -webkit-font-smoothing: antialiased;
         -webkit-tap-highlight-color: transparent;
         scrollbar-gutter: stable; /* A scrollbar that comes and goes mid glide would shift every card sideways */

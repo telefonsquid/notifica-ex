@@ -30,6 +30,14 @@
     --theme-riso-paper: var(--color-platinum-50);
     --theme-riso-rule: var(--color-charcoal-900);
 
+    /* RISO INKS | the loop logo's three drums, overprinted on the paper */
+    --theme-riso-orange: var(--color-tangerine-500);
+    --theme-riso-pink: var(--color-fluoro-500);
+    --theme-riso-blue: var(--color-cobalt-600);
+    --theme-riso-ink-blend: multiply;
+    --theme-riso-field: var(--color-white);
+    --theme-riso-on-ink: var(--color-platinum-50);   /* Letters knocked out of an ink, paper white in both themes */
+
     /* NOTE TINTS */
     --theme-note-lemon: color-mix(in oklab, var(--color-lemon-400) 36%, var(--color-platinum-50));
     --theme-note-ochre: color-mix(in oklab, var(--color-ochre-400) 32%, var(--color-platinum-50));

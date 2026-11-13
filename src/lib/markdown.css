@@ -4,8 +4,7 @@
 }
 
 .markdown :where(h1, h2, h3, h4) {
-    font-stretch: 112%;
-    font-weight: 650;
+    font-weight: 700;
     color: var(--theme-ink);
 }
 
