@@ -1,9 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The logo in one ink, cropped to its edges like the favicon -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="24"
-    android:viewportHeight="24">
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M12,22a2.5,2.5 0,0 0,2.45 -2h-4.9A2.5,2.5 0,0 0,12 22zM19,16v-5.5c0,-3.2 -2,-5.9 -5,-6.7V3a2,2 0,0 0,-4 0v0.8c-3,0.8 -5,3.5 -5,6.7V16l-1.7,1.7a1,1 0,0 0,0.7 1.7h16a1,1 0,0 0,0.7 -1.7z" />
+    android:viewportWidth="44.4"
+    android:viewportHeight="44.4">
+    <group android:translateX="-9.8" android:translateY="-9.6">
+        <path
+            android:pathData="M41.5,15.55A19,19 0,0 1,46.87 43.83M46.23,44.59A19,19 0,0 1,17.77 44.59M17.13,43.83A19,19 0,0 1,22.5 15.55"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="6" />
+        <path
+            android:pathData="M41.5,12.55a3,3 0,1 1,0 6a3,3 0,1 1,0 -6Z"
+            android:fillColor="#FFFFFFFF" />
+        <path
+            android:pathData="M28.56,12.05L19.5,10.35L25.5,20.75Z"
+            android:fillColor="#FFFFFFFF"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="1.5"
+            android:strokeLineJoin="round" />
+        <path
+            android:pathData="M25.5,32.5L30,37L38.5,27"
+            android:strokeColor="#FFFFFFFF"
+            android:strokeWidth="4.4"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round" />
+    </group>
 </vector>
