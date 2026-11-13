@@ -5,13 +5,11 @@
     let {
         id,
         title,
-        index,
         opensGroup = false,
         children
     }: {
         id: string
         title: string
-        index: number
         opensGroup?: boolean
         children: Snippet
     } = $props()
@@ -21,7 +19,6 @@
 <div id={id} class={['section', opensGroup && 'opens-group']} data-section={id} role="tabpanel" aria-label={title}>
     <div class="body">
         <header class="head">
-            <span class="number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
             <h2 class="title">{title}</h2>
             <span class="rule" aria-hidden="true"></span>
         </header>
@@ -51,19 +48,11 @@
         align-items: start;
     }
 
-    /* HEADING | number, title and a printed rule that runs to the edge */
+    /* HEADING | title and a printed rule that runs to the edge */
     .head {
         display: flex;
         gap: 0.75rem;
         align-items: baseline;
-    }
-
-    .number {
-        color: var(--theme-riso-orange);
-        font-size: 0.875rem;
-        font-weight: 700;
-        font-variant-numeric: tabular-nums;
-        letter-spacing: 0.04em;
     }
 
     /* Syne runs wide at heavy weights, a lighter cut keeps the title compact */

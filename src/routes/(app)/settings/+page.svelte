@@ -183,7 +183,7 @@
     <div bind:this={scroll.stage} class="stage" onscroll={scroll.follow} onscrollend={scroll.land}>
         <div class="track">
             {#each sections as section, index (section.id)}
-                <SettingsSection id={section.id} title={section.label} {index} opensGroup={index > 0 && section.group !== sections[index - 1].group}>
+                <SettingsSection id={section.id} title={section.label} opensGroup={index > 0 && section.group !== sections[index - 1].group}>
                     {@render section.body()}
                 </SettingsSection>
             {/each}
