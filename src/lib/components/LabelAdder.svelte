@@ -46,7 +46,7 @@
 
 <!-- Stays open after a pick, so several labels go on in one go -->
 <Popover.Root onOpenChange={(open) => { if(!open) query = '' }}>
-    <Popover.Trigger class={['adder type-meta motion-interactive flex h-full items-center gap-1 px-2 text-ink-muted hover:text-ink', className]} aria-label="Add label">
+    <Popover.Trigger class={['adder type-label motion-interactive flex h-full items-center gap-1 px-2 text-ink-muted hover:text-ink', className]} aria-label="Add label">
         <Plus class="size-3" />Label
     </Popover.Trigger>
     <Popover.Portal>

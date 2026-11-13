@@ -514,7 +514,7 @@
         pointer-events: none;
     }
 
-    /* Syne runs wide at title weight, a card title needs less to stand out from the body */
+    /* A card title needs little weight to stand out from the body */
     .title {
         font-weight: 620;
         letter-spacing: -0.02em;

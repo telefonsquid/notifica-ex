@@ -55,7 +55,7 @@
         align-items: baseline;
     }
 
-    /* Syne runs wide at heavy weights, a lighter cut keeps the title compact */
+    /* A lighter cut keeps the title compact */
     .title {
         font-size: 1.5rem;
         font-weight: 620;

@@ -19,7 +19,7 @@
 <!-- One label to pick, in the card tabs' colour and type -->
 <button
     type="button"
-    class={['label-chip note-mark type-meta', state, dim && 'dim']}
+    class={['label-chip note-mark type-label', state, dim && 'dim']}
     data-note={label.color || undefined}
     aria-label={`${label.name}: ${state === 'include' ? 'picked' : state === 'exclude' ? 'left out' : 'not picked'}`}
     aria-pressed={state === 'include'}

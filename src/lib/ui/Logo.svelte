@@ -79,7 +79,7 @@
     .loop,
     .tick { fill: none; }
 
-    /* WORDMARK | each word gets the pink pass slipped beside its ink like the loop | Syne narrows below its heaviest weight */
+    /* WORDMARK | each word gets the pink pass slipped beside its ink like the loop */
     .wordmark {
         display: grid;
         font-size: clamp(1.75rem, 10vw, 2.75rem);

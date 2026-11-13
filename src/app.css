@@ -1,5 +1,5 @@
 @import 'tailwindcss';
-@import '@fontsource-variable/syne/wght.css';
+@import '@fontsource-variable/onest/wght.css';
 /* Default first, a chosen theme has to win over its :root */
 @import './lib/themes/platinum.css';
 @import './lib/themes/charcoal.css';
@@ -140,7 +140,7 @@
     --color-neon: #0d0a1c;
 
     /* TYPE */
-    --font-sans: 'Syne Variable', ui-sans-serif, system-ui, sans-serif;
+    --font-sans: 'Onest Variable', ui-sans-serif, system-ui, sans-serif;
 
     /* EASING | mirrored in JS by #lib/motion.ts, which reads these at runtime */
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -267,7 +267,7 @@
 
 }
 
-/* TYPE ROLES | Syne widens as it gets heavier, so weight alone carries the hierarchy */
+/* TYPE ROLES | weight alone carries the hierarchy */
 @utility type-display {
     font-weight: 800;
     letter-spacing: -0.02em;
@@ -283,6 +283,14 @@
     font-weight: 600;
     font-size: 0.6875rem;
     letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+/* Label names sit in tight tabs and chips, so lighter and less tracked than meta */
+@utility type-label {
+    font-weight: 500;
+    font-size: 0.625rem;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
 }
 

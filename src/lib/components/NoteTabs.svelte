@@ -54,7 +54,7 @@
             <ContextMenu.Root>
                 <ContextMenu.Trigger disabled={!open}>
                     {#snippet child({ props })}
-                        <li {...props} bind:this={anchors[label.id]} class="tab note-mark type-meta flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
+                        <li {...props} bind:this={anchors[label.id]} class="tab note-mark type-label flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
                             <!-- The name offers editing the label or narrowing the view to it, open or closed -->
                             <DropdownMenu.Root onOpenChange={(value) => { if(value) menu = label.id; else if(menu === label.id) menu = null }}>
                                 <DropdownMenu.Trigger class="name truncate text-left uppercase hover:underline" aria-label={`Label ${label.name}`}>
