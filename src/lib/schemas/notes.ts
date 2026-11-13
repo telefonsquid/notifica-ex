@@ -31,6 +31,7 @@ export const noteContentSchema = z.object({
     title: limitedText('Title', LIMITS.NOTE_TITLE).trim(),
     body: limitedText('Text', LIMITS.NOTE_BODY), // Markdown, checklists included
     color: noteColorSchema,
+    colorDefault: z.boolean().optional(),      // The color came from the account's default, auto color labels still win over it
     labels: z.array(idSchema).max(LIMITS.NOTE_LABELS, `A note carries at most ${LIMITS.NOTE_LABELS} labels.`),
     pinned: z.boolean(),
     archived: z.boolean()

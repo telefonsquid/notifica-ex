@@ -24,15 +24,17 @@ A new token goes into every theme file (or the `:root` defaults if it is theme i
 
 ## Device preferences
 
-Same pattern as the theme: a cookie per device, rendered into an `<html data-*>` attribute by `hooks.server.ts`. `#lib/preferences.ts` holds them. Example: `labels` (top or bottom card edge for label tabs) becomes `<html data-labels>`, `images` (cropped or whole) becomes `<html data-images>`. Their pickers share `PreferencePicker`.
+Same pattern as the theme: a cookie per device, rendered into an `<html data-*>` attribute by `hooks.server.ts`. `#lib/preferences.ts` holds them. Example: `labels` (top or bottom card edge for label tabs) becomes `<html data-labels>`, `images` (cropped or whole) becomes `<html data-images>`, `density` (comfortable or compact) becomes `<html data-density>`, which overrides the note size, gap, card padding, radius and `--spacing` tokens in `app.css`, scoped to `.note-grid` and `.note` so nothing outside the notes changes. Compact keeps two columns on phones through its own container range, `schema_contract.test.ts` checks both one column breakpoints against the note tokens. Their pickers share `PreferencePicker`.
 
 ## Note colours
 
-- Names from `NOTE_COLORS` in `#lib/note_colors.ts` (tints, solids, stickies, textures), shared by notes and labels and stored as the name, never a hex value.
+- Names from `NOTE_COLORS` in `#lib/note_colors.ts` (tints, solids, stickies, patterns), shared by notes and labels and stored as the name, never a hex value.
 - Adding one: `#lib/note_colors.ts`, both `color` selects in `pocketbase/pb_schema.json`, `#lib/note_colors.css`, and its place in `COLOR_GROUPS` (`#lib/note_colors.ts`).
 - Elements set `data-note`. `note_colors.css` paints `.note-surface` and `.note-mark` from it.
 - Tints and stickies come from each theme's `--theme-note-*`. Solids are the same in every theme and sit in the `:root` defaults.
-- `COLOR_GROUPS` orders every picker: Soft, Sticky, Solid, Texture, 18 each so a group fills two rows of nine.
+- `COLOR_GROUPS` orders every picker: Default (`''`, follows labels and the account default), then Soft, Sticky, Solid with 18 each so a group fills two rows of nine, then Pattern with the 36 of `NOTE_PATTERNS` and the 9 pride flags of `NOTE_FLAGS` as its last row. Soft starts with `plain`, which looks like no colour but stays put when a label would paint the note. The note's `ColorPicker` adds its labels' colours to the Default row as quick picks, nothing else in the picker reacts to labels. Flags get a light wash and dark ink. A retired pattern gets a migration that hands its notes to the replacement (0.4.0-patterns).
+- Patterns that move on hover only change `--note-texture-position`, by a fifth at most, so the look stays and only the light shifts.
+- The account's default colour (`users.noteColor`, Settings → Appearance → Default note color) lands on new notes marked `colorDefault`, auto colour labels paint over it. See the `data-model` skill.
 - Its WHITE INK and DARK INK groups override the `--theme-*` tokens inside the note, so components get readable ink without knowing about the colour.
 - Inside a coloured note `--theme-accent` changes. Anything that must stay the app accent (selection wash) uses `--theme-signature`, resolved on `:root`.
 - The colour picker trigger wears a rainbow ring so it never blends into a note of its own colour.

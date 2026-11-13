@@ -46,6 +46,8 @@
 
 
 /* TINTS ==================================================================================================== */
+/* Plain looks like no color but stays put when a label would paint the note */
+[data-note='plain'] { --note-bg: var(--theme-card); --note-mark: var(--theme-line-strong); }
 [data-note='lemon'] { --note-bg: var(--theme-note-lemon); --note-mark: var(--color-lemon-400); }
 [data-note='ochre'] { --note-bg: var(--theme-note-ochre); --note-mark: var(--color-ochre-400); }
 [data-note='tangerine'] { --note-bg: var(--theme-note-tangerine); --note-mark: var(--color-tangerine-400); }
@@ -118,7 +120,15 @@
 [data-note='blueprint'],
 [data-note='starry'],
 [data-note='aurora'],
-[data-note='sunset'] {
+[data-note='sunset'],
+[data-note='pinstripe'],
+[data-note='polka'],
+[data-note='plaid'],
+[data-note='denim'],
+[data-note='neon'],
+[data-note='sunburst'],
+[data-note='ocean'],
+[data-note='bokeh'] {
     color-scheme: dark;
     --note-mark: var(--note-bg);
     --note-mark-ink: #fff;
@@ -159,7 +169,18 @@
 [data-note='chartreuse'],
 [data-note='cloud'],
 [data-note='legal'],
-[data-note='holo'] {
+[data-note='holo'],
+[data-note='parchment'],
+[data-note='rainbow'],
+[data-note='rainbow-flag'],
+[data-note='lesbian-flag'],
+[data-note='gay-flag'],
+[data-note='bisexual-flag'],
+[data-note='trans-flag'],
+[data-note='pansexual-flag'],
+[data-note='asexual-flag'],
+[data-note='nonbinary-flag'],
+[data-note='intersex-flag'] {
     color-scheme: light;
     --note-mark: var(--note-bg);
     --note-pattern: rgb(0 0 0 / 0.1);
@@ -252,20 +273,12 @@
     --note-texture-position: -0.625rem 0, -0.625rem 0, 0 0, 0 0;
 }
 
-/* TERRAZZO | stone chips of every size and color */
-[data-note='terrazzo'] {
-    --note-bg: var(--theme-note-platinum);
-    --note-mark: var(--color-coral-400);
-    --note-texture:
-        radial-gradient(0.4rem 0.25rem at 12% 20%, var(--color-coral-400) 94%, transparent),
-        radial-gradient(0.2rem 0.3rem at 58% 12%, var(--color-sky-400) 94%, transparent),
-        radial-gradient(0.3rem 0.3rem at 82% 46%, var(--color-ochre-400) 94%, transparent),
-        radial-gradient(0.15rem 0.2rem at 30% 60%, var(--color-slate-600) 94%, transparent),
-        radial-gradient(0.35rem 0.2rem at 66% 82%, var(--color-mint-400) 94%, transparent),
-        radial-gradient(0.2rem 0.15rem at 8% 88%, var(--color-rose-400) 94%, transparent),
-        radial-gradient(0.12rem 0.12rem at 44% 38%, var(--color-coral-600) 94%, transparent),
-        radial-gradient(0.18rem 0.24rem at 92% 8%, var(--color-slate-400) 94%, transparent);
-    --note-texture-size: 8rem 8rem;
+/* SAKURA | cherry petals drifting over pale pink */
+[data-note='sakura'] {
+    --note-bg: var(--theme-note-rose);
+    --note-mark: var(--color-rose-400);
+    --note-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cg fill='%23e07a9c' fill-opacity='0.5'%3E%3Cellipse cx='18' cy='22' rx='5' ry='2.6' transform='rotate(35 18 22)'/%3E%3Cellipse cx='76' cy='14' rx='4' ry='2.2' transform='rotate(-20 76 14)'/%3E%3Cellipse cx='118' cy='48' rx='5.5' ry='2.8' transform='rotate(70 118 48)'/%3E%3Cellipse cx='46' cy='70' rx='4.5' ry='2.4' transform='rotate(-55 46 70)'/%3E%3Cellipse cx='96' cy='96' rx='5' ry='2.6' transform='rotate(15 96 96)'/%3E%3Cellipse cx='20' cy='118' rx='4' ry='2.2' transform='rotate(-80 20 118)'/%3E%3C/g%3E%3Cg fill='%23fff' fill-opacity='0.55'%3E%3Cellipse cx='60' cy='36' rx='3.5' ry='1.9' transform='rotate(50 60 36)'/%3E%3Cellipse cx='128' cy='120' rx='3.5' ry='1.9' transform='rotate(-30 128 120)'/%3E%3Cellipse cx='84' cy='58' rx='3' ry='1.7' transform='rotate(10 84 58)'/%3E%3C/g%3E%3C/svg%3E");
+    --note-texture-size: 9rem 9rem;
 }
 
 /* TOPO | two sets of rings that cross like contour lines on a map */
@@ -372,6 +385,253 @@
         scale var(--duration-fast) var(--ease-out);
 }
 
-.note-surface:is([data-note='aurora'], [data-note='holo']):hover {
-    background-position: 100% 60%;
+/* Shifts a fifth of the way at most, the look stays the same and only the light moves */
+.note-surface[data-note='aurora']:hover {
+    --note-texture-position: 20% 12%;
+}
+
+.note-surface[data-note='holo']:hover {
+    --note-texture-position: 40% 0, 12% 8%;
+}
+
+/* CROSSHATCH | fine pen hatching both ways */
+[data-note='crosshatch'] {
+    --note-bg: var(--theme-note-slate);
+    --note-mark: var(--color-slate-400);
+    --note-texture:
+        repeating-linear-gradient(45deg, var(--note-pattern) 0 1px, transparent 1px 0.5rem),
+        repeating-linear-gradient(-45deg, var(--note-pattern) 0 1px, transparent 1px 0.5rem);
+}
+
+/* PINSTRIPE | dark suit cloth with thin chalk lines */
+[data-note='pinstripe'] {
+    --note-bg: var(--theme-note-graphite-solid);
+    --note-texture: repeating-linear-gradient(to right, transparent 0 calc(0.875rem - 1px), rgb(255 255 255 / 0.16) calc(0.875rem - 1px) 0.875rem);
+}
+
+/* PARCHMENT | aged paper that darkens toward its edges */
+[data-note='parchment'] {
+    --note-bg: var(--color-parchment);
+    --note-texture:
+        radial-gradient(ellipse at center, transparent 50%, rgb(120 80 30 / 0.22)),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.45 0 0 0 0 0.3 0 0 0 0 0.12 0 0 0 0.22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --note-texture-size: 100% 100%, 10rem 10rem;
+}
+
+/* WASHI | Japanese paper with long loose fibres */
+[data-note='washi'] {
+    --note-bg: var(--theme-note-platinum);
+    --note-mark: var(--color-platinum-300);
+    --note-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.012 0.22' numOctaves='2' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.5 0 0 0 0 0.5 0 0 0 0 0.5 1.6 0 0 0 -0.92'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)'/%3E%3C/svg%3E");
+    --note-texture-size: 15rem 15rem;
+}
+
+/* CANVAS | coarse painter's weave */
+[data-note='canvas'] {
+    --note-bg: var(--theme-note-ochre);
+    --note-mark: var(--color-ochre-400);
+    --note-texture:
+        repeating-linear-gradient(to bottom, color-mix(in oklab, var(--theme-ink) 8%, transparent) 0 2px, transparent 2px 4px),
+        repeating-linear-gradient(to right, color-mix(in oklab, var(--theme-ink) 6%, transparent) 0 2px, transparent 2px 4px);
+}
+
+/* SEIGAIHA | Japanese wave scales | each row of fans covers half of the row behind it */
+[data-note='seigaiha'] {
+    --note-bg: var(--theme-note-teal);
+    --note-mark: var(--color-teal-400);
+    --scale-line: color-mix(in oklab, var(--theme-ink) 14%, var(--note-bg));
+    --scale: radial-gradient(circle 1rem at 50% 100%, var(--note-bg) 0 18%, var(--scale-line) 18% 26%, var(--note-bg) 26% 44%, var(--scale-line) 44% 52%, var(--note-bg) 52% 70%, var(--scale-line) 70% 78%, var(--note-bg) 78% 90%, var(--scale-line) 90% 100%, transparent 100%);
+    --note-texture: var(--scale), var(--scale);
+    --note-texture-size: 2rem 1rem;
+    --note-texture-position: 0 0, 1rem 0.5rem;
+}
+
+/* HONEYCOMB | outlined hexagons */
+[data-note='honeycomb'] {
+    --note-bg: var(--theme-note-lemon);
+    --note-mark: var(--color-lemon-400);
+    --note-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='17.32' height='30'%3E%3Cpath d='M8.66 0L17.32 5V15L8.66 20L0 15V5ZM8.66 20V30' fill='none' stroke='%23808080' stroke-opacity='0.4'/%3E%3C/svg%3E");
+    --note-texture-size: 1.3rem 2.25rem;
+}
+
+/* ARGYLE | diamonds crossed by dashed stitches */
+[data-note='argyle'] {
+    --note-bg: var(--theme-note-violet);
+    --note-mark: var(--color-violet-400);
+    --note-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='36'%3E%3Cpath d='M12 0L24 18L12 36L0 18Z' fill='%23808080' fill-opacity='0.16'/%3E%3Cpath d='M0 0L24 36M24 0L0 36' stroke='%23808080' stroke-opacity='0.45' stroke-dasharray='2 2'/%3E%3C/svg%3E");
+    --note-texture-size: 2rem 3rem;
+}
+
+/* SUBWAY | white tiles in offset rows with thin grout */
+[data-note='subway'] {
+    --note-bg: var(--theme-note-platinum);
+    --note-mark: var(--color-platinum-300);
+    --note-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='24'%3E%3Cpath d='M0 0.5H48M0 12.5H48M0.5 0V12M24.5 12V24' stroke='%23808080' stroke-opacity='0.3'/%3E%3C/svg%3E");
+    --note-texture-size: 3rem 1.5rem;
+}
+
+/* POLKA | small soft dots on cherry red, quiet enough to read over */
+[data-note='polka'] {
+    --note-bg: var(--color-cherry-600);
+    --dot: radial-gradient(circle, rgb(255 255 255 / 0.2) 0 0.2rem, transparent calc(0.2rem + 0.5px));
+    --note-texture: var(--dot), var(--dot);
+    --note-texture-size: 1.5rem 1.5rem;
+    --note-texture-position: 0 0, 0.75rem 0.75rem;
+}
+
+/* PLAID | tartan bands crossing on forest green */
+[data-note='plaid'] {
+    --note-bg: var(--color-forest-600);
+    --band: rgb(0 0 0 / 0.22) 0 0.75rem, transparent 0.75rem 1.25rem, color-mix(in oklab, var(--color-cherry-600) 50%, transparent) 1.25rem 1.75rem, transparent 1.75rem 2.375rem, rgb(255 255 255 / 0.18) 2.375rem 2.5rem, transparent 2.5rem 3rem;
+    --note-texture:
+        repeating-linear-gradient(to right, var(--band)),
+        repeating-linear-gradient(to bottom, var(--band));
+}
+
+/* CONFETTI | sprinkles in every colour */
+[data-note='confetti'] {
+    --note-bg: var(--theme-note-platinum);
+    --note-mark: linear-gradient(90deg, var(--color-coral-400), var(--color-lemon-400), var(--color-mint-400), var(--color-sky-400), var(--color-magenta-400));
+    --note-texture: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cg opacity='0.85'%3E%3Crect x='10' y='14' width='9' height='3' rx='1.5' fill='%23ee977c' transform='rotate(30 14 15)'/%3E%3Crect x='52' y='8' width='9' height='3' rx='1.5' fill='%237cc4e6' transform='rotate(-40 56 9)'/%3E%3Crect x='92' y='22' width='9' height='3' rx='1.5' fill='%23e3cf5c' transform='rotate(70 96 23)'/%3E%3Crect x='28' y='48' width='9' height='3' rx='1.5' fill='%2386d4b2' transform='rotate(-15 32 49)'/%3E%3Crect x='74' y='56' width='9' height='3' rx='1.5' fill='%23dc8cc6' transform='rotate(50 78 57)'/%3E%3Crect x='104' y='78' width='9' height='3' rx='1.5' fill='%23ee977c' transform='rotate(-60 108 79)'/%3E%3Crect x='14' y='92' width='9' height='3' rx='1.5' fill='%23b48aab' transform='rotate(20 18 93)'/%3E%3Crect x='56' y='100' width='9' height='3' rx='1.5' fill='%237cc4e6' transform='rotate(-80 60 101)'/%3E%3Ccircle cx='40' cy='26' r='2' fill='%23dc8cc6'/%3E%3Ccircle cx='84' cy='38' r='2' fill='%2386d4b2'/%3E%3Ccircle cx='8' cy='66' r='2' fill='%23e3cf5c'/%3E%3Ccircle cx='90' cy='106' r='2' fill='%23ee977c'/%3E%3C/g%3E%3C/svg%3E");
+    --note-texture-size: 7.5rem 7.5rem;
+}
+
+/* DENIM | indigo twill with a faded wash */
+[data-note='denim'] {
+    --note-bg: var(--color-denim);
+    --note-texture:
+        radial-gradient(ellipse at 30% 20%, rgb(255 255 255 / 0.12), transparent 60%),
+        repeating-linear-gradient(-55deg, rgb(255 255 255 / 0.08) 0 1px, transparent 1px 3px),
+        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.12 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    --note-texture-size: 100% 100%, auto, 10rem 10rem;
+}
+
+/* NEON | glowing magenta and cyan grid at night */
+[data-note='neon'] {
+    --note-bg: var(--color-neon);
+    --note-mark: linear-gradient(90deg, #ff3cc8, #00e6ff);
+    --note-texture:
+        radial-gradient(ellipse at 0% 0%, rgb(255 60 200 / 0.35), transparent 55%),
+        radial-gradient(ellipse at 100% 100%, rgb(0 230 255 / 0.3), transparent 55%),
+        linear-gradient(rgb(255 60 200 / 0.35) 1px, transparent 1px),
+        linear-gradient(to right, rgb(0 230 255 / 0.3) 1px, transparent 1px);
+    --note-texture-size: 100% 100%, 100% 100%, 1.5rem 1.5rem, 1.5rem 1.5rem;
+}
+
+/* SUNBURST | retro rays fanning out from a sun below the bottom edge */
+[data-note='sunburst'] {
+    --note-bg: var(--color-tangerine-600);
+    --note-mark: linear-gradient(90deg, var(--color-tangerine-600), var(--color-ochre-400));
+    --note-texture:
+        radial-gradient(circle at 50% 115%, rgb(255 214 128 / 0.6) 0 14%, transparent 48%),
+        repeating-conic-gradient(from -90deg at 50% 115%, rgb(255 255 255 / 0.1) 0 5deg, transparent 5deg 10deg);
+}
+
+/* OCEAN | deep water, light rippling down from the surface */
+[data-note='ocean'] {
+    --note-bg: var(--color-teal-600);
+    --note-mark: linear-gradient(90deg, var(--color-sky-600), var(--color-teal-600), var(--color-midnight-600));
+    --note-texture:
+        radial-gradient(circle at 50% 0, transparent 0.625rem, rgb(255 255 255 / 0.12) calc(0.625rem + 0.5px) calc(0.625rem + 1.5px), transparent calc(0.625rem + 2px)),
+        radial-gradient(ellipse at 30% -10%, rgb(255 255 255 / 0.28), transparent 55%),
+        linear-gradient(to bottom, transparent 30%, var(--color-midnight-600));
+    --note-texture-size: 1.5rem 0.875rem, 100% 100%, 100% 100%;
+}
+
+/* RAINBOW | bold bands with sharp edges, a light wash keeps text readable */
+[data-note='rainbow'] {
+    --note-bg: var(--color-lemon-400);
+    --note-mark: linear-gradient(90deg, var(--color-cherry-400), var(--color-coral-400), var(--color-ochre-400), var(--color-lemon-400), var(--color-mint-400), var(--color-sky-400), var(--color-violet-400));
+    --note-texture:
+        linear-gradient(rgb(255 255 255 / 0.3), rgb(255 255 255 / 0.3)),
+        linear-gradient(160deg, var(--color-cherry-400) 0 14%, var(--color-coral-400) 14% 28%, var(--color-ochre-400) 28% 42%, var(--color-lemon-400) 42% 56%, var(--color-mint-400) 56% 70%, var(--color-sky-400) 70% 84%, var(--color-violet-400) 84%);
+}
+
+/* BOKEH | city lights out of focus on a night sky */
+[data-note='bokeh'] {
+    --note-bg: var(--color-midnight-600);
+    --note-mark: linear-gradient(90deg, var(--color-midnight-600), var(--color-ochre-400), var(--color-magenta-400));
+    --note-texture:
+        radial-gradient(circle 1.5rem at 18% 24%, rgb(255 210 130 / 0.45) 70%, transparent),
+        radial-gradient(circle 2.25rem at 78% 18%, rgb(220 140 200 / 0.35) 70%, transparent),
+        radial-gradient(circle 1rem at 56% 54%, rgb(124 196 230 / 0.45) 70%, transparent),
+        radial-gradient(circle 2rem at 28% 82%, rgb(255 160 120 / 0.35) 70%, transparent),
+        radial-gradient(circle 1.25rem at 88% 76%, rgb(255 230 160 / 0.4) 70%, transparent),
+        radial-gradient(circle 0.75rem at 42% 12%, rgb(180 200 255 / 0.45) 70%, transparent);
+}
+
+
+/* FLAGS ======================================================================================================= */
+/* A light wash over every flag keeps dark text readable | flags with a black band take a stronger one */
+
+/* RAINBOW FLAG | six bands from red to violet */
+[data-note='rainbow-flag'] {
+    --note-bg: #008026;
+    --note-mark: linear-gradient(90deg, #e40303, #ff8c00, #ffed00, #008026, #24408e, #732982);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.35)), linear-gradient(#e40303 0% 16.67%, #ff8c00 16.67% 33.33%, #ffed00 33.33% 50%, #008026 50% 66.67%, #24408e 66.67% 83.33%, #732982 83.33% 100%);
+    --note-texture-size: 100% 100%;
+}
+
+/* LESBIAN FLAG | oranges into pinks around a white middle */
+[data-note='lesbian-flag'] {
+    --note-bg: #ffffff;
+    --note-mark: linear-gradient(90deg, #d52d00, #ef7627, #ff9a56, #ffffff, #d162a4, #b55690, #a30262);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.35)), linear-gradient(#d52d00 0% 14.29%, #ef7627 14.29% 28.57%, #ff9a56 28.57% 42.86%, #ffffff 42.86% 57.14%, #d162a4 57.14% 71.43%, #b55690 71.43% 85.71%, #a30262 85.71% 100%);
+    --note-texture-size: 100% 100%;
+}
+
+/* GAY FLAG | greens into blues around a white middle */
+[data-note='gay-flag'] {
+    --note-bg: #ffffff;
+    --note-mark: linear-gradient(90deg, #078d70, #26ceaa, #98e8c1, #ffffff, #7bade2, #5049cc, #3d1a78);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.35)), linear-gradient(#078d70 0% 14.29%, #26ceaa 14.29% 28.57%, #98e8c1 28.57% 42.86%, #ffffff 42.86% 57.14%, #7bade2 57.14% 71.43%, #5049cc 71.43% 85.71%, #3d1a78 85.71% 100%);
+    --note-texture-size: 100% 100%;
+}
+
+/* BISEXUAL FLAG | pink and blue with a thin purple band between */
+[data-note='bisexual-flag'] {
+    --note-bg: #9b4f96;
+    --note-mark: linear-gradient(90deg, #d60270, #9b4f96, #0038a8);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.35)), linear-gradient(#d60270 0% 40%, #9b4f96 40% 60%, #0038a8 60% 100%);
+    --note-texture-size: 100% 100%;
+}
+
+/* TRANS FLAG | blue, pink and white mirrored */
+[data-note='trans-flag'] {
+    --note-bg: #ffffff;
+    --note-mark: linear-gradient(90deg, #5bcefa, #f5a9b8, #ffffff, #f5a9b8, #5bcefa);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.35)), linear-gradient(#5bcefa 0% 20%, #f5a9b8 20% 40%, #ffffff 40% 60%, #f5a9b8 60% 80%, #5bcefa 80% 100%);
+    --note-texture-size: 100% 100%;
+}
+
+/* PANSEXUAL FLAG | pink, yellow and blue */
+[data-note='pansexual-flag'] {
+    --note-bg: #ffd800;
+    --note-mark: linear-gradient(90deg, #ff218c, #ffd800, #21b1ff);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.35)), linear-gradient(#ff218c 0% 33.33%, #ffd800 33.33% 66.67%, #21b1ff 66.67% 100%);
+    --note-texture-size: 100% 100%;
+}
+
+/* ASEXUAL FLAG | black, grey, white and purple */
+[data-note='asexual-flag'] {
+    --note-bg: #a3a3a3;
+    --note-mark: linear-gradient(90deg, #000000, #a3a3a3, #ffffff, #800080);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.5)), linear-gradient(#000000 0% 25%, #a3a3a3 25% 50%, #ffffff 50% 75%, #800080 75% 100%);
+    --note-texture-size: 100% 100%;
+}
+
+/* NONBINARY FLAG | yellow, white, purple and black */
+[data-note='nonbinary-flag'] {
+    --note-bg: #9c59d1;
+    --note-mark: linear-gradient(90deg, #fcf434, #ffffff, #9c59d1, #2c2c2c);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.5), rgb(255 255 255 / 0.5)), linear-gradient(#fcf434 0% 25%, #ffffff 25% 50%, #9c59d1 50% 75%, #2c2c2c 75% 100%);
+    --note-texture-size: 100% 100%;
+}
+
+/* INTERSEX FLAG | a purple ring on yellow */
+[data-note='intersex-flag'] {
+    --note-bg: #ffd800;
+    --note-mark: linear-gradient(90deg, #ffd800 0 35%, #7902aa 35% 65%, #ffd800 65%);
+    --note-texture: linear-gradient(rgb(255 255 255 / 0.35), rgb(255 255 255 / 0.35)), radial-gradient(circle closest-side, transparent 48%, #7902aa 48% 64%, transparent 64%);
+    --note-texture-size: 100% 100%;
 }

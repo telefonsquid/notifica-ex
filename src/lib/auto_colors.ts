@@ -11,8 +11,8 @@ export function lastPriority(labels: Label[]): number {
     return Math.max(-1, ...autoColorOrder(labels).map((label) => label.colorPriority))
 }
 
-// What a note wears | its own color wins, without one the highest auto color label on it decides
-export function shownColor(note: Pick<NoteContent, 'color' | 'labels'>, order: Label[]): NoteColor {
-    if(note.color) return note.color
-    return order.find((label) => note.labels.includes(label.id))?.color ?? ''
+// What a note wears | a color picked by hand wins, else the highest auto color label on it, else the account's default
+export function shownColor(note: Pick<NoteContent, 'color' | 'colorDefault' | 'labels'>, order: Label[]): NoteColor {
+    if(note.color && !note.colorDefault) return note.color
+    return order.find((label) => note.labels.includes(label.id))?.color ?? note.color
 }

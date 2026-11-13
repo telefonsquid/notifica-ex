@@ -1,6 +1,7 @@
 import { MB } from '#lib/limits.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { idSchema, limitedText, type RecordModel } from '#lib/schemas/base.ts';
+import type { NoteColor } from '#lib/schemas/notes.ts';
 import z from 'zod';
 
 // FILE LIMITS =============================================
@@ -70,6 +71,7 @@ export type User = RecordModel & z.infer<typeof userInputSchema> & {
     limits?: LimitOverrides | null;
     streamEpoch?: number;
     noteLock?: NoteLock | null;
+    noteColor?: NoteColor;      // New notes start with it
 }
 
 // NOTE LOCK | the key of locked notes, itself locked by the account password

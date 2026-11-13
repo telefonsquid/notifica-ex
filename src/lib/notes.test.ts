@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { autoColorOrder, lastPriority, shownColor } from '#lib/auto_colors.ts';
 import { colorName } from '#lib/note_colors.ts';
-import { archiveChange, contentOf, emptyNote, estimatedHeight, mergeNotes, sharedContent } from '#lib/notes.ts';
+import { archiveChange, contentOf, emptyNote, estimatedHeight, freshDefaults, mergeNotes, sharedContent } from '#lib/notes.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { formatDistance } from '#lib/time_format.ts';
 import { noteContentSchema, type Label, type Note, type NoteColor } from '#lib/schemas/notes.ts';
@@ -92,7 +92,9 @@ describe('formatDistance', () => {
 
 describe('colorName', () => {
     test('reads as words', () => {
-        expect(colorName('')).toBe('Plain')
+        expect(colorName('')).toBe('Default')
+        expect(colorName('plain')).toBe('Plain')
+        expect(colorName('trans-flag')).toBe('Trans flag')
         expect(colorName('cobalt-solid')).toBe('Cobalt solid')
     })
 })
@@ -112,6 +114,18 @@ describe('auto colors', () => {
 
     test('the note\'s own color wins', () => {
         expect(shownColor({ color: 'rose', labels: ['top'] }, order)).toBe('rose')
+    })
+
+    test('an auto label paints over the account default, never over a picked color', () => {
+        expect(shownColor({ color: 'rose', colorDefault: true, labels: ['top'] }, order)).toBe('cobalt-solid')
+        expect(shownColor({ color: 'rose', colorDefault: true, labels: ['off'] }, order)).toBe('rose')
+        expect(shownColor({ color: 'rose', colorDefault: false, labels: ['top'] }, order)).toBe('rose')
+    })
+
+    test('the account color fills only what the view leaves open', () => {
+        expect(freshDefaults({ color: '' }, 'mint')).toEqual({ color: 'mint', colorDefault: true })
+        expect(freshDefaults({ color: 'rose' }, 'mint')).toEqual({ color: 'rose' })
+        expect(freshDefaults({ color: '' }, '')).toEqual({ color: '' })
     })
 
     test('labels that do not color leave it plain', () => {

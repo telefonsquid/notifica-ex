@@ -1,6 +1,6 @@
 <script lang="ts">
     import { COLOR_GROUPS, colorName } from '#lib/note_colors.ts';
-    import type { NoteColor } from '#lib/schemas/notes.ts';
+    import type { Label, NoteColor } from '#lib/schemas/notes.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Check } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
@@ -10,29 +10,45 @@
         value,
         onpick,
         label,
-        auto = '',
+        labels = [],
         class: className = ''
     }: {
         value: NoteColor
         onpick: (color: NoteColor) => void
         label: string                           // what gets colored, for screen readers
-        auto?: NoteColor                        // what a label paints while no color is picked
+        labels?: Label[]                        // the note's labels, their colors join Default as quick picks
         class?: string
     } = $props()
 
-    // No color of its own means the label's color when one applies
-    const nameOf = (color: NoteColor) => (!color && auto ? `From label: ${colorName(auto)}` : colorName(color))
+    // One swatch per color, the first label of each color names it
+    let fromLabels = $derived(labels.filter((item, index) => item.color && labels.findIndex((other) => other.color === item.color) === index))
 </script>
+
+{#snippet swatch(color: NoteColor, name: string, picked: boolean, extra = '')}
+    <!-- The ring sits outside the colored part, which brings its own ink -->
+    <button
+        class={['motion-interactive size-7 rounded-full hover:scale-110', picked && 'picked']}
+        role="radio"
+        aria-checked={picked}
+        aria-label={name}
+        {@attach tip(name)}
+        onclick={() => onpick(color)}
+    >
+        <span class={['swatch note-surface grid size-full place-items-center rounded-full border border-line-strong text-ink', extra]} data-note={color || undefined}>
+            {#if picked}<Check class="size-3.5" strokeWidth={3} />{/if}
+        </span>
+    </button>
+{/snippet}
 
 <!-- Stays open while picking, so colors can be tried on the note behind it -->
 <!-- The rainbow ring sets it apart from a note of the same color and says what it opens -->
 <Popover.Root>
     <Popover.Trigger
         class={['color-trigger motion-interactive grid size-7 shrink-0 place-items-center rounded-full hover:scale-110', className]}
-        aria-label={`${label}: ${nameOf(value)}`}
-        {@attach tip(`${label}: ${nameOf(value)}`)}
+        aria-label={`${label}: ${colorName(value)}`}
+        {@attach tip(`${label}: ${colorName(value)}`)}
     >
-        <span class="swatch note-surface size-full rounded-full border-2 border-raised" data-note={value || auto || undefined}></span>
+        <span class="swatch note-surface size-full rounded-full border-2 border-raised" data-note={value || undefined}></span>
     </Popover.Trigger>
     <Popover.Portal>
         <Popover.Content
@@ -45,20 +61,13 @@
                     <p class="type-meta mb-2 text-ink-faint">{group.name}</p>
                     <div class="grid grid-cols-[repeat(6,1.75rem)] gap-1.5 min-[24rem]:grid-cols-[repeat(9,1.75rem)]" role="radiogroup" aria-label={group.name}>
                         {#each group.colors as color (color)}
-                            <!-- The ring sits outside the colored part, which brings its own ink -->
-                            <button
-                                class={['motion-interactive size-7 rounded-full hover:scale-110', value === color && 'picked']}
-                                role="radio"
-                                aria-checked={value === color}
-                                aria-label={nameOf(color)}
-                                {@attach tip(nameOf(color))}
-                                onclick={() => onpick(color)}
-                            >
-                                <span class="swatch note-surface grid size-full place-items-center rounded-full border border-line-strong text-ink" data-note={color || auto || undefined}>
-                                    {#if value === color}<Check class="size-3.5" strokeWidth={3} />{/if}
-                                </span>
-                            </button>
+                            {@render swatch(color, colorName(color), value === color, color ? '' : 'default')}
                         {/each}
+                        {#if !group.colors[0]}
+                            {#each fromLabels as item (item.id)}
+                                {@render swatch(item.color, `Label: ${item.name}`, false)}
+                            {/each}
+                        {/if}
                     </div>
                 </div>
             {/each}
@@ -75,5 +84,11 @@
     .picked {
         outline: 2px solid var(--theme-accent);
         outline-offset: 2px;
+    }
+
+    /* Default holds no color of its own, the dashed edge tells it from Plain */
+    .default {
+        border-style: dashed;
+        border-color: var(--theme-ink-faint);
     }
 </style>

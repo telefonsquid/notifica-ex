@@ -1,5 +1,5 @@
 import { LIMITS } from '#lib/schema_limits.ts';
-import type { Note, NoteContent } from '#lib/schemas/notes.ts';
+import type { Note, NoteColor, NoteContent } from '#lib/schemas/notes.ts';
 
 // LIST ======================================================================================================
 
@@ -22,12 +22,17 @@ export function mergeNotes(list: Note[], events: NoteEvent[]): Note[] {
 
 // CONTENT ====================================================================================================
 export function contentOf(note: Note): NoteContent {
-    const { title, body, color, labels, pinned, archived } = note
-    return { title, body, color, labels: [...labels], pinned, archived }
+    const { title, body, color, colorDefault, labels, pinned, archived } = note
+    return { title, body, color, colorDefault: !!colorDefault, labels: [...labels], pinned, archived }
 }
 
 export function emptyNote(): NoteContent {
-    return { title: '', body: '', color: '', labels: [], pinned: false, archived: false }
+    return { title: '', body: '', color: '', colorDefault: false, labels: [], pinned: false, archived: false }
+}
+
+// What a view demands comes first | the account's color only fills a gap and stays marked as a default
+export function freshDefaults(demanded: Partial<NoteContent>, accountColor: NoteColor | undefined): Partial<NoteContent> {
+    return demanded.color || !accountColor ? demanded : { ...demanded, color: accountColor, colorDefault: true }
 }
 
 // Text from another app | other apps know nothing of the size caps
