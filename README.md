@@ -1,4 +1,4 @@
-# notifica-ex
+# Notifica Ex
 
 Self-hosted notes in the spirit of Google Keep, with reminders pushed to the Android app, the browser and [ntfy](https://ntfy.sh).
 

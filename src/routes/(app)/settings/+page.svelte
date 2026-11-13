@@ -173,7 +173,7 @@
 {/snippet}
 
 <svelte:head>
-    <title>Settings · notifica-ex</title>
+    <title>Settings · Notifica Ex</title>
 </svelte:head>
 
 <div class="settings mx-auto w-full max-w-content">

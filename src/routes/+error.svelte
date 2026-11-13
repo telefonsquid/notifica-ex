@@ -8,7 +8,7 @@
 </script>
 
 <svelte:head>
-    <title>{page.status} · notifica-ex</title>
+    <title>{page.status} · Notifica Ex</title>
 </svelte:head>
 
 <main class="grid min-h-dvh place-items-center px-gutter">

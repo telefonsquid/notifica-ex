@@ -1,7 +1,7 @@
 [package]
 name = "notifica-ex"
 version = "0.3.2"
-description = "Android shell around a self-hosted notifica-ex server"
+description = "Android shell around a self-hosted Notifica Ex server"
 edition = "2024"
 
 [lib]

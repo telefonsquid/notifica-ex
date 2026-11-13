@@ -1,6 +1,6 @@
 # State machines
 
-Every place in notifica-ex where something moves through states, written or not. For each: its states, what must always hold, and what moves it. The second half lists what the audit of 2026-11-07 found could actually go wrong, in order of impact.
+Every place in Notifica Ex where something moves through states, written or not. For each: its states, what must always hold, and what moves it. The second half lists what the audit of 2026-11-07 found could actually go wrong, in order of impact.
 
 Keep this file in step with the code: a change to a machine below updates its table in the same commit.
 

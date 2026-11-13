@@ -75,7 +75,7 @@ pub fn run() {
             // MAIN WINDOW | starts on the connect page, which moves on to the server by itself once it answers
             // Links leaving the app and the server open in the system browser instead of replacing the app
             WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("notifica-ex")
+                .title("Notifica Ex")
                 .on_navigation(move |url| {
                     let on_server = server.0.lock().unwrap().as_ref().is_some_and(|s| s.origin() == url.origin());
                     if is_local(url) || on_server || url.scheme() == "about" {

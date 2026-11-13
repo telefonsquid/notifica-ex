@@ -63,7 +63,7 @@
 </script>
 
 <svelte:head>
-    <title>{title} · notifica-ex</title>
+    <title>{title} · Notifica Ex</title>
 </svelte:head>
 
 <main class="grid min-h-dvh place-items-center px-gutter py-12">

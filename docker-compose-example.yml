@@ -25,13 +25,13 @@ services:
       - "TZ=Europe/Berlin" # force docker timezone
 
       # PocketBase settings, force applied on every start. Omit lines to manage them in the PocketBase admin UI instead.
-      - "POCKETBASE_APP_NAME=notifica-ex"
+      - "POCKETBASE_APP_NAME=Notifica Ex"
       - "SMTP_HOST=smtp.example.com"
       - "SMTP_PORT=465"
       - "SMTP_USERNAME=<SMTP_USER_HERE>"
       - "SMTP_PASSWORD=<SMTP_PASSWORD_HERE>"
       - "SMTP_TLS=true"
-      - "SMTP_SENDER_NAME=notifica-ex"
+      - "SMTP_SENDER_NAME=Notifica Ex"
       - "SMTP_SENDER_ADDRESS=<SENDER_ADDRESS_HERE>"
     restart: unless-stopped
     depends_on:

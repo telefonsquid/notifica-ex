@@ -11,7 +11,7 @@ export async function POST({ request }) {
     // VERIFY
     const key = request.headers.get('authorization')?.match(/^Bearer\s+(\S+)$/i)?.[1]
     const caller = key ? await userForKey(key) : null
-    if(!caller) return new Response('Missing or invalid API key.', { status: 401, headers: { 'www-authenticate': 'Bearer realm="notifica-ex"' } })
+    if(!caller) return new Response('Missing or invalid API key.', { status: 401, headers: { 'www-authenticate': 'Bearer realm="Notifica Ex"' } })
 
     // READ
     const text = await request.text()

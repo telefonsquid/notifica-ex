@@ -209,7 +209,7 @@
 </script>
 
 <svelte:head>
-    <title>{view?.name ?? 'Notes'} · notifica-ex</title>
+    <title>{view?.name ?? 'Notes'} · Notifica Ex</title>
 </svelte:head>
 
 <svelte:window onkeydown={onKey} onpointermove={drag.move} onpointerup={drag.drop} onpointercancel={drag.drop} />
