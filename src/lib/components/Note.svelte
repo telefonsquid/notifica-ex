@@ -483,6 +483,26 @@
         opacity: 1;
     }
 
+    /* Over an image the copy would cut a box out of it, the buttons wear the image controls' dark chips instead */
+    .card:has(> :global(.gallery))::before {
+        display: none;
+    }
+
+    .card:has(> :global(.gallery)) .hover-actions {
+        gap: 0.375rem;
+    }
+
+    .card:has(> :global(.gallery)) .hover-actions button {
+        padding: 0.375rem;
+        border-radius: 9999px;
+        color: white;
+        background: rgb(0 0 0 / 0.55);
+    }
+
+    .card:has(> :global(.gallery)) .hover-actions button:hover {
+        background: rgb(0 0 0 / 0.65);
+    }
+
     /* Fingers have no hover, they select by long press */
     @media (hover: none) {
         .hover-actions { display: none; }

@@ -93,8 +93,8 @@
                         </button>
                     </div>
                 {:else}
-                    <!-- The one part of a closed card that takes clicks -->
-                    <button class={['control closed-view pointer-events-auto absolute top-2 right-2', hovered === index && 'hovered']} aria-label="View whole image" onpointerdown={(event) => event.stopPropagation()} onclick={() => view(index)}>
+                    <!-- The one part of a closed card that takes clicks | bottom right, the card's archive and pin take the top -->
+                    <button class={['control closed-view pointer-events-auto absolute right-2 bottom-2', hovered === index && 'hovered']} aria-label="View whole image" onpointerdown={(event) => event.stopPropagation()} onclick={() => view(index)}>
                         <Expand class="size-3.5" />
                     </button>
                 {/if}
