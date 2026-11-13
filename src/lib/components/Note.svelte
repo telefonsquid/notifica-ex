@@ -509,6 +509,11 @@
         position: relative;
     }
 
+    /* While selecting, a click anywhere on a card picks it */
+    :global([data-selecting]) .content :global(:is(input.task, a)) {
+        pointer-events: none;
+    }
+
     /* Syne runs wide at title weight, a card title needs less to stand out from the body */
     .title {
         font-weight: 620;

@@ -220,7 +220,7 @@
 <!-- NOTES | the open card counts twice, it spans two columns where they fit -->
 {#if visible.length || editing?.fresh}
     <div class="@container">
-        <div bind:this={grid.element} class="note-grid relative items-start" {@attach masonry} {@attach windowed && cards.watch} style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
+        <div bind:this={grid.element} class="note-grid relative items-start" data-selecting={selection.length > 0 || undefined} {@attach masonry} {@attach windowed && cards.watch} style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
             {#if editing?.fresh}
                 {#key editing.key}
                     <div class="note-cell fresh wide @container/note" data-flip={editing.id ?? NEW_CELL} out:retreat|global>
