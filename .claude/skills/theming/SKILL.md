@@ -41,17 +41,14 @@ Same pattern as the theme: a cookie per device, rendered into an `<html data-*>`
 
 ## Riso print
 
-The look of the logo: flat ink, a second pass in a darker tone slipped 1 to 2px off register.
+The look of the loop logo: flat inks, each over a second pass slipped off register.
 
 - **The slipped pass always sits bottom right of its ink**, the top left edge shows the ink alone. Every element, text shadows and hover drift included, never mirrored. A press brings it back to zero, never past it.
-- Login page and logo (being redone element by element): the loop logo's three inks `--theme-riso-orange`, `-pink` (fluoro pink on Platinum, a darker grape on Charcoal, the pass under orange, and under blue for the tick and Ex) and `-blue`, `--theme-riso-on-ink` for letters on an ink. Inks blend through `--theme-riso-ink-blend` (multiply on Platinum, hard-light on Charcoal, where screen glowed magenta and multiply went muddy), but only inside an isolated layer (`isolation: isolate` on the element), so they overprint each other and never mix with the page. The ink sits above its pass and carries the blend, hard-light depends on the order. Fields take `--theme-riso-field`, white or black, with a blue pass, orange while focused.
-
-- Theme tokens: `--theme-riso-plate` (Tangerine fill), `-on-plate` (ink on it), `-ghost` (the slipped pass, Ember at about 45%), `-blend` (multiply on paper, screen on Charcoal), `-paper` and `-rule` (sheet fill and its 1.5px outline).
-- `--riso-x` and `--riso-y` on `:root` set the slip. Elements change them for hover and press, never the shadow itself.
-- Utilities in `app.css`: `riso-plate` (fill, halftone grain, ghost shadow, forces multiply so dark ink stays on it in Charcoal), `riso-sheet` (paper inside a rule), `riso-ink` (ghost text shadow), `riso-press` (hover slips further, press closes the gap and moves the element onto its ghost).
-- `#lib/ui/RisoIcon.svelte` prints a lucide icon twice. `--riso-ghost` (0 to 1) hides or shows the slipped pass, the rail shows it only on hover and the open view.
-- Used by the create button, the rail, toasts and the settings tabs. Ghost buttons have no print and sink instead.
-- `riso-print` is the new look: a fill over a pass slipped bottom right, as `::after` over `::before` (it takes both pseudo elements), drifting on hover and back in register on press. `riso-print-ink` paints it orange over pink with paper white letters (primary `Button`), `riso-print-paper` the field paper over a blue pass, unblended (secondary `Button`). Icons inside print once.
+- Inks: `--theme-riso-orange`, `-pink` (fluoro pink on Platinum, a darker grape on Charcoal) and `-blue`, `--theme-riso-on-ink` for letters on an ink, `--theme-riso-field` (white or black) for paper. Inks blend through `--theme-riso-ink-blend` (multiply on Platinum, hard-light on Charcoal, where screen glowed magenta and multiply went muddy), but only inside an isolated layer (`isolation: isolate`), so they overprint each other and never mix with the page. The ink sits above its pass and carries the blend, hard-light depends on the order.
+- `riso-print` (`app.css`): a fill over a pass slipped 4px 3px, as `::after` over `::before` (it takes both pseudo elements and makes the element relative, an absolute one sets its position again in scoped CSS). It drifts further on hover and lands in register on press. `riso-print-ink` paints it orange over pink with paper white letters (primary `Button`, create button, active rail and settings tab indicators), `riso-print-paper` field paper over a blue pass, unblended (secondary `Button`, the phone menu buttons).
+- Surfaces that aren't pressed (toasts, rail tooltips, the settings phone list) take `background: var(--theme-riso-field)` and `box-shadow: 4px 3px 0` of their pass, no drift. Error toasts use an orange pass. Fields have a blue pass, orange while focused. Settings titles print over a pink `text-shadow`.
+- `#lib/ui/RisoIcon.svelte` prints a lucide icon over a pink pass. `--riso-ghost` (0 to 1) hides or shows the pass, the rail shows it only on hover. Inside `riso-print` it prints once and `--riso-icon-blend: normal` keeps white letters off the blend.
+- Ghost buttons have no print and sink instead.
 
 ## Rules
 
