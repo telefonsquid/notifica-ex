@@ -179,7 +179,10 @@
 </nav>
 
 <style>
+    /* Room for the printed indicator to slip past the first and last view, the scroll would clip it */
     .views {
+        margin-block: -0.25rem;
+        padding-block: 0.25rem;
         scrollbar-width: none;
     }
 
