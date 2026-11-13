@@ -247,7 +247,7 @@
     /* Takes on the colour in step with the indicator gliding in | the icon prints once on the ink */
     .item.active {
         --riso-ghost: 0;
-        --theme-riso-blend: normal;
+        --riso-icon-blend: normal;
         color: var(--theme-riso-on-ink);
         background: transparent;
         transition: color var(--duration-base) var(--ease-in-out);

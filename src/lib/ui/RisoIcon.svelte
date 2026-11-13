@@ -14,7 +14,7 @@
     } = $props()
 </script>
 
-<!-- Printed twice like the logo | --riso-ghost hides the slipped pass, --riso-x and --riso-y move it -->
+<!-- Printed twice like the logo | --riso-ghost hides the pink pass slipped bottom right -->
 <span class={['riso-icon relative inline-grid shrink-0', className]} aria-hidden="true">
     <Icon class="ghost size-full" {strokeWidth} />
     <Icon class="ink size-full" {strokeWidth} />
@@ -26,14 +26,14 @@
     }
 
     .riso-icon :global(.ghost) {
-        color: var(--theme-riso-ghost);
+        color: var(--theme-riso-pink);
         opacity: var(--riso-ghost, 1);
-        translate: var(--riso-x) var(--riso-y);
+        translate: 1.5px 1.25px;
         transition: translate var(--duration-base) var(--ease-spring), opacity var(--duration-fast) var(--ease-out);
     }
 
-    /* Overprints the slipped pass, darker on paper and lighter on Charcoal */
+    /* Overprints the pink pass like the logo's inks | --riso-icon-blend turns it off on a filled ink */
     .riso-icon :global(.ink) {
-        mix-blend-mode: var(--theme-riso-blend);
+        mix-blend-mode: var(--riso-icon-blend, var(--theme-riso-ink-blend));
     }
 </style>
