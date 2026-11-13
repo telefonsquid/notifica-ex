@@ -51,12 +51,13 @@ class ReminderNotifier(private val context: Context) {
     val builder = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
       .setSmallIcon(R.drawable.ic_notification)
       .setContentTitle(push.optString("title"))
-      .setContentText(message)
-      .setStyle(NotificationCompat.BigTextStyle().bigText(message))
       .setPriority(NotificationCompat.PRIORITY_HIGH)
       .setCategory(NotificationCompat.CATEGORY_REMINDER)
       .setAutoCancel(true)
       .setContentIntent(open(click?.let { origin + it }, id))
+
+    // A note without text shows its title alone
+    if (message.isNotBlank()) builder.setContentText(message).setStyle(NotificationCompat.BigTextStyle().bigText(message))
 
     // The request code tells the buttons apart, Android treats intents differing only in extras as one
     fun button(label: String, code: Int, link: JSONObject, until: String? = null) {
@@ -70,7 +71,11 @@ class ReminderNotifier(private val context: Context) {
     }
 
     push.optJSONObject("done")?.let { button("Done", id, it) }
-    push.optJSONObject("snooze")?.let {
+
+    // Reschedule opens the app with every choice | an older server only knows the two fixed ones
+    val reschedule = push.optString("reschedule").ifEmpty { null }
+    if (reschedule != null) builder.addAction(0, "Reschedule", open(origin + reschedule, id + 1))
+    else push.optJSONObject("snooze")?.let {
       button("1 hour", id + 1, it, "hour")
       button("Tomorrow", id + 2, it, "tomorrow")
     }

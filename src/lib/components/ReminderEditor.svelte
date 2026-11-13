@@ -2,7 +2,7 @@
     import { now } from '#lib/clock.svelte.ts';
     import { describeRule, isCounted, isOpenTask, localWeekday, normalizeRule, parseTimestamp, UNITS } from '#lib/reminders.ts';
     import { safeAction } from '#lib/safe_action.ts';
-    import { formatDistance, formatMoment } from '#lib/time_format.ts';
+    import { formatDistance, formatMoment, toLocalInput } from '#lib/time_format.ts';
     import type { Reminder, ReminderLimit, ReminderRepeat, Weekday } from '#lib/schemas/reminders.ts';
     import DayPicker from '#lib/components/DayPicker.svelte';
     import DoneButton from '#lib/components/DoneButton.svelte';
@@ -69,13 +69,6 @@
         return text[0].toUpperCase() + text.slice(1)
     }
 
-    // Value format of datetime-local inputs, in the browser's own zone
-    function toLocalInput(date: Date | null): string {
-        if(!date) return ''
-        const pad = (value: number) => String(value).padStart(2, '0')
-        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
-    }
-
     function nextFullHour(): Date {
         const now = new Date()
         return new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours() + 1)
@@ -132,7 +125,7 @@
 
     // TRANSITIONS | the band morphs its height around a swap, so the new part only fades in
     function enter(node: Element){
-        return animate ? rise(node, { y: 0, scale: 1, duration: 'base', delay: 60 }) : {}
+        return animate ? rise(node, { y: 0, scale: 1, duration: 'fast' }) : {}
     }
 
     function widen(node: Element){

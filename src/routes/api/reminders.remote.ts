@@ -7,7 +7,7 @@ import { ntfyTopicSchema, pushSubscriptionSchema } from '#lib/schemas/users.ts';
 import { streamSubject } from '#lib/server/app_stream.ts';
 import { deliverTest } from '#lib/server/delivery.ts';
 import { requireNote } from '#lib/server/note_access.ts';
-import { getNewestOpenOccurrence, getOccurrences, getOpenOccurrences, setDone } from '#lib/server/occurrences.ts';
+import { getNewestOpenOccurrence, getOccurrences, getOpenOccurrences, setDone, snooze } from '#lib/server/occurrences.ts';
 import { deleteOne, findOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { ruleFields } from '#lib/server/reminder_rules.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
@@ -98,6 +98,21 @@ export const setOccurrenceDone = command(z.object({ id: idSchema, done: z.boolea
 
     await getReminders().refresh()
     return updated ?? occurrence
+
+});
+
+// Picked in the app after the Android notification's Reschedule button
+export const rescheduleOccurrence = command(z.object({ id: idSchema, at: z.iso.datetime({ offset: true }) }), async ({ id, at }) => {
+
+    const me = signedIn()
+    const occurrence = unwrap(await getOwned('occurrences', id, me.id), 'Occurrence not found.')
+
+    const next = new Date(at)
+    if(next.getTime() <= Date.now()) error(400, 'Pick a time in the future.')
+    if(!await snooze(occurrence, () => next)) error(404, 'This reminder was removed.')
+
+    await getReminders().refresh()
+    return next.toISOString()
 
 });
 

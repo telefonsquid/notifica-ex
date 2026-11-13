@@ -1,7 +1,8 @@
 import { describeRule } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import type { Occurrence, Reminder } from '#lib/schemas/reminders.ts';
-import { deleteOne, findOne, insertOnePartial, run } from '#lib/server/queries.ts';
+import { deleteOne, findOne, getOne, insertOnePartial, run, updateOnePartial } from '#lib/server/queries.ts';
+import { orNull, unwrap } from '#lib/server/result.ts';
 import type PocketBase from 'pocketbase';
 import type { ListResult } from 'pocketbase';
 
@@ -91,4 +92,20 @@ async function recount(pb: PocketBase, reminder: string) {
     const filter = pb.filter(`reminder = {:reminder} && ${OPEN}`, { reminder })
     const page = await pb.collection('occurrences').getList(1, 1, { filter, fields: 'id' })
     return await pb.collection('reminders').update(reminder, { open: page.totalItems }) as Reminder
+}
+
+
+
+// SNOOZING ===================================================================================================
+
+// Regular times before the new one are skipped, the rule resumes after it | false once the reminder is gone
+export async function snooze(occurrence: Occurrence, next: (reminder: Reminder) => Date) {
+    const reminder = occurrence.reminder ? orNull(await getOne('reminders', occurrence.reminder), 'Could not snooze the reminder.') : null
+    if(!reminder) return false
+
+    unwrap(await updateOnePartial('reminders', reminder.id, { next: next(reminder).toISOString() }), 'Could not snooze the reminder.')
+
+    // A task fires a new occurrence later, this one must not stay open beside it
+    if(occurrence.task) unwrap(await setDone([occurrence], true, 'Snoozed'), 'Could not snooze the reminder.')
+    return true
 }

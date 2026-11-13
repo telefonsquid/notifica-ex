@@ -14,7 +14,7 @@ export async function deliver(user: User, push: Push): Promise<Result<true>[]> {
 
 // The test button of one settings row | a browser only tests itself, others may belong to someone at work
 export async function deliverTest(user: User, channel: TestChannel, endpoint?: string): Promise<Result<true>[]> {
-    const push: Push = { id: crypto.randomUUID(), title: 'notifica-ex', message: 'Reminders reach this device.', task: false, cursor: '' }
+    const push: Push = { id: crypto.randomUUID(), title: 'Test', message: '', task: false, cursor: '' }
 
     if(channel === 'phone') return toPhones(user, push)
     if(channel === 'ntfy') return await toNtfy(user, push)

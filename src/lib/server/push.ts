@@ -1,5 +1,5 @@
 import { resolve } from '$app/paths';
-import { noteLink } from '#lib/links.ts';
+import { noteLink, rescheduleLink } from '#lib/links.ts';
 import { markdownToText } from '#lib/markdown.ts';
 import type { Note } from '#lib/schemas/notes.ts';
 import type { Occurrence } from '#lib/schemas/reminders.ts';
@@ -15,6 +15,7 @@ export type Push = {
     click?: string                  // Opened on a tap
     done?: { path: string, signature: string }
     snooze?: { path: string, signature: string }    // Posted with the choice, see SnoozeChoice
+    reschedule?: string             // Opens the note with every choice, the Android app's one button for it
 }
 
 export function pushFor(note: Note, task: boolean, occurrence: Occurrence | null): Push {
@@ -22,7 +23,7 @@ export function pushFor(note: Note, task: boolean, occurrence: Occurrence | null
     return {
         id,
         title: note.title || 'Reminder',
-        message: markdownToText(note.body).slice(0, 500) || 'Time for this note.',
+        message: markdownToText(note.body).slice(0, 500),  // Empty stays empty, no filler text
         task,
         cursor: occurrence?.created ?? '',
         click: noteLink(note.id),
@@ -30,6 +31,7 @@ export function pushFor(note: Note, task: boolean, occurrence: Occurrence | null
         // Signed for this one occurrence, so it ticks off just that one however late it gets pressed
         done: task && occurrence ? { path: resolve('/api/occurrences/[id]/done', { id }), signature: sign(doneSubject(id)) } : undefined,
         snooze: occurrence ? { path: resolve('/api/occurrences/[id]/snooze', { id }), signature: sign(snoozeSubject(id)) } : undefined,
+        reschedule: occurrence ? rescheduleLink(note.id, id) : undefined,
     }
 }
 

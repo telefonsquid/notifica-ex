@@ -16,9 +16,13 @@ const activity = read(`${ANDROID}/MainActivity.kt`)
 describe('reminder pushes', () => {
 
     const shown = ['id', 'title', 'message', 'click', 'done', 'snooze'] satisfies (keyof Push)[]
+    const shownInApp = [...shown, 'reschedule'] satisfies (keyof Push)[]
 
-    test.each(shown)('the worker and the app read %s', (field) => {
+    test.each(shown)('the worker reads %s', (field) => {
         expect(worker).toContain(`push.${field}`)
+    })
+
+    test.each(shownInApp)('the app reads %s', (field) => {
         expect(notifier).toContain(`"${field}"`)
     })
 

@@ -9,6 +9,10 @@ type Address = { searchParams: { get(name: string): string | null } }
 export const noteLink = (id: string) => `${resolve('/(app)/[[view]]', {})}?note=${encodeURIComponent(id)}`
 export const linkedNote = (url: Address) => url.searchParams.get('note')
 
+// The Android app's Reschedule button opens the note with the choices for that one occurrence
+export const rescheduleLink = (note: string, occurrence: string) => `${noteLink(note)}&reschedule=${encodeURIComponent(occurrence)}`
+export const linkedReschedule = (url: Address) => url.searchParams.get('reschedule')
+
 // The rail's Edit opens that view's filters in settings
 export const viewSettingsLink = (id: string) => `${resolve('/(app)/settings')}?view=${encodeURIComponent(id)}`
 export const linkedView = (url: Address) => url.searchParams.get('view')

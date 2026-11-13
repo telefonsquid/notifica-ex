@@ -1,8 +1,8 @@
 import { SNOOZE_CHOICES, snoozeUntil } from '#lib/reminders.ts';
-import { setDone } from '#lib/server/occurrences.ts';
+import { snooze } from '#lib/server/occurrences.ts';
 import { snoozeSubject } from '#lib/server/push.ts';
-import { getOne, updateOnePartial } from '#lib/server/queries.ts';
-import { orNull, unwrap } from '#lib/server/result.ts';
+import { getOne } from '#lib/server/queries.ts';
+import { unwrap } from '#lib/server/result.ts';
 import { signedAction } from '#lib/server/server_auth.ts';
 import { z } from 'zod';
 
@@ -15,18 +15,12 @@ export async function POST({ params, request }) {
 
     // VERIFY
     const { until } = await signedAction(params.id, request, snoozeSubject, choiceSchema)
+    const occurrence = unwrap(await getOne('occurrences', params.id), 'Occurrence not found.')
+
+    // SNOOZE | the time of day follows the reminder's own zone
+    const snoozed = await snooze(occurrence, (reminder) => snoozeUntil(until, new Date(), reminder.timezone))
 
     // A reminder removed since then has nothing left to snooze, the button just goes away
-    const occurrence = unwrap(await getOne('occurrences', params.id), 'Occurrence not found.')
-    const reminder = occurrence.reminder ? orNull(await getOne('reminders', occurrence.reminder), 'Could not snooze the reminder.') : null
-    if(!reminder) return new Response('Reminder gone.', { status: 200 })
-
-    // SNOOZE | regular times before the picked one are skipped, the rule resumes after it
-    const next = snoozeUntil(until, new Date(), reminder.timezone)
-    unwrap(await updateOnePartial('reminders', reminder.id, { next: next.toISOString() }), 'Could not snooze the reminder.')
-
-    // A task fires a new occurrence later, this one must not stay open beside it
-    if(occurrence.task) await setDone([occurrence], true, 'Snoozed')
-    return new Response('Snoozed.', { status: 200 });
+    return new Response(snoozed ? 'Snoozed.' : 'Reminder gone.', { status: 200 });
 
 }

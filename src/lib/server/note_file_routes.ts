@@ -1,8 +1,8 @@
 import { formatBytes } from '#lib/limits.ts';
 import { IMAGE_THUMB, IMAGE_TYPES, LIMITS, UPLOAD_FORM_OVERHEAD } from '#lib/schema_limits.ts';
 import { isId } from '#lib/schemas/base.ts';
-import { fileNameSchema } from '#lib/schemas/notes.ts';
-import type { FileLimits } from '#lib/schemas/users.ts';
+import { fileNameSchema, type Note } from '#lib/schemas/notes.ts';
+import type { FileLimits, User } from '#lib/schemas/users.ts';
 import { limitsFor } from '#lib/server/limits.ts';
 import { requireNote } from '#lib/server/note_access.ts';
 import { addNoteFile, fetchNoteFile, type FileField } from '#lib/server/note_files.ts';
@@ -66,30 +66,43 @@ export function uploadRoute(field: FileField) {
         const me = signedIn()
         if(!isId(params.id)) error(400, 'Malformed request.')
         const note = await requireNote(params.id, me.id)
-        if(note.sealed) error(400, 'Locked notes hold no files, their text alone is encrypted.')
-
-        const limits = await limitsFor(me)
-        if(policy.turnedOff?.(limits)) error(403, 'File attachments are turned off for your account.')
-        if(note[field].length >= policy.most) error(413, `A note holds at most ${policy.most} ${policy.plural}.`)
-
-        // Refused before the whole body sits in memory
-        const most = policy.bytes(limits)
-        const tooLarge = `${policy.one} must not be larger than ${formatBytes(most)}.`
-        if(Number(request.headers.get('content-length')) > most + UPLOAD_FORM_OVERHEAD) error(413, tooLarge)
+        const most = await checkRoom(field, note, me, Number(request.headers.get('content-length')) - UPLOAD_FORM_OVERHEAD)
 
         // CHECK THE FILE
         const form = await request.formData().catch(() => null)
         const file = form?.get(field)
         if(!(file instanceof File) || !file.size) error(400, `No ${policy.noun} attached.`)
-
-        const wrongType = policy.wrongType?.(file)
-        if(wrongType) error(415, wrongType)
-        if(file.size > most) error(413, tooLarge)
+        checkFile(field, file, most)
 
         // STORE
         return json(await addNoteFile(note, field, file, policy.keepsName ? file.name : undefined))
 
     }
+}
+
+// Whether the uploader may add one more file to the note | refused before the whole body sits in memory, answers the largest size allowed
+export async function checkRoom(field: FileField, note: Note, uploader: User, announced: number) {
+    const policy = POLICIES[field]
+    if(note.sealed) error(400, 'Locked notes hold no files, their text alone is encrypted.')
+
+    const limits = await limitsFor(uploader)
+    if(policy.turnedOff?.(limits)) error(403, 'File attachments are turned off for your account.')
+    if(note[field].length >= policy.most) error(413, `A note holds at most ${policy.most} ${policy.plural}.`)
+
+    const most = policy.bytes(limits)
+    if(announced > most) error(413, tooLarge(policy, most))
+    return most
+}
+
+export function checkFile(field: FileField, file: File, most: number) {
+    const policy = POLICIES[field]
+    const wrongType = policy.wrongType?.(file)
+    if(wrongType) error(415, wrongType)
+    if(file.size > most) error(413, tooLarge(policy, most))
+}
+
+function tooLarge(policy: FilePolicy, most: number) {
+    return `${policy.one} must not be larger than ${formatBytes(most)}.`
 }
 
 

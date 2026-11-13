@@ -76,3 +76,10 @@ export function formatDistance(value: string, now: number): string {
     const [unit, size] = STEPS[index]
     return relative.format(Math.round(left / size), unit)
 }
+
+// Value format of datetime-local inputs, in the browser's own zone
+export function toLocalInput(date: Date | null): string {
+    if(!date) return ''
+    const pad = (value: number) => String(value).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`
+}

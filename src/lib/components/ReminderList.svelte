@@ -50,7 +50,7 @@
     })
 
     function timing(){
-        if(settled) return { duration: duration('base'), easing: cssEasing('in-out') }
+        if(settled) return { duration: duration('fast'), easing: cssEasing('out') }
         if(shrinking) return { duration: duration('slow'), easing: cssEasing('emphasized') }
         return null
     }
@@ -60,7 +60,7 @@
         return settled ? rise(node, { y: 0, scale: 0.6, duration: 'fast' }) : appear(node)
     }
 
-    // A closing card folds the button away with its own shrinking
+    // Local, so a line turning into its form drops them at once instead of holding the line below the form
     function leave(node: Element){
         return settled ? sink(node, { y: 0, scale: 0.6 }) : {}
     }
@@ -74,10 +74,10 @@
 
 {#snippet addButton()}
     {#if !adding}
-        <button class="icon-button shrink-0" aria-label="Reminder history" onclick={(event) => onhistory(event.currentTarget)} in:drift|global out:leave|global {@attach tip('History')}>
+        <button class="icon-button shrink-0" aria-label="Reminder history" onclick={(event) => onhistory(event.currentTarget)} in:drift|global out:leave {@attach tip('History')}>
             <History class="size-4" />
         </button>
-        <button class="open-only icon-button -mr-2 shrink-0" aria-label="Add reminder" onclick={() => adding = true} in:drift|global out:leave|global {@attach tip('Add reminder')}>
+        <button class="open-only icon-button -mr-2 shrink-0" aria-label="Add reminder" onclick={() => adding = true} in:drift|global out:leave {@attach tip('Add reminder')}>
             <BellPlus class="size-4" />
         </button>
     {/if}

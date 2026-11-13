@@ -1,14 +1,11 @@
 import { pbTime } from '#lib/reminders.ts';
-import { isId } from '#lib/schemas/base.ts';
-import { streamFor, streamSubject } from '#lib/server/app_stream.ts';
+import { streamFor } from '#lib/server/app_stream.ts';
+import { keyHolder } from '#lib/server/stream_key.ts';
 import { getOccurrencesSince } from '#lib/server/occurrences.ts';
 import { pushFor } from '#lib/server/push.ts';
-import { getOne } from '#lib/server/queries.ts';
-import { orNull, unwrap } from '#lib/server/result.ts';
-import { hasValidSignature } from '#lib/server/server_auth.ts';
+import { unwrap } from '#lib/server/result.ts';
 import type { Note } from '#lib/schemas/notes.ts';
 import type { User } from '#lib/schemas/users.ts';
-import { error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 
 // Older ones have gone stale when a phone comes back
@@ -30,11 +27,7 @@ async function missedSince(user: User, since: string) {
 }
 
 export const GET: RequestHandler = async ({ params, url }) => {
-    if(!isId(params.user)) error(401, 'Unknown stream.')
-
-    // Only a missing user reads as a bad key, the app gives up on those and retries anything else
-    const user = orNull(await getOne('users', params.user), 'Stream not available.')
-    if(!user || user.state === 'inactive' || !hasValidSignature(streamSubject(user), url.searchParams.get('key') ?? '')) error(401, 'Unknown stream.')
+    const user = await keyHolder(params.user, url.searchParams.get('key') ?? '')
 
     // A first connection starts now, instead of with everything from before the install
     const since = url.searchParams.get('since') ?? ''
