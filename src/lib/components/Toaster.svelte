@@ -8,7 +8,7 @@
     const icons = { success: CircleCheck, error: CircleAlert, info: Info }
 </script>
 
-<!-- Newest toast at the bottom, the others slide up to make room | paper over a blue pass, orange for errors -->
+<!-- Newest toast at the bottom, the others slide up to make room | paper over a blue pass, red for errors -->
 <ol class="pointer-events-none fixed inset-x-0 bottom-[var(--layout-bottom-clear)] z-50 flex flex-col items-center gap-2 px-4 sm:bottom-6 sm:items-end sm:px-6" aria-live="polite">
     {#each notifications as notification (notification.id)}
         {@const Icon = icons[notification.type]}
@@ -45,7 +45,7 @@
     }
 
     .toast.error {
-        --pass: var(--theme-riso-orange);
+        --pass: var(--theme-riso-red);
     }
 
     .toast :global(.icon) {

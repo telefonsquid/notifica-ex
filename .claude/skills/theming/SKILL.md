@@ -16,7 +16,7 @@ A new token goes into every theme file (or the `:root` defaults if it is theme i
 
 ## Themes
 
-- Platinum (light, default) and Charcoal (dark). Tangerine accent, Powder Blue secondary in both.
+- Platinum (light, default) and Charcoal (dark). Scarlet accent (`--theme-riso-red`, the red where orange overprints pink), Powder Blue secondary in both.
 - `#lib/themes/index.ts` holds the `THEMES` registry. A new theme needs an entry there and its CSS file imported in `app.css`.
 - The choice is a cookie. `hooks.server.ts` renders it into `%theme%` on `<html>`, so the first paint is right.
 - `#lib/themes/switch.ts` reveals the new theme as a circle growing from the click point (view transition).
@@ -44,9 +44,9 @@ Same pattern as the theme: a cookie per device, rendered into an `<html data-*>`
 The look of the loop logo: flat inks, each over a second pass slipped off register.
 
 - **The slipped pass always sits bottom right of its ink**, the top left edge shows the ink alone. Every element, text shadows and hover drift included, never mirrored. A press brings it back to zero, never past it.
-- Inks: `--theme-riso-orange`, `-pink` (fluoro pink on Platinum, a darker grape on Charcoal) and `-blue`, `--theme-riso-on-ink` for letters on an ink, `--theme-riso-field` (white or black) for paper. Inks blend through `--theme-riso-ink-blend` (multiply on Platinum, hard-light on Charcoal, where screen glowed magenta and multiply went muddy), but only inside an isolated layer (`isolation: isolate`), so they overprint each other and never mix with the page. The ink sits above its pass and carries the blend, hard-light depends on the order.
+- Inks: `--theme-riso-orange`, `-pink` (fluoro pink on Platinum, a darker grape on Charcoal) and `-blue`, `--theme-riso-red` for what the orange and pink make together (computed, the app accent and every single colour red), `--theme-riso-on-ink` for letters on an ink, `--theme-riso-field` (white or black) for paper. Inks blend through `--theme-riso-ink-blend` (multiply on Platinum, hard-light on Charcoal, where screen glowed magenta and multiply went muddy), but only inside an isolated layer (`isolation: isolate`), so they overprint each other and never mix with the page. The ink sits above its pass and carries the blend, hard-light depends on the order.
 - `riso-print` (`app.css`): a fill over a pass 4px 3px apart, as `::after` over `::before`, each slipped half of it from the element so the pair centres on its content (it takes both pseudo elements and makes the element relative, an absolute one sets its position again in scoped CSS). Both drift apart on hover and meet in the middle on press. `riso-print-ink` paints it orange over pink with paper white letters (primary `Button`, create button, active rail and settings tab indicators), `riso-print-paper` field paper over a blue pass, unblended (secondary `Button`, the phone menu buttons).
-- Surfaces that aren't pressed (toasts, rail tooltips, the settings phone list) take `background: var(--theme-riso-field)` and `box-shadow: 4px 3px 0` of their pass, no drift. Error toasts use an orange pass. Fields have a blue pass, orange while focused. Settings titles print over a pink `text-shadow`.
+- Surfaces that aren't pressed (toasts, rail tooltips, the settings phone list) take `background: var(--theme-riso-field)` and `box-shadow: 4px 3px 0` of their pass, no drift. Error toasts use a red pass. Fields have a blue pass, red while focused. Settings titles carry a blue rule over a pink pass. Orange alone stays for the ink fills and the logo, everything else that was orange is red.
 - `#lib/ui/RisoIcon.svelte` prints a lucide icon over a pink pass. `--riso-ghost` (0 to 1) hides or shows the pass, the rail shows it only on hover. Inside `riso-print` it prints once and `--riso-icon-blend: normal` keeps white letters off the blend.
 - Ghost buttons have no print and sink instead.
 

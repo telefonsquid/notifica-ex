@@ -91,10 +91,10 @@
 
 <style>
     .theme-toggle {
-        color: var(--theme-riso-orange);
+        color: var(--theme-riso-red);
     }
 
-    /* FIELDS | white paper, black on the dark sheet, a blue pass slipped out underneath, orange once focused */
+    /* FIELDS | white paper, black on the dark sheet, a blue pass slipped out underneath, red once focused */
     .sheet :global(.floating) {
         isolation: isolate;
     }
@@ -115,7 +115,7 @@
     }
 
     .sheet :global(.floating:focus-within)::before {
-        background: var(--theme-riso-orange);
+        background: var(--theme-riso-red);
     }
 
     .sheet :global(input),

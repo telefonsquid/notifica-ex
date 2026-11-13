@@ -160,7 +160,7 @@
     }
 
     .item.active {
-        color: var(--theme-riso-orange);
+        color: var(--theme-riso-red);
     }
 
     /* TABS */
@@ -256,7 +256,7 @@
 
     /* Until the indicator knows its place the tab paints itself */
     .tabs:not(.ready) .tab.active {
-        background: var(--theme-riso-orange);
+        background: var(--theme-riso-red);
     }
 
     .indicator {

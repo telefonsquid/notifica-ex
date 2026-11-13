@@ -1,4 +1,4 @@
-/* CHARCOAL | dark, Platinum ink on Charcoal with a Tangerine accent */
+/* CHARCOAL | dark, Platinum ink on Charcoal with a Scarlet accent */
 [data-theme='charcoal'] {
     color-scheme: dark;
 
@@ -15,8 +15,8 @@
     --theme-ink-faint: color-mix(in oklab, var(--color-platinum-200) 36%, var(--color-charcoal-900));
 
     /* ACCENTS */
-    --theme-accent: var(--color-tangerine-500);
-    --theme-accent-soft: color-mix(in oklab, var(--color-tangerine-500) 15%, transparent);
+    --theme-accent: var(--theme-riso-red);
+    --theme-accent-soft: color-mix(in oklab, var(--color-scarlet-600) 15%, transparent);
     --theme-on-accent: var(--color-charcoal-950);
     --theme-secondary: var(--color-powder-300);
     --theme-secondary-soft: color-mix(in oklab, var(--color-powder-300) 14%, transparent);
@@ -24,6 +24,7 @@
     /* RISO INKS | deeper drums on the dark sheet, bright ones glared */
     --theme-riso-orange: var(--color-tangerine-600);
     --theme-riso-pink: var(--color-grape-600);
+    --theme-riso-red: var(--color-scarlet-600);   /* Where the two overlap */
     --theme-riso-blue: var(--color-cobalt-600);
     --theme-riso-ink-blend: hard-light;   /* Overlaps keep the ink's colour, screen glowed magenta and multiply went muddy */
     --theme-riso-field: var(--color-black);

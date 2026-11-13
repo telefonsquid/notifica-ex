@@ -15,9 +15,9 @@
     --theme-ink-muted: color-mix(in oklab, var(--color-charcoal-900) 62%, var(--color-platinum-100));
     --theme-ink-faint: color-mix(in oklab, var(--color-charcoal-900) 38%, var(--color-platinum-100));
 
-    /* ACCENTS | one step darker than Charcoal for contrast on light surfaces */
-    --theme-accent: var(--color-tangerine-600);
-    --theme-accent-soft: color-mix(in oklab, var(--color-tangerine-500) 13%, transparent);
+    /* ACCENTS | the red the orange and pink inks make together */
+    --theme-accent: var(--theme-riso-red);
+    --theme-accent-soft: color-mix(in oklab, var(--color-scarlet-500) 13%, transparent);
     --theme-on-accent: var(--color-platinum-50);
     --theme-secondary: var(--color-powder-600);
     --theme-secondary-soft: color-mix(in oklab, var(--color-powder-400) 20%, transparent);
@@ -25,6 +25,7 @@
     /* RISO INKS | the loop logo's three drums, overprinted on the paper */
     --theme-riso-orange: var(--color-tangerine-500);
     --theme-riso-pink: var(--color-fluoro-500);
+    --theme-riso-red: var(--color-scarlet-500);   /* Where the two overlap */
     --theme-riso-blue: var(--color-cobalt-600);
     --theme-riso-ink-blend: multiply;
     --theme-riso-field: var(--color-white);
