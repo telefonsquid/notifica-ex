@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { replaceState } from '$app/navigation'
+    import { invalidateAll, replaceState } from '$app/navigation'
     import { resolve } from '$app/paths'
     import { page } from '$app/state'
     import AboutSettings from '#lib/components/AboutSettings.svelte'
@@ -7,6 +7,8 @@
     import Administration from '#lib/components/Administration.svelte'
     import AutoColorPriority from '#lib/components/AutoColorPriority.svelte'
     import ChangelogSettings from '#lib/components/ChangelogSettings.svelte'
+    import ColorPicker from '#lib/components/ColorPicker.svelte'
+    import DensityPicker from '#lib/components/DensityPicker.svelte'
     import ImageFitPicker from '#lib/components/ImageFitPicker.svelte'
     import LabelFields from '#lib/components/LabelFields.svelte'
     import LabelPositionPicker from '#lib/components/LabelPositionPicker.svelte'
@@ -17,7 +19,7 @@
     import UserAdmin from '#lib/components/UserAdmin.svelte'
     import ViewSettings from '#lib/components/ViewSettings.svelte'
     import { linkedView, NEW_VIEW } from '#lib/links.ts'
-    import { randomLabelColor } from '#lib/note_colors.ts'
+    import { colorName, randomLabelColor } from '#lib/note_colors.ts'
     import { onCollectionChange } from '#lib/realtime.ts'
     import { safeAction } from '#lib/safe_action.ts'
     import Button from '#lib/ui/Button.svelte'
@@ -25,8 +27,9 @@
     import { hasPermission } from '#lib/user.ts'
     import { Bell, CircleUserRound, Info, Palette, PanelsTopLeft, Plus, ScrollText, ShieldCheck, Tag, Users } from '@lucide/svelte'
     import { untrack } from 'svelte'
-    import { MediaQuery } from 'svelte/reactivity'
     import { createLabel, getLabels } from '../../api/labels.remote'
+    import type { NoteColor } from '#lib/schemas/notes.ts'
+    import { setNoteColor } from '../../api/settings.remote'
     import type { PageProps } from './$types';
 
     // PROPS
@@ -36,6 +39,11 @@
     let labels = $derived(await getLabels())
 
     $effect(() => onCollectionChange('labels', () => getLabels().refresh()));
+
+    // NEW NOTES | auto color labels still paint over this color
+    async function pickNoteColor(color: NoteColor){
+        if(await safeAction(setNoteColor(color))) await invalidateAll()
+    }
 
     // SECTIONS | each one lives here, the tabs and the stage follow | the app group sits apart from the settings
     const SECTIONS = [
@@ -49,9 +57,6 @@
         { id: 'about', label: 'About', icon: Info, body: aboutSection, group: 'app' },
         { id: 'changelog', label: 'Changelog', icon: ScrollText, body: changelogSection, group: 'app' }
     ]
-
-    // Phones scroll through every section in full, without snapping or fading the others
-    const phone = new MediaQuery('width < 40rem')
 
     let sections = $derived(SECTIONS.filter((section) => !section.admin || hasPermission(data.user, 'admin')))
 
@@ -104,6 +109,17 @@
         <div>
             <h3 class="type-meta mb-4 text-ink-faint">Images</h3>
             <ImageFitPicker current={data.preferences.images} />
+        </div>
+        <div>
+            <h3 class="type-meta mb-4 text-ink-faint">Density</h3>
+            <DensityPicker current={data.preferences.density} />
+        </div>
+        <div>
+            <h3 class="type-meta mb-4 text-ink-faint">Default note color</h3>
+            <div class="flex items-center gap-3">
+                <ColorPicker value={data.user.noteColor ?? ''} onpick={pickNoteColor} label="Color of new notes" />
+                <span class="type-body text-ink-muted">{data.user.noteColor ? colorName(data.user.noteColor) : 'None'}</span>
+            </div>
         </div>
     </div>
 {/snippet}
@@ -163,11 +179,11 @@
 <div class="settings mx-auto w-full max-w-content">
     <SettingsTabs {sections} current={scroll.tab} onpick={scroll.go} />
 
-    <!-- STAGE | scrolls on its own and snaps each section to the top, the neighbours peek in at the edges -->
+    <!-- STAGE | scrolls on its own, the tabs follow the section at its top -->
     <div bind:this={scroll.stage} class="stage" onscroll={scroll.follow} onscrollend={scroll.land}>
         <div class="track">
             {#each sections as section (section.id)}
-                <SettingsSection id={section.id} title={section.label} current={phone.current || scroll.tab === section.id} onselect={() => scroll.go(section.id)}>
+                <SettingsSection id={section.id} title={section.label}>
                     {@render section.body()}
                 </SettingsSection>
             {/each}
@@ -178,17 +194,10 @@
 <style>
     /* LAYOUT | exactly the window minus the page padding, the stage scrolls instead of the page */
     .settings {
-        --peek: 0rem;
         display: grid;
         grid-template-rows: auto minmax(0, 1fr);
         gap: 1rem;
         height: calc(100dvh - var(--page-top) - var(--page-bottom));
-    }
-
-    @media (width >= 40rem) {
-        .settings {
-            --peek: 4rem;
-        }
     }
 
     @media (width >= 64rem) {
@@ -207,17 +216,8 @@
         overflow-x: hidden;
         overflow-y: auto;
         overscroll-behavior: contain;
-        scroll-padding-top: var(--peek);
         scrollbar-width: none;
         container-type: size;
-    }
-
-    /* Snaps on wider screens, the neighbours fade out towards its edges */
-    @media (width >= 40rem) {
-        .stage {
-            scroll-snap-type: y mandatory;
-            mask-image: linear-gradient(transparent, #000 var(--peek), #000 calc(100% - var(--peek)), transparent);
-        }
     }
 
     /* One column for every section, a wide row inside must not stretch them past the screen */
@@ -226,6 +226,5 @@
         grid-template-columns: minmax(0, 1fr);
         gap: 1.5rem;
         max-width: 48rem;
-        padding-top: var(--peek);
     }
 </style>

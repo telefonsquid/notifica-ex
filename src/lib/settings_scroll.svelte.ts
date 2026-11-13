@@ -1,12 +1,9 @@
 import { untrack } from 'svelte';
 
-// Where a settled section's top sits on screen
-function snapLine(stage: HTMLElement){
-    return stage.getBoundingClientRect().top + (parseFloat(getComputedStyle(stage).scrollPaddingTop) || 0)
-}
+const SLACK = 48        // A section counts as reached a little before its top meets the stage's
 
 /*
-    One long scroll that snaps to a section, the one at the top is current.
+    One long scroll through every section, the tab follows the one at the top.
 */
 export class SettingsScroll {
     tab = $state('')
@@ -35,16 +32,22 @@ export class SettingsScroll {
         clearTimeout(this.#landing)
         this.#landing = setTimeout(() => this.#jumping = false, 1000)       // In case scrollend never fires
 
-        const top = stage.scrollTop + section.getBoundingClientRect().top - snapLine(stage)
+        const top = stage.scrollTop + section.getBoundingClientRect().top - stage.getBoundingClientRect().top
         stage.scrollTo({ top, behavior: 'smooth' })
     }
 
-    // The last section whose top reached the snap line, with some slack for a scroll that isn't done yet
+    // The last section whose top reached the stage's | at the very end the last one, short sections never reach the top
     follow = () => {
-        if(this.#jumping || !this.stage) return
+        const { stage } = this
+        if(this.#jumping || !stage) return
 
-        const line = snapLine(this.stage) + 48
         const sections = this.#sections()
+        if(stage.scrollTop + stage.clientHeight >= stage.scrollHeight - 1){
+            this.tab = sections.at(-1) ?? this.tab
+            return
+        }
+
+        const line = stage.getBoundingClientRect().top + SLACK
         let current = sections[0]
         for(const id of sections){
             const top = this.#section(id)?.getBoundingClientRect().top
