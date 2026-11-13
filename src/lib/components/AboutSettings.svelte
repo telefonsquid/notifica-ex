@@ -1,5 +1,6 @@
 <script lang="ts">
     import { ArrowUpRight } from '@lucide/svelte';
+    import Logo from '#lib/ui/Logo.svelte';
     import { onMount } from 'svelte';
     import { getAbout } from '../../routes/api/about.remote';
 
@@ -23,8 +24,8 @@
 {/snippet}
 
 <div class="grid gap-10">
-    <div class="flex items-center gap-4">
-        <img src="/favicon.svg" alt="" class="size-12 shrink-0 rounded-[0.7rem]" />
+    <div class="grid gap-6">
+        <Logo class="justify-self-start" />
         <p class="text-ink-muted">Self hosted notes with labels, sharing and reminders that reach the browser, the Android app and ntfy.</p>
     </div>
 
