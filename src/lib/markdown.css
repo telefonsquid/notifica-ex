@@ -23,9 +23,13 @@
     text-underline-offset: 2px;
 }
 
-/* Faded toward the text once opened */
+/* Darker once opened | #lib/visited_links.ts paints the ones the browser won't tell about */
+.markdown a {
+    --link-visited: oklch(from var(--theme-accent) calc(l * 0.72) calc(c * 0.7) h);
+}
+
 .markdown a:visited {
-    color: color-mix(in oklab, var(--theme-accent) 45%, var(--theme-ink-muted));
+    color: var(--link-visited);
 }
 
 /* LINK ARROW | marks a link as leaving the app, nudges toward where it goes on hover */

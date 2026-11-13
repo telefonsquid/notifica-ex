@@ -1,5 +1,6 @@
 <script lang="ts">
     import { isSafeUrl } from '#lib/markdown.ts';
+    import { markVisited } from '#lib/visited_links.ts';
     import { sortable } from '#lib/drag_list.ts';
     import { appear } from '#lib/motion.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
@@ -172,6 +173,7 @@
         if(!onArrow && !event.ctrlKey && !event.metaKey) return false
 
         window.open(link.href, '_blank', 'noopener,noreferrer')
+        markVisited(link.getAttribute('href')!)
         return true
     }
 

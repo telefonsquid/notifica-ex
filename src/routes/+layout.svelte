@@ -4,6 +4,7 @@
     import { followPendingLink, syncStatusBar } from '#lib/android.ts';
     import { closeOverlay } from '#lib/back.ts'
     import { prefetchRoute } from '#lib/prefetch.ts'
+    import { trackVisitedLinks } from '#lib/visited_links.ts'
     import type { User } from '#lib/schemas/users.ts';
     import PasswordDialog from '#lib/components/PasswordDialog.svelte'
     import ConfirmDialog from '#lib/components/ConfirmDialog.svelte'
@@ -22,6 +23,7 @@
     // ANDROID STATUS BAR | matches the theme the server rendered
     onMount(syncStatusBar)
     onMount(followPendingLink);
+    onMount(trackVisitedLinks)
 
     // BACK | an open overlay closes instead of the page behind it changing
     onMount(() => { window.closeOverlay = closeOverlay; })
