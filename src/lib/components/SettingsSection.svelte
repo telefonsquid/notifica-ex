@@ -16,7 +16,7 @@
 <!-- One part of the settings scroll, a hairline sets it apart from the one before -->
 <div id={id} class="section" data-section={id} role="tabpanel" aria-label={title}>
     <div class="body">
-        <h2 class="type-title text-xl">{title}</h2>
+        <h2 class="type-title riso-ink text-xl">{title}</h2>
         {@render children()}
     </div>
 </div>

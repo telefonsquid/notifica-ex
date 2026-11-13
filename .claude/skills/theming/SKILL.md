@@ -39,6 +39,16 @@ Same pattern as the theme: a cookie per device, rendered into an `<html data-*>`
 - Inside a coloured note `--theme-accent` changes. Anything that must stay the app accent (selection wash) uses `--theme-signature`, resolved on `:root`.
 - The colour picker trigger wears a rainbow ring so it never blends into a note of its own colour.
 
+## Riso print
+
+The look of the logo: flat ink, a second pass in a darker tone slipped 1 to 2px off register.
+
+- Theme tokens: `--theme-riso-plate` (Tangerine fill), `-on-plate` (ink on it), `-ghost` (the slipped pass, Ember at about 45%), `-blend` (multiply on paper, screen on Charcoal), `-paper` and `-rule` (sheet fill and its 1.5px outline).
+- `--riso-x` and `--riso-y` on `:root` set the slip. Elements change them for hover and press, never the shadow itself.
+- Utilities in `app.css`: `riso-plate` (fill, halftone grain, ghost shadow, forces multiply so dark ink stays on it in Charcoal), `riso-sheet` (paper inside a rule), `riso-ink` (ghost text shadow), `riso-press` (hover slips further, press closes the gap and moves the element onto its ghost).
+- `#lib/ui/RisoIcon.svelte` prints a lucide icon twice. `--riso-ghost` (0 to 1) hides or shows the slipped pass, the rail shows it only on hover and the open view.
+- Used by primary and secondary `Button`, the create button, the rail, toasts, the settings tabs and the auth page. Ghost buttons have no print and sink instead.
+
 ## Rules
 
 - No palette colours or hex values in components.

@@ -165,6 +165,10 @@
     --layout-radius-card: 1.25rem;
     --layout-radius-control: 0.75rem;
 
+    /* RISO | how far the second pass slips off register, hover and press change it per element */
+    --riso-x: 1.5px;
+    --riso-y: 1.25px;
+
     /* SIGNATURE | the theme's accent resolved here, note colours that swap the accent inside a card keep this one */
     --theme-signature: var(--theme-accent);
 
@@ -383,6 +387,44 @@
         opacity: 0.35;
         pointer-events: none;
     }
+}
+
+/* RISO PRINT | flat ink in two passes like the logo, the second one slipped off register */
+/* Plate | a Tangerine fill with a halftone grain, its Ember pass peeks out beside it */
+@utility riso-plate {
+    background-color: var(--theme-riso-plate);
+    background-image: radial-gradient(circle, var(--theme-riso-ghost) 0.6px, transparent 1px);
+    background-size: 3px 3px;
+    color: var(--theme-riso-on-plate);
+    box-shadow: var(--riso-x) var(--riso-y) 0 var(--theme-riso-ghost);
+    --theme-riso-blend: multiply;   /* Dark ink on the plate in every theme, screen would wash it out */
+}
+
+/* Sheet | bare paper inside an inked rule, things that float slip it further */
+@utility riso-sheet {
+    border: 1.5px solid var(--theme-riso-rule);
+    background-color: var(--theme-riso-paper);
+    box-shadow: var(--riso-x) var(--riso-y) 0 var(--theme-riso-ghost);
+}
+
+/* Press | the top pass lands on the slipped one, hover lets them drift apart */
+@utility riso-press {
+    &:hover {
+        --riso-x: 2.5px;
+        --riso-y: 2px;
+    }
+
+    &:active {
+        --riso-x: 0px;
+        --riso-y: 0px;
+        translate: 1.5px 1.25px;
+        transition-duration: var(--duration-instant);
+    }
+}
+
+/* Text printed twice */
+@utility riso-ink {
+    text-shadow: var(--riso-x) var(--riso-y) 0 var(--theme-riso-ghost);
 }
 
 /* SCRIM | dims the page behind a dialog */

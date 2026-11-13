@@ -22,6 +22,14 @@
     --theme-secondary: var(--color-powder-600);
     --theme-secondary-soft: color-mix(in oklab, var(--color-powder-400) 20%, transparent);
 
+    /* RISO | the logo's print: Charcoal ink on a Tangerine plate, an Ember pass slipped off register */
+    --theme-riso-plate: var(--color-tangerine-500);
+    --theme-riso-on-plate: var(--color-charcoal-900);
+    --theme-riso-ghost: color-mix(in oklab, var(--color-tangerine-900) 45%, transparent);
+    --theme-riso-blend: multiply;
+    --theme-riso-paper: var(--color-platinum-50);
+    --theme-riso-rule: var(--color-charcoal-900);
+
     /* NOTE TINTS */
     --theme-note-lemon: color-mix(in oklab, var(--color-lemon-400) 36%, var(--color-platinum-50));
     --theme-note-ochre: color-mix(in oklab, var(--color-ochre-400) 32%, var(--color-platinum-50));

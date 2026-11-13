@@ -1,4 +1,5 @@
 <script lang="ts">
+    import RisoIcon from '#lib/ui/RisoIcon.svelte';
     import { LoaderCircle } from '@lucide/svelte';
     import type { Component, Snippet } from 'svelte';
     import type { ClassValue, HTMLButtonAttributes } from 'svelte/elements';
@@ -25,12 +26,12 @@
         children?: Snippet
     } & BaseAttributes = $props()
 
-    // STYLES
+    // STYLES | primary and secondary are printed like the logo
     type ButtonStyle = 'primary' | 'secondary' | 'ghost'
     const styles: Record<ButtonStyle, string> = {
-        primary:   'bg-accent text-on-accent hover:opacity-90',
-        secondary: 'bg-raised text-ink border border-line hover:border-line-strong',
-        ghost:     'text-ink-muted hover:text-ink hover:bg-accent-soft',
+        primary:   'riso-plate riso-ink riso-press',
+        secondary: 'riso-sheet riso-press text-ink',
+        ghost:     'sinks text-ink-muted hover:text-ink hover:bg-accent-soft',
     }
 </script>
 
@@ -50,14 +51,14 @@
     {#if loading}
         <LoaderCircle class="size-4 animate-spin" />
     {:else if Icon}
-        <Icon class="size-4" />
+        <RisoIcon icon={Icon} class="size-4" />
     {/if}
     {@render children?.()}
 </svelte:element>
 
 <style>
-    /* Press sinks quickly and springs back on release */
-    .button:active {
+    /* Ghost buttons have no print to press, they sink instead | release springs back */
+    .sinks:active {
         scale: 0.96;
         transition-duration: var(--duration-instant);
     }

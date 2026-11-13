@@ -12,6 +12,7 @@
     import { LogOut, Menu, Settings, X } from '@lucide/svelte';
     import { ContextMenu, Dialog } from 'bits-ui';
     import { sortable } from '#lib/drag_list.ts';
+    import RisoIcon from '#lib/ui/RisoIcon.svelte';
     import { getViews, reorderViews } from '../../routes/api/views.remote';
 
     // VIEWS | set up in settings, the first one lives at the root
@@ -79,9 +80,9 @@
 <!-- A view id of undefined is the root | settings take no view at all | props come from a menu trigger -->
 {#snippet link(target: { view?: string } | 'settings', label: string, Icon: typeof Settings, active: boolean, props: Record<string, unknown> = {})}
     <a {...props} href={target === 'settings' ? resolve('/(app)/settings') : resolve('/(app)/[[view]]', target)} {@attach tipAnchor} class={['item', active && 'active']} aria-label={label} aria-current={active ? 'page' : undefined}>
-        {#if active}<span class="vt-rail-indicator indicator absolute inset-0 rounded-card bg-accent"></span>{/if}
+        {#if active}<span class="vt-rail-indicator indicator riso-plate absolute inset-0 rounded-card"></span>{/if}
         <!-- Hover tilts the icon inside, Firefox drops the new snapshot of a tilted element mid transition -->
-        <span class="vt-rail-icon relative flex size-6"><Icon class="icon size-6" strokeWidth={1.75} /></span>
+        <span class="vt-rail-icon relative flex size-6"><RisoIcon icon={Icon} class="icon size-6" strokeWidth={1.75} /></span>
         <span class="tip type-meta" aria-hidden="true">{label}</span>
     </a>
 {/snippet}
@@ -89,8 +90,8 @@
 <!-- A rail item with its name beside it, for the phone menu -->
 {#snippet entry(href: string, label: string, Icon: typeof Settings, active: boolean, index: number, props: Record<string, unknown> = {})}
     <!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- resolved by the caller -->
-    <a {...props} {href} class={['entry', active && 'active']} aria-current={active ? 'page' : undefined} in:rise|global={{ y: 16, delay: stagger(index), duration: 'base' }}>
-        <Icon class="size-6 shrink-0" strokeWidth={1.75} />
+    <a {...props} {href} class={['entry', active && 'active riso-plate']} aria-current={active ? 'page' : undefined} in:rise|global={{ y: 16, delay: stagger(index), duration: 'base' }}>
+        <RisoIcon icon={Icon} class="size-6" strokeWidth={1.75} />
         <span class="type-title truncate text-lg">{label}</span>
     </a>
 {/snippet}
@@ -100,7 +101,7 @@
 
     <!-- MENU | everything the rail holds, spread over the screen on phones -->
     <Dialog.Root bind:open={menuOpen}>
-        <Dialog.Trigger bind:ref={menuButton} class="menu-button grid size-[var(--layout-menu-button)] shrink-0 place-items-center rounded-full border border-line-strong bg-raised text-ink sm:hidden" aria-label="Menu">
+        <Dialog.Trigger bind:ref={menuButton} class="menu-button riso-sheet riso-press grid size-[var(--layout-menu-button)] shrink-0 place-items-center rounded-full text-ink sm:hidden" aria-label="Menu">
             <Menu class="size-7" strokeWidth={2.25} />
         </Dialog.Trigger>
         <Dialog.Portal>
@@ -136,7 +137,7 @@
                             </nav>
 
                             <!-- Sits right over the menu button, so the button seems to turn into a cross -->
-                            <Dialog.Close class="menu-button absolute bottom-[var(--layout-bottom-row)] left-gutter grid size-[var(--layout-menu-button)] place-items-center rounded-full border border-line-strong bg-raised text-ink" aria-label="Close menu">
+                            <Dialog.Close class="menu-button riso-sheet riso-press absolute bottom-[var(--layout-bottom-row)] left-gutter grid size-[var(--layout-menu-button)] place-items-center rounded-full text-ink" aria-label="Close menu">
                                 <X class="size-7" strokeWidth={2.25} />
                             </Dialog.Close>
                         </div>
@@ -170,7 +171,7 @@
     <div class="hidden shrink-0 flex-col items-center gap-2 sm:flex">
         {@render link('settings', 'Settings', Settings, inSettings)}
         <button class="item" {@attach tipAnchor} aria-label="Logout" disabled={loggingOut} onclick={signOut}>
-            <LogOut class="icon relative size-6" strokeWidth={1.75} />
+            <RisoIcon icon={LogOut} class="icon size-6" strokeWidth={1.75} />
             <span class="tip type-meta" aria-hidden="true">Logout</span>
         </button>
     </div>
@@ -182,19 +183,11 @@
         scrollbar-width: none;
     }
 
-    /* MENU BUTTON | as big and heavy as the create button on the other side */
+    /* MENU BUTTON | a sheet as big as the create button on the other side, printed with the same slip */
     :global(.menu-button) {
-        box-shadow: 0 0.75rem 1.75rem -0.75rem rgb(0 0 0 / 0.35);
-        transition: scale var(--duration-base) var(--ease-spring), background-color var(--duration-fast) var(--ease-out);
-    }
-
-    :global(.menu-button:hover),
-    :global(.menu-button:focus-visible) {
-        scale: 1.06;
-    }
-
-    :global(.menu-button:active) {
-        scale: 0.92;
+        --riso-x: 2.5px;
+        --riso-y: 2px;
+        transition: box-shadow var(--duration-base) var(--ease-spring), translate var(--duration-base) var(--ease-spring);
     }
 
     /* PHONE MENU | rail items laid out wide, the open one filled with the accent */
@@ -209,14 +202,9 @@
         transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
     }
 
-    .entry:hover {
+    .entry:not(.active):hover {
         color: var(--theme-ink);
         background: var(--theme-line);
-    }
-
-    .entry.active {
-        color: var(--theme-on-accent);
-        background: var(--theme-accent);
     }
 
     .entry:disabled {
@@ -233,6 +221,13 @@
         border-radius: var(--layout-radius-card);
         color: var(--theme-ink-faint);
         transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+        --riso-ghost: 0;
+    }
+
+    /* The second pass only prints on hover and on the open view */
+    .item:hover,
+    .item.active {
+        --riso-ghost: 1;
     }
 
     .item:hover {
@@ -246,7 +241,8 @@
 
     /* Takes on the colour in step with the indicator gliding in */
     .item.active {
-        color: var(--theme-on-accent);
+        --theme-riso-blend: multiply;   /* Icon sits on the plate, see riso-plate */
+        color: var(--theme-riso-on-plate);
         background: transparent;
         transition: color var(--duration-base) var(--ease-in-out);
     }
@@ -285,11 +281,12 @@
         left: calc(var(--layout-rail-width) + 0.25rem);
         z-index: 1;
         padding: 0.5rem 0.75rem;
+        border: 1.5px solid var(--theme-riso-rule);
         border-radius: var(--layout-radius-control);
-        background: var(--theme-raised);
+        background: var(--theme-riso-paper);
         color: var(--theme-ink);
         white-space: nowrap;
-        box-shadow: 0 8px 24px -12px rgb(0 0 0 / 0.5);
+        box-shadow: var(--riso-x) var(--riso-y) 0 var(--theme-riso-ghost);
         pointer-events: none;
         opacity: 0;
         translate: -0.5rem -50%;

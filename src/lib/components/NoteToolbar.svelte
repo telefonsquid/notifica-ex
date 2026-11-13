@@ -10,6 +10,7 @@
     import { noteEditor } from '#lib/note_editor.svelte.ts';
     import { typing } from '#lib/overlays.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
+    import RisoIcon from '#lib/ui/RisoIcon.svelte';
     import { sameFilter } from '#lib/views.ts';
     import { ArrowUpDown, Check, ListFilter, Plus, Search, X } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
@@ -130,8 +131,8 @@
 </div>
 
 <!-- CREATE | grows into a blank note at the front of the grid, gone while that one is open -->
-<button bind:this={button} class={['create grid size-16 shrink-0 place-items-center rounded-full text-on-accent', creating && 'away']} aria-label="New note" tabindex={creating ? -1 : 0} onpointerenter={noteEditor.load} onfocus={noteEditor.load} onclick={oncreate} {@attach tip('New note')}>
-    <Plus class="plus size-7" strokeWidth={2.25} />
+<button bind:this={button} class={['create riso-plate riso-press grid size-16 shrink-0 place-items-center rounded-full', creating && 'away']} aria-label="New note" tabindex={creating ? -1 : 0} onpointerenter={noteEditor.load} onfocus={noteEditor.load} onclick={oncreate} {@attach tip('New note')}>
+    <RisoIcon icon={Plus} class="plus size-7" strokeWidth={2.25} />
 </button>
 
 {#snippet trigger(name: string, Icon: typeof Search, tweaked: boolean)}
@@ -180,20 +181,29 @@
         from { opacity: 0; }
     }
 
-    /* CREATE | the fill glows from within, hover lets the light spill out and sweeps a sheen across */
+    /* CREATE | the biggest plate in the app, so its second pass slips furthest */
     .create {
-        position: relative;
-        isolation: isolate;
-        background: radial-gradient(circle at 32% 28%, color-mix(in oklab, var(--theme-accent) 72%, white), var(--theme-accent) 62%);
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 0.35),
-            0 0.75rem 1.75rem -0.75rem color-mix(in oklab, var(--theme-accent) 70%, transparent);
+        --riso-x: 2.5px;
+        --riso-y: 2px;
         transition:
+            box-shadow var(--duration-base) var(--ease-spring),
+            translate var(--duration-base) var(--ease-spring),
             scale var(--duration-base) var(--ease-spring),
-            box-shadow var(--duration-base) var(--ease-out),
             opacity var(--duration-base) var(--ease-out),
             width var(--duration-slow) var(--ease-emphasized),
             margin var(--duration-slow) var(--ease-emphasized);
+    }
+
+    .create:hover,
+    .create:focus-visible {
+        --riso-x: 4px;
+        --riso-y: 3.25px;
+    }
+
+    .create:active {
+        --riso-x: 0px;
+        --riso-y: 0px;
+        translate: 2.5px 2px;
     }
 
     /* Gives up its room too, the gap included, so search and filter glide to the centre */
@@ -205,65 +215,12 @@
         pointer-events: none;
     }
 
-    .create::before {
-        content: '';
-        position: absolute;
-        inset: 0;
-        z-index: -1;
-        border-radius: inherit;
-        background: var(--theme-accent);
-        box-shadow: 0 0 1rem 0.5rem var(--theme-accent);
-        opacity: 0.3;
-        scale: 0.8;
-        transition: opacity var(--duration-slow) var(--ease-out), scale var(--duration-slow) var(--ease-spring);
-    }
-
-    .create::after {
-        content: '';
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 0.45) 50%, transparent 65%) 150% 0 / 250% 100% no-repeat;
-        pointer-events: none;
-    }
-
-    .create:hover,
-    .create:focus-visible {
-        scale: 1.06;
-        box-shadow:
-            inset 0 1px 0 rgb(255 255 255 / 0.45),
-            0 0.875rem 2rem -0.75rem color-mix(in oklab, var(--theme-accent) 80%, transparent);
-    }
-
-    .create:hover::before,
-    .create:focus-visible::before {
-        opacity: 0.4;
-        scale: 0.95;
-    }
-
-    .create:hover::after {
-        animation: sheen 0.9s var(--ease-out) forwards;
-    }
-
-    .create:active {
-        scale: 0.92;
-    }
-
     .create :global(.plus) {
         transition: rotate var(--duration-slow) var(--ease-spring);
     }
 
     .create:hover :global(.plus) {
         rotate: 90deg;
-    }
-
-    @keyframes sheen {
-        from { background-position: 150% 0; }
-        to { background-position: -50% 0; }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-        .create:hover::after { animation: none; }
     }
 
     /* VIEW ACTIONS */

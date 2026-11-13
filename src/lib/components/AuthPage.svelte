@@ -50,14 +50,39 @@
     <title>{title} · notifica-ex</title>
 </svelte:head>
 
-<main class="grid min-h-dvh place-items-center px-gutter py-12">
+<main class="relative isolate grid min-h-dvh place-items-center overflow-hidden px-gutter py-12">
+    <!-- A halftone corner printed in two passes like the logo -->
+    <div class="halftone" aria-hidden="true"></div>
+
     {#if mounted}
         <div class="grid w-full max-w-xs gap-8" in:rise>
             <Logo class="justify-self-center" />
-            <form bind:this={form} class="grid gap-3" onsubmit={submit}>
+            <form bind:this={form} class="riso-sheet grid gap-3 rounded-card p-6" onsubmit={submit}>
                 {@render children()}
                 <Button type="submit" class="mt-2 w-full" loading={submitting}>{action}</Button>
             </form>
         </div>
     {/if}
 </main>
+
+<style>
+    /* HALFTONE | Tangerine dots fading out from the top right corner, the Ember pass slipped beside them */
+    .halftone,
+    .halftone::after {
+        position: absolute;
+        inset: 0;
+        z-index: -1;
+        background-image: radial-gradient(circle, var(--theme-riso-plate) 1.6px, transparent 2.2px);
+        background-size: 9px 9px;
+        mask-image: radial-gradient(circle 24rem at 100% 0%, black, transparent);
+        pointer-events: none;
+    }
+
+    .halftone::after {
+        content: '';
+        z-index: auto;
+        background-image: radial-gradient(circle, var(--theme-riso-ghost) 1.6px, transparent 2.2px);
+        mix-blend-mode: var(--theme-riso-blend);
+        translate: 3px 2.5px;
+    }
+</style>

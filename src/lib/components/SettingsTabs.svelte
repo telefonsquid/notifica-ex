@@ -100,7 +100,7 @@
 
 <!-- WIDER SCREENS | a row on tablets, a column on wide screens -->
 <div bind:this={tablist} class={['tabs', ready && 'ready']} role="tablist" aria-label="Settings sections" tabindex="-1" onkeydown={step}>
-    <span class="indicator" style:--x="{indicator.x}px" style:--y="{indicator.y}px" style:--width="{indicator.width}px" style:--height="{indicator.height}px"></span>
+    <span class="indicator riso-plate" style:--x="{indicator.x}px" style:--y="{indicator.y}px" style:--width="{indicator.width}px" style:--height="{indicator.height}px"></span>
     {#each sections as item, index (item.id)}
         {@render breakBefore(index)}
         <button
@@ -119,12 +119,13 @@
 </div>
 
 <style>
-    /* PHONE LIST */
+    /* PHONE LIST | a printed sheet like the toasts */
     .picker {
         overflow: hidden;
-        border: 1px solid var(--theme-line-strong);
+        border: 1.5px solid var(--theme-riso-rule);
         border-radius: var(--layout-radius-card);
-        background: var(--theme-raised);
+        background: var(--theme-riso-paper);
+        box-shadow: var(--riso-x) var(--riso-y) 0 var(--theme-riso-ghost);
     }
 
     .head,
@@ -241,7 +242,7 @@
         }
     }
 
-    .tab:hover,
+    .tab:not(.active):hover,
     .item:hover {
         color: var(--theme-ink);
         background: var(--theme-line);
@@ -249,14 +250,14 @@
 
     /* Takes on the colour in step with the indicator gliding in */
     .tab.active {
-        color: var(--theme-on-accent);
+        color: var(--theme-riso-on-plate);
         background: transparent;
         transition: color var(--duration-base) var(--ease-in-out);
     }
 
     /* Until the indicator knows its place the tab paints itself */
     .tabs:not(.ready) .tab.active {
-        background: var(--theme-accent);
+        background: var(--theme-riso-plate);
     }
 
     .indicator {
@@ -266,7 +267,6 @@
         width: var(--width);
         height: var(--height);
         border-radius: var(--layout-radius-control);
-        background: var(--theme-accent);
         translate: var(--x) var(--y);
         opacity: 0;
     }
