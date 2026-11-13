@@ -6,6 +6,10 @@ declare global {
         NotificaAndroid?: {
             statusBar(light: boolean): void
             listen?(url: string): void
+            setSchedule?(url: string): void
+            instantOn?(): boolean
+            setInstant?(on: boolean): void
+            testNotification?(): void
             stopListening?(): void
             notificationsOn?(): boolean
             notificationsAllowed?(): boolean

@@ -22,10 +22,9 @@ private const val FOREGROUND_ID = 1
 private const val READ_TIMEOUT = 150_000     // A few heartbeats missed, the connection is dead
 private const val RETRY_FIRST = 2_000L
 private const val RETRY_MAX = 60_000L
-private const val SEEN_MAX = 100
 private const val WAKE_TIME = 10_000L
 
-// Holds one connection to the server for as long as reminders are on, so they arrive with the app closed
+// Holds one connection to the server while Instant updates are on, or always with an older server
 class ReminderService : Service() {
   private lateinit var prefs: ReminderPrefs
   private lateinit var notifier: ReminderNotifier
@@ -34,9 +33,6 @@ class ReminderService : Service() {
   private var worker: Thread? = null
   @Volatile private var connection: HttpURLConnection? = null
   @Volatile private var stopped = false
-
-  // A reconnect can deliver what the live connection just did
-  private val seen = LinkedHashSet<String>()
 
   override fun onBind(intent: Intent?): IBinder? = null
 
@@ -48,7 +44,7 @@ class ReminderService : Service() {
   }
 
   override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-    if (!prefs.enabled || prefs.url.isEmpty()) {
+    if (!prefs.enabled || prefs.url.isEmpty() || !ReminderDelivery.live(prefs)) {
       stopSelf()
       return START_NOT_STICKY
     }
@@ -135,8 +131,8 @@ class ReminderService : Service() {
       if (cursor > prefs.since) prefs.since = cursor
       if (first) return
 
-      if (seen.add(json.getString("id"))) notifier.show(json, origin)
-      if (seen.size > SEEN_MAX) seen.remove(seen.first())
+      // A reconnect or an alarm may have shown it already
+      if (prefs.firstSight(pushKey(json))) notifier.show(json, origin)
     } catch (_: JSONException) {
       // A line from a newer server, skip it
     } finally {
@@ -159,10 +155,10 @@ class ReminderService : Service() {
   }
 }
 
-// Back after a restart of the phone or an app update, without the app being opened
+// Back after a restart of the phone or an app update, without the app being opened | alarms are gone after a restart
 class StartReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
-    val prefs = ReminderPrefs(context)
-    if (prefs.enabled && prefs.url.isNotEmpty()) ReminderService.start(context)
+    ReminderDelivery.apply(context)
+    ReminderDelivery.sync(context)
   }
 }

@@ -279,6 +279,33 @@ Invariants:
 | Live | `endStreams` | Ended, the next try hears 401 |
 | Live | write to a closed stream | Ended |
 
+## Phone delivery
+
+`ReminderDelivery.kt`. Compiled, can't run here, so this table comes from reading. `apply()` brings service, alarm and sync work in line with the prefs, every entry point calls it.
+
+| State | Means |
+|---|---|
+| Off | `prefs.enabled` off, or neither stream nor schedule address |
+| Alarms | Schedule address set, Instant updates off: one exact alarm for the soonest entry, sync every 15 min |
+| Alarms and live | Schedule address set, Instant updates on: the above plus the Android service |
+| Live only | No schedule address (an older server never sends one): the Android service alone |
+
+| From | Event | To |
+|---|---|---|
+| Off | `setSchedule` then `listen` | Alarms (or Alarms and live) |
+| Off | `listen` without `setSchedule` | Live only |
+| Alarms | `setInstant(true)` | Alarms and live |
+| Alarms and live | `setInstant(false)` | Alarms |
+| Alarms, Alarms and live | sync answers 404 | Live only |
+| Alarms, Alarms and live | sync answers 401 | Off, until the app hands out a new key |
+| Any | `stopListening`, `setNotifications(false)`, `changeServer` | Off |
+
+1. At most one alarm is armed, always for the soonest stored entry, a past one fires at once.
+2. A sync replaces the stored schedule but keeps unfired past entries up to 12 h old, the server already moved past them.
+3. A reminder time shows once per phone, whichever of alarm and stream brings it first.
+
+Done or Snooze from an alarm can land before the server logged the occurrence: 409, the notification stays and a WorkManager job retries every minute, ten times, removing it once through. A slot the reminder moved past without logging (edited, snoozed or deleted before the phone's next sync) answers 410 and the notification goes. A sync leaves out entries already shown, the server lists a due time until dispatch moved `next` on.
+
 ## Android service
 
 `ReminderService.kt`. Compiled, can't run here, so this table comes from reading.
@@ -301,7 +328,7 @@ Invariants:
 | Any | `reconnect()` from a new address | Connecting |
 | Any | `stopListening` | Stopped |
 
-Doubles get dropped by `seen`, the cursor only moves forward. Unverified race: `onStartCommand` during the loop's final `stopSelf()` finds `worker` set and only reconnects a loop already over. Can't be forced without a phone, recorded here, not fixed.
+Doubles get dropped by the seen list in `ReminderPrefs` (keyed by `slot`, shared with the alarms), the cursor only moves forward. Runs only in live mode, see below. Unverified race: `onStartCommand` during the loop's final `stopSelf()` finds `worker` set and only reconnects a loop already over. Can't be forced without a phone, recorded here, not fixed.
 
 ---
 

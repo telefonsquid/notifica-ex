@@ -7,7 +7,8 @@ import { ntfyTopicSchema, pushSubscriptionSchema } from '#lib/schemas/users.ts';
 import { streamSubject } from '#lib/server/app_stream.ts';
 import { deliverTest } from '#lib/server/delivery.ts';
 import { requireNote } from '#lib/server/note_access.ts';
-import { getNewestOpenOccurrence, getOccurrences, getOpenOccurrences, setDone, snooze } from '#lib/server/occurrences.ts';
+import { getNewestOpenOccurrence, getOccurrenceAt, getOccurrences, getOpenOccurrences, setDone, snooze } from '#lib/server/occurrences.ts';
+import { parseSlot } from '#lib/server/push.ts';
 import { deleteOne, findOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { ruleFields } from '#lib/server/reminder_rules.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
@@ -102,10 +103,11 @@ export const setOccurrenceDone = command(z.object({ id: idSchema, done: z.boolea
 });
 
 // Picked in the app after the Android notification's Reschedule button
-export const rescheduleOccurrence = command(z.object({ id: idSchema, at: z.iso.datetime({ offset: true }) }), async ({ id, at }) => {
+// The id is an occurrence, or a reminder and time when the phone's alarm showed it
+export const rescheduleOccurrence = command(z.object({ id: z.string().max(LIMITS.ID + 16), at: z.iso.datetime({ offset: true }) }), async ({ id, at }) => {
 
     const me = signedIn()
-    const occurrence = unwrap(await getOwned('occurrences', id, me.id), 'Occurrence not found.')
+    const occurrence = await occurrenceFor(id, me.id)
 
     const next = new Date(at)
     if(next.getTime() <= Date.now()) error(400, 'Pick a time in the future.')
@@ -115,6 +117,15 @@ export const rescheduleOccurrence = command(z.object({ id: idSchema, at: z.iso.d
     return next.toISOString()
 
 });
+
+async function occurrenceFor(id: string, owner: string) {
+    const slot = parseSlot(id)
+    if(!slot) return unwrap(await getOwned('occurrences', id, owner), 'Occurrence not found.')
+
+    const occurrence = await getOccurrenceAt(slot.reminder, slot.at)
+    if(!occurrence || occurrence.owner !== owner) error(404, 'Occurrence not found.')
+    return occurrence
+}
 
 // A few words on one check, written only in the history
 export const setOccurrenceComment = command(z.object({ id: idSchema, comment: z.string().trim().max(LIMITS.OCCURRENCE_COMMENT) }), async ({ id, comment }) => {
@@ -212,5 +223,13 @@ export const getAppStream = query(async () => {
 
     const me = signedIn()
     return `${resolve('/api/app-stream/[user]', { user: me.id })}?key=${sign(streamSubject(me))}`
+
+});
+
+// Where it fetches the times to set alarms for, same key as the stream
+export const getAppSchedule = query(async () => {
+
+    const me = signedIn()
+    return `${resolve('/api/app-schedule/[user]', { user: me.id })}?key=${sign(streamSubject(me))}`
 
 });

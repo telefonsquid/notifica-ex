@@ -24,6 +24,7 @@
 
     let phoneOn = $derived(!user.appPaused)     // Stored on the account, so a browser switches the phones too
     let phoneAllowed = $state(true)
+    let instantOn = $state(false)          // Per phone, so it lives in the app and not on the account
 
     let browserBlocker = $state<string | null>(null)
     let browserOn = $state(false)
@@ -31,6 +32,12 @@
 
     function readPhone(){
         phoneAllowed = app?.notificationsAllowed?.() ?? true
+        instantOn = app?.instantOn?.() ?? false
+    }
+
+    function setInstant(on: boolean){
+        instantOn = on
+        app?.setInstant?.(on)
     }
 
     onMount(() => {
@@ -96,6 +103,13 @@
     let testing = $state<TestChannel | null>(null)
 
     async function test(channel: TestChannel) {
+
+        // The app shows its own, a phone without the live connection never hears the server's
+        if(channel === 'phone' && app?.testNotification){
+            app.testNotification()
+            return
+        }
+
         testing = channel
         const endpoint = channel === 'browser' ? await browserPushEndpoint() : undefined
         if(await safeAction(sendTestReminder({ channel, endpoint }))) notify('Test sent.')
@@ -113,6 +127,12 @@
             {/if}
             <Switch checked={phoneOn} label="Reminders in the Android app" onchange={setPhone} />
         </li>
+        {#if app?.setInstant && phoneOn}
+            <li class="row">
+                <span class="text-ink">Instant updates</span>
+                <Switch checked={instantOn} label="Keep a live connection for instant updates" onchange={setInstant} />
+            </li>
+        {/if}
         {#if mounted && !app}
             <li class="row">
                 <span class="text-ink">This browser</span>

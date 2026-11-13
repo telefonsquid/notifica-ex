@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { describeRule, firstOccurrence, isDue, movedOn, occurrenceAfter, snoozeUntil } from '#lib/reminders.ts';
+import { describeRule, firstOccurrence, isDue, movedOn, occurrenceAfter, snoozeUntil, upcomingTimes } from '#lib/reminders.ts';
 
 // Rules as the form stores them, in Berlin unless a test says otherwise
 const rule = (overrides: Partial<Parameters<typeof occurrenceAfter>[0]>) => ({ at: '2026-10-20T07:00:00.000Z', repeat: 'days' as const, every: 1, weekdays: [], until: '', timezone: 'Europe/Berlin', ...overrides })
@@ -216,5 +216,37 @@ describe('only and except rules', () => {
     test('a once reminder ignores the rules', () => {
         const once = rule({ repeat: 'never', timezone: 'UTC', at: '2026-10-24T09:00:00.000Z', rules: [{ mode: 'except', kind: 'days', days: ['sa'] }] })
         expect(iso(occurrenceAfter(once, after('2026-10-20T00:00:00Z')))).toBe('2026-10-24T09:00:00.000Z')
+    })
+})
+
+
+
+// PHONE SCHEDULE ====================================================================================================
+describe('upcomingTimes', () => {
+    const now = after('2026-10-21T06:00:00Z')
+    const until = after('2026-10-23T06:00:00Z')
+
+    test('starts at the stored next time and follows the rule', () => {
+        const daily = { ...rule({}), next: '2026-10-21 07:00:00.000Z' }
+        expect(upcomingTimes(daily, now, until, 20).map(iso)).toEqual(['2026-10-21T07:00:00.000Z', '2026-10-22T07:00:00.000Z'])
+    })
+
+    test('keeps a snoozed next time, then resumes the rule', () => {
+        const snoozed = { ...rule({}), next: '2026-10-21 12:30:00.000Z' }
+        expect(upcomingTimes(snoozed, now, until, 20).map(iso)).toEqual(['2026-10-21T12:30:00.000Z', '2026-10-22T07:00:00.000Z'])
+    })
+
+    test('skips a next time long past', () => {
+        const stale = { ...rule({}), next: '2026-10-20 07:00:00.000Z' }
+        expect(upcomingTimes(stale, now, until, 20).map(iso)).toEqual(['2026-10-21T07:00:00.000Z', '2026-10-22T07:00:00.000Z'])
+    })
+
+    test('stops at the cap', () => {
+        const minutes = { ...rule({ repeat: 'minutes', every: 5 }), next: '2026-10-21 06:05:00.000Z' }
+        expect(upcomingTimes(minutes, now, until, 3)).toHaveLength(3)
+    })
+
+    test('a sent one off reminder has nothing left', () => {
+        expect(upcomingTimes({ ...rule({ repeat: 'never' }), next: '' }, now, until, 20)).toEqual([])
     })
 })

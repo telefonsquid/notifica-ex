@@ -18,6 +18,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.IntentCompat
 import androidx.core.view.WindowCompat
 import java.io.IOException
+import org.json.JSONArray
 import org.json.JSONObject
 
 // Origin of the bundled connect page
@@ -88,6 +89,13 @@ class MainActivity : TauriActivity() {
   override fun onResume() {
     super.onResume()
     tellPage() // May come back from the system settings
+    ReminderDelivery.sync(this)
+  }
+
+  // Edits made in the app reach the alarms before it goes to sleep
+  override fun onStop() {
+    super.onStop()
+    ReminderDelivery.sync(this)
   }
 
   // The settings page reads the new state after this
@@ -97,9 +105,10 @@ class MainActivity : TauriActivity() {
 
   private fun allowed() = getSystemService(NotificationManager::class.java).areNotificationsEnabled()
 
-  // Doze cuts the connection otherwise, and reminders would arrive hours late
+  // Doze cuts the live connection otherwise | alarms need no exemption
   @SuppressLint("BatteryLife")
   private fun askBatteryExemption() {
+    if (!ReminderDelivery.live(prefs)) return
     if (getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(packageName)) return
     startActivity(Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS, Uri.parse("package:$packageName")))
   }
@@ -125,6 +134,15 @@ class MainActivity : TauriActivity() {
         bars.isAppearanceLightNavigationBars = light
       }
 
+      // Comes before listen | a page of an older server never calls it and the stream stays in charge
+      @JavascriptInterface
+      fun setSchedule(url: String) = runOnUiThread {
+        if (url != prefs.scheduleUrl) {
+          prefs.scheduleUrl = url
+          prefs.schedule = JSONArray()
+        }
+      }
+
       // Logged in with this stream | a new address is another account, nothing it missed counts
       @JavascriptInterface
       fun listen(url: String) = runOnUiThread {
@@ -132,17 +150,18 @@ class MainActivity : TauriActivity() {
           prefs.url = url
           prefs.since = ""
         }
-        if (prefs.enabled) {
-          askOnce()
-          ReminderService.start(this@MainActivity)
-        }
+        if (prefs.enabled) askOnce()
+        ReminderDelivery.apply(this@MainActivity)
+        ReminderDelivery.sync(this@MainActivity)
       }
 
       @JavascriptInterface
       fun stopListening() = runOnUiThread {
         prefs.url = ""
         prefs.since = ""
-        ReminderService.stop(this@MainActivity)
+        prefs.scheduleUrl = ""
+        prefs.schedule = JSONArray()
+        ReminderDelivery.apply(this@MainActivity)
       }
 
       @JavascriptInterface
@@ -159,10 +178,29 @@ class MainActivity : TauriActivity() {
           prefs.since = ""
           prefs.asked = false
           askOnce()
-          ReminderService.start(this@MainActivity)
-        } else {
-          ReminderService.stop(this@MainActivity)
         }
+        ReminderDelivery.apply(this@MainActivity)
+        ReminderDelivery.sync(this@MainActivity)
+      }
+
+      @JavascriptInterface
+      fun instantOn() = prefs.instant
+
+      @JavascriptInterface
+      fun setInstant(on: Boolean) = runOnUiThread {
+        prefs.instant = on
+        if (on) {
+          prefs.since = ""
+          askBatteryExemption()
+        }
+        ReminderDelivery.apply(this@MainActivity)
+      }
+
+      // Shown by the phone itself, the server's test only reaches the live connection
+      @JavascriptInterface
+      fun testNotification() = runOnUiThread {
+        val push = JSONObject().put("id", "test").put("title", "Test reminder").put("message", "Reminders reach this device.")
+        ReminderNotifier(this@MainActivity).show(push, "")
       }
 
       @JavascriptInterface
@@ -182,7 +220,7 @@ class MainActivity : TauriActivity() {
       @JavascriptInterface
       fun changeServer() = runOnUiThread {
         prefs.forgetServer()
-        ReminderService.stop(this@MainActivity)
+        ReminderDelivery.apply(this@MainActivity)
         startActivity(Intent.makeRestartActivityTask(packageManager.getLaunchIntentForPackage(packageName)!!.component))
         Runtime.getRuntime().exit(0)
       }

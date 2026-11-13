@@ -2,13 +2,15 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- REMINDERS | a service holds the connection to the server, the phone may not put it to sleep -->
+    <!-- REMINDERS | exact alarms from the server's schedule, a service holds the live connection when Instant updates are on -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />
 
     <application
         android:icon="@mipmap/ic_launcher"
@@ -58,6 +60,7 @@
         </service>
 
         <receiver android:name=".ActionReceiver" android:exported="false" />
+        <receiver android:name=".AlarmReceiver" android:exported="false" />
 
         <receiver android:name=".StartReceiver" android:exported="false">
             <intent-filter>

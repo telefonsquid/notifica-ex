@@ -99,6 +99,24 @@ export function occurrenceAfter(rule: Rule, after: Date): Date | null {
     return null
 }
 
+// PHONE SCHEDULE ====================================================================================================
+
+// A stored next time a little past still counts, the dispatch run may be about to send it
+const SCHEDULE_GRACE = 5 * MINUTE
+
+// The times a phone sets alarms for, from the stored next time on | a snooze or edit changes next, so the phone learns of it on its next sync
+export function upcomingTimes(reminder: Rule & { next: string }, now: Date, until: Date, max: number): Date[] {
+    const times: Date[] = []
+    let at = parseTimestamp(reminder.next)
+    if(at && at.getTime() < now.getTime() - SCHEDULE_GRACE) at = occurrenceAfter(reminder, now)
+
+    while(at && at <= until && times.length < max){
+        times.push(at)
+        at = occurrenceAfter(reminder, at)
+    }
+    return times
+}
+
 // When a snoozed reminder goes off again | tomorrow means 9:00 on the clock of the reminder's own zone
 // Opens a card with a blank reminder form instead of a stored reminder
 export const NEW_REMINDER = 'new'

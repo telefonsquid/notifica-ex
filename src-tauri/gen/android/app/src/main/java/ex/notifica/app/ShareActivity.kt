@@ -13,9 +13,8 @@ import android.widget.Toast
 import androidx.core.content.IntentCompat
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlin.concurrent.thread
+import org.json.JSONException
 import org.json.JSONObject
 
 private const val STREAM_PATH = "/api/app-stream/"
@@ -46,7 +45,7 @@ class ShareActivity : Activity() {
       // Read while this activity still holds the right to, it ends with finish
       val images = uris.mapNotNull { read(it) }
       val body = JSONObject().put("title", title).put("text", text).toString()
-      val note = post(share, body.toByteArray(), "application/json")?.let { JSONObject(it).optString("id").ifEmpty { null } }
+      val note = post(share, body.toByteArray(), "application/json")?.let { noteIn(it) }
 
       runOnUiThread { if (note == null) openApp(shared) else finish() }
       if (note == null) return@thread
@@ -103,21 +102,16 @@ class ShareActivity : Activity() {
     }
   }
 
-  // The answer's text, null on any failure
-  private fun post(url: Uri, body: ByteArray, type: String): String? {
+  // The new note's id, null when something other than this app's server answered
+  private fun noteIn(answer: String): String? {
     return try {
-      val connection = URL(url.toString()).openConnection() as HttpURLConnection
-      connection.connectTimeout = 8_000
-      connection.readTimeout = 30_000
-      connection.requestMethod = "POST"
-      connection.doOutput = true
-      connection.setFixedLengthStreamingMode(body.size)
-      connection.setRequestProperty("Content-Type", type)
-      connection.outputStream.use { it.write(body) }
-      if (connection.responseCode !in 200..299) return null
-      connection.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
-    } catch (_: IOException) {
+      JSONObject(answer).optString("id").ifEmpty { null }
+    } catch (_: JSONException) {
       null
     }
   }
+
+  // The answer's text, null on any failure
+  private fun post(url: Uri, body: ByteArray, type: String): String? =
+    request(url.toString(), body, type, read = 30_000).takeIf { it.ok }?.text
 }

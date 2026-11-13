@@ -12,6 +12,7 @@ const worker = read('static/push-worker.js')
 const notifier = read(`${ANDROID}/ReminderNotifier.kt`)
 const service = read(`${ANDROID}/ReminderService.kt`)
 const activity = read(`${ANDROID}/MainActivity.kt`)
+const delivery = read(`${ANDROID}/ReminderDelivery.kt`)
 
 describe('reminder pushes', () => {
 
@@ -24,6 +25,15 @@ describe('reminder pushes', () => {
 
     test.each(shownInApp)('the app reads %s', (field) => {
         expect(notifier).toContain(`"${field}"`)
+    })
+
+    test('stream and alarms tell the same reminder time apart by its slot', () => {
+        expect(notifier).toContain('"slot"')
+        expect(delivery).toContain('"slot"')
+    })
+
+    test('the app reads the schedule entries', () => {
+        expect(delivery).toContain('"entries"')
     })
 
     test('the app resumes its stream from the cursor', () => {

@@ -8,9 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import androidx.core.app.NotificationCompat
-import java.io.IOException
-import java.net.HttpURLConnection
-import java.net.URL
 import kotlin.concurrent.thread
 import org.json.JSONObject
 
@@ -43,9 +40,9 @@ class ReminderNotifier(private val context: Context) {
     .setContentIntent(open(null, 0))
     .build()
 
-  // One line of the stream, its paths are relative to the server
+  // One line of the stream or one alarm, its paths are relative to the server
   fun show(push: JSONObject, origin: String) {
-    val id = push.getString("id").hashCode()
+    val id = pushKey(push).hashCode()
     val message = push.optString("message")
     val click = push.optString("click").ifEmpty { null }
     val builder = NotificationCompat.Builder(context, CHANNEL_REMINDERS)
@@ -91,6 +88,9 @@ class ReminderNotifier(private val context: Context) {
   }
 }
 
+// Same reminder time from stream and alarm | an older server sends no slot
+fun pushKey(push: JSONObject): String = push.optString("slot").ifEmpty { push.getString("id") }
+
 // DONE AND SNOOZE BUTTONS | the signed link needs no login, so this works with the app closed
 class ActionReceiver : BroadcastReceiver() {
   override fun onReceive(context: Context, intent: Intent) {
@@ -101,25 +101,15 @@ class ActionReceiver : BroadcastReceiver() {
 
     thread {
       try {
-        if (post(url, body)) context.getSystemService(NotificationManager::class.java).cancel(id) // Stays up when it failed, for another try
+        val status = request(url, body.toByteArray()).status
+        if (actionSettled(status)) context.getSystemService(NotificationManager::class.java).cancel(id) // Stays up when it failed, for another try
+        if (status == 409) ActionRetry.later(context, url, body, id)
       } finally {
         pending.finish()
       }
     }
   }
-
-  private fun post(url: String, body: String): Boolean {
-    return try {
-      val connection = URL(url).openConnection() as HttpURLConnection
-      connection.connectTimeout = 8_000
-      connection.readTimeout = 8_000
-      connection.requestMethod = "POST"
-      connection.doOutput = true
-      connection.setRequestProperty("Content-Type", "application/json")
-      connection.outputStream.use { it.write(body.toByteArray()) }
-      connection.responseCode in 200..299
-    } catch (_: IOException) {
-      false
-    }
-  }
 }
+
+// Went through, or the reminder moved on and the button has nothing left to do
+fun actionSettled(status: Int) = status in 200..299 || status == 410

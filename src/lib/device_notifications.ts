@@ -1,5 +1,5 @@
 import { PUBLIC_VAPID_KEY } from '$app/env/public';
-import { addPushSubscription, getAppStream, removePushSubscription } from '../routes/api/reminders.remote';
+import { addPushSubscription, getAppSchedule, getAppStream, removePushSubscription } from '../routes/api/reminders.remote';
 
 // Which account and subscription the server already knows of, so an ordinary page load asks it nothing
 const REGISTERED = 'notifica-push-registered';
@@ -65,10 +65,13 @@ export function followAppPause(paused: boolean) {
 
 // EVERY START ================================================================================================
 // The app connects itself once it knows the address | browsers can renew a subscription on their own
+// The schedule goes first, an app that gets none stays on the live connection, as with an older server
 export async function startDeviceNotifications(user: string) {
     const app = androidApp();
     if(app){
-        app.listen?.(new URL(await getAppStream(), location.origin).href);
+        const [stream, schedule] = await Promise.all([getAppStream(), getAppSchedule()]);
+        app.setSchedule?.(new URL(schedule, location.origin).href);
+        app.listen?.(new URL(stream, location.origin).href);
         return;
     }
 

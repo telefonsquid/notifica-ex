@@ -1,4 +1,4 @@
-import { describeRule } from '#lib/reminders.ts';
+import { describeRule, pbTime } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import type { Occurrence, Reminder } from '#lib/schemas/reminders.ts';
 import { deleteOne, findOne, getOne, insertOnePartial, run, updateOnePartial } from '#lib/server/queries.ts';
@@ -35,6 +35,11 @@ export async function getOpenOccurrences(note: string, owner: string) {
         const filter = pb.filter(`note = {:note} && owner = {:owner} && ${OPEN}`, { note, owner })
         return pb.collection('occurrences').getFullList({ filter, sort: 'at', fields: 'id,reminder,done' }) as Promise<Checkable[]>
     })
+}
+
+// The one logged for a phone's alarm | null until the dispatch run reached that time
+export async function getOccurrenceAt(reminder: string, at: Date) {
+    return orNull(await findOne('occurrences', 'reminder = {:reminder} && at = {:at}', undefined, { reminder, at: pbTime(at) }), 'Occurrence not found.')
 }
 
 export async function getNewestOpenOccurrence(reminder: string) {
