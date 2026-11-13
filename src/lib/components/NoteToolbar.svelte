@@ -131,7 +131,7 @@
 </div>
 
 <!-- CREATE | grows into a blank note at the front of the grid, gone while that one is open -->
-<button bind:this={button} class={['create riso-plate riso-press grid size-16 shrink-0 place-items-center rounded-full', creating && 'away']} aria-label="New note" tabindex={creating ? -1 : 0} onpointerenter={noteEditor.load} onfocus={noteEditor.load} onclick={oncreate} {@attach tip('New note')}>
+<button bind:this={button} class={['create riso-print riso-print-ink grid size-16 shrink-0 place-items-center rounded-full', creating && 'away']} aria-label="New note" tabindex={creating ? -1 : 0} onpointerenter={noteEditor.load} onfocus={noteEditor.load} onclick={oncreate} {@attach tip('New note')}>
     <RisoIcon icon={Plus} class="plus size-7" strokeWidth={2.25} />
 </button>
 
@@ -181,29 +181,17 @@
         from { opacity: 0; }
     }
 
-    /* CREATE | the biggest plate in the app, so its second pass slips furthest */
+    /* CREATE | printed like the buttons, keyboard focus drifts the pass like a hover */
     .create {
-        --riso-x: 2.5px;
-        --riso-y: 2px;
         transition:
-            box-shadow var(--duration-base) var(--ease-spring),
-            translate var(--duration-base) var(--ease-spring),
             scale var(--duration-base) var(--ease-spring),
             opacity var(--duration-base) var(--ease-out),
             width var(--duration-slow) var(--ease-emphasized),
             margin var(--duration-slow) var(--ease-emphasized);
     }
 
-    .create:hover,
-    .create:focus-visible {
-        --riso-x: 4px;
-        --riso-y: 3.25px;
-    }
-
-    .create:active {
-        --riso-x: 0px;
-        --riso-y: 0px;
-        translate: 2.5px 2px;
+    .create:focus-visible::before {
+        translate: 6px 4.5px;
     }
 
     /* Gives up its room too, the gap included, so search and filter glide to the centre */
