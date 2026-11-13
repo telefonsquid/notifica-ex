@@ -1,4 +1,5 @@
 <script lang="ts">
+    import LabelChip from '#lib/components/LabelChip.svelte';
     import { cssEasing, duration, morph, unfold } from '#lib/motion.ts';
     import { COLOR_GROUPS, colorName } from '#lib/note_colors.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
@@ -7,7 +8,7 @@
     import { clearSection, countAdvancedOnly, emptyFilter, flipToggle, isSectionActive, isToggled, sameFilter, type FilterSection } from '#lib/views.ts';
     import type { Label } from '#lib/schemas/notes.ts';
     import type { DateRange, ViewFilter } from '#lib/schemas/views.ts';
-    import { Archive, Bell, CalendarRange, CaseSensitive, Check, ChevronDown, Heading, ListChecks, Minus, Palette, Pin, RotateCcw, SlidersHorizontal, Tag, TextSearch, X } from '@lucide/svelte';
+    import { Archive, Bell, CalendarRange, CaseSensitive, Check, ChevronDown, Heading, ListChecks, Palette, Pin, RotateCcw, SlidersHorizontal, Tag, TextSearch, X } from '@lucide/svelte';
     import { untrack, type Snippet } from 'svelte';
     import { fade } from 'svelte/transition';
 
@@ -91,16 +92,7 @@
 <!-- SNIPPETS ==================================================================================================== -->
 {#snippet labelChip(label: Label, cycle: boolean)}
     {@const state = stateOf(label.id)}
-    <button
-        type="button"
-        class={['label-chip note-mark type-meta', state, !state && filter.include.length > 0 && 'dim']}
-        data-note={label.color || undefined}
-        aria-label={`${label.name}: ${state === 'include' ? 'included' : state === 'exclude' ? 'left out' : 'ignored'}`}
-        onclick={() => stepLabel(label.id, cycle)}
-    >
-        {#if state === 'include'}<Check class="size-3" strokeWidth={3} />{:else if state === 'exclude'}<Minus class="size-3" strokeWidth={3} />{/if}
-        <span class="name">{label.name}</span>
-    </button>
+    <LabelChip {label} {state} dim={!state && filter.include.length > 0} onclick={() => stepLabel(label.id, cycle)} />
 {/snippet}
 
 {#snippet flag(Icon: Icon, text: string, on: boolean, flip: () => void)}
@@ -440,24 +432,6 @@
         background: var(--theme-accent-soft);
         color: var(--theme-accent);
     }
-
-    /* LABEL CHIPS | the card tabs' colour and type */
-    .label-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.25rem;
-        height: 1.625rem;
-        padding-inline: 0.625rem;
-        border-radius: 0.375rem;
-        transition: opacity var(--duration-base) var(--ease-out), scale var(--duration-base) var(--ease-spring);
-    }
-
-    .label-chip:hover { scale: 1.05; opacity: 1; }
-    .label-chip:active { scale: 0.95; }
-
-    .label-chip.exclude { opacity: 0.6; }
-    .label-chip.exclude .name { text-decoration: line-through; text-decoration-thickness: 1.5px; }
-    .label-chip.dim { opacity: 0.45; }
 
     /* FLOATING LINKS | small pills of their own above the box */
     .float {

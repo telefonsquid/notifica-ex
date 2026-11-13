@@ -33,6 +33,10 @@
     let editing = $state<string | null>(null)
     let anchors = $state<Record<string, HTMLElement>>({})
 
+    // Its menu and editor sit outside the card, so hover alone would fold the tab under them
+    let menu = $state<string | null>(null)
+    let held = $derived(editing !== null || menu !== null)
+
     function drop(id: string){
         picked = picked.filter((item) => item !== id)
     }
@@ -44,7 +48,7 @@
 </script>
 
 {#if tabs.length || (open && owned)}
-    <ul class="tabs absolute flex gap-1" aria-label="Labels">
+    <ul class={['tabs absolute flex gap-1', held && 'held']} aria-label="Labels">
         {#each tabs as label (label.id)}
             <!-- A closed card's right click opens the note's menu, an open one gives each tab its own -->
             <ContextMenu.Root>
@@ -52,7 +56,7 @@
                     {#snippet child({ props })}
                         <li {...props} bind:this={anchors[label.id]} class="tab note-mark type-meta flex min-w-6 items-center gap-0.5 px-2.5" data-note={label.color || undefined}>
                             <!-- The name offers editing the label or narrowing the view to it, open or closed -->
-                            <DropdownMenu.Root>
+                            <DropdownMenu.Root onOpenChange={(value) => { if(value) menu = label.id; else if(menu === label.id) menu = null }}>
                                 <DropdownMenu.Trigger class="name truncate text-left uppercase hover:underline" aria-label={`Label ${label.name}`}>
                                     {label.name}
                                 </DropdownMenu.Trigger>
@@ -101,7 +105,7 @@
         {/each}
         {#if open && owned}
             <li class="adder-tab ml-auto shrink-0" in:appear out:unfold={{ axis: 'x' }}>
-                <LabelAdder class="h-full" {labels} taken={picked} onadd={(id) => picked = [...picked, id]} />
+                <LabelAdder class="h-full" {labels} {picked} onadd={(id) => picked = [...picked, id]} onremove={drop} />
             </li>
         {/if}
     </ul>
@@ -157,6 +161,10 @@
         height: var(--layout-note-tab);
     }
 
+    :global(.note:not(.open)) .held .tab {
+        height: 1.25rem;
+    }
+
     .tab :global(.name) {
         opacity: 0;
         transition: opacity var(--duration-fast) var(--ease-out);
@@ -164,7 +172,8 @@
 
     :global(.note.open) .tab :global(.name),
     :global(.note:hover) .tab :global(.name),
-    :global(.note:focus-within) .tab :global(.name) {
+    :global(.note:focus-within) .tab :global(.name),
+    .held .tab :global(.name) {
         opacity: 1;
         transition-delay: calc(var(--duration-fast) * 0.5);
     }

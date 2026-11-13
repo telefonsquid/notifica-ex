@@ -50,6 +50,7 @@ Invariants:
 | Closed, clean | newer note arrives | Closed, clean | Adopts it |
 | Open, clean | typing | Dirty | |
 | Open, clean | newer note arrives | Open, clean | Not adopted yet, the next save or close brings it |
+| Open | mouse press outside | closes | A floating card swallows the click, nothing behind it reacts |
 | Dirty | 900 ms pause, close, unmount, server back | Saving | |
 | Saving | success | Clean or Dirty | Sends changed fields only, takes the others from the answer. Dirty when typing went on meanwhile |
 | Saving | 404 | Gone | The card leaves the list, typed text becomes a note of its own |
@@ -369,7 +370,9 @@ Invariant: logout always reaches the login page when the server answered, unsave
 
 ## Editing
 
-`editing` in `(app)/[[view]]/+page.svelte`: null, or `{ id, fresh, key, focus }`. One card at a time. Opening another saves the first (it closes, `save` runs). `frozen` holds the grid order while open.
+`editing` in `(app)/[[view]]/+page.svelte`: null, or `{ id, fresh, key, focus, shared, afloat }`. One card at a time. Opening another saves the first (it closes, `save` runs). `frozen` holds the grid order while open.
+
+`afloat` is set at opening, never after: a stored note in a grid of 8 or more on a screen 40rem wide or more. Then the cell keeps its closed height as a ghost (`--ghost`) and the note floats to the screen centre, page scroll locked (`float` attachment, it also recentres on resize). Otherwise the cell spans two columns and scrolls into view. A new note never floats.
 
 ## Selection
 

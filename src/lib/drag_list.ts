@@ -4,6 +4,7 @@ import { flushSync } from 'svelte';
 /*
     Drag to reorder for a column of elements, attached to the list so its rows need no wiring.
     Mouse and pen work anywhere on a row, touch only from a [data-drag-handle], the rest of a touch scrolls.
+    With handleOnly every pointer needs the handle, which then sits right inside its row so nested lists keep to their own rows.
     Neighbours glide aside on inline translates, the list itself only changes once the drop has settled.
 */
 
@@ -16,7 +17,7 @@ const LANDING = `${GLIDE}, box-shadow var(--duration-base) var(--ease-out)`
 
 // ====================================================================================================
 
-export function sortable(commit: (from: number, to: number) => void) {
+export function sortable(commit: (from: number, to: number) => void, options: { handleOnly?: boolean } = {}) {
     return (list: HTMLElement) => {
         let press: { id: number, item: HTMLElement, y: number } | null = null
         let drag: Drag | null = null
@@ -41,11 +42,15 @@ export function sortable(commit: (from: number, to: number) => void) {
 
             const target = event.target as Element
             const handle = target.closest('[data-drag-handle]')
-            if(event.pointerType === 'touch' && !handle) return
+            if((options.handleOnly || event.pointerType === 'touch') && !handle) return
             if(!handle && target.closest('button, input, textarea, select')) return
 
             const item = [...list.children].find((child) => child.contains(target))
             if(!(item instanceof HTMLElement)) return
+            if(options.handleOnly && handle?.parentElement !== item) return
+
+            // Text under the handle would get selected and the editor would move its caret there
+            if(options.handleOnly) event.preventDefault()
 
             press = { id: event.pointerId, item, y: event.clientY }
             addEventListener('pointermove', onMove)

@@ -16,12 +16,15 @@ export class NoteGrid {
 
     #before: Map<string, DOMRect> | undefined
     #pending = false
+    #quick = false
 
     // Rects before the next change, the first one wins until its glide ran | the create button joins it even then
-    snapshot(origin?: DOMRect | null){
+    // Quick glides back faster, a closing note shouldn't keep the grid waiting
+    snapshot(origin?: DOMRect | null, quick = false){
         if(!this.element) return
         this.#before ??= measure(this.element)
         if(origin) this.#before.set(NEW_CELL, origin)
+        if(quick) this.#quick = true
     }
 
     // Order holds still while frozen, every autosave would reshuffle an open card otherwise
@@ -56,9 +59,11 @@ export class NoteGrid {
                 flushSync()
                 const from = this.#before
                 const element = this.element
+                const speed = this.#quick ? 'base' : 'slow'
                 this.#before = undefined
                 this.#pending = false
-                if(element && from) glide(element, from, () => pack(element))
+                this.#quick = false
+                if(element && from) glide(element, from, () => pack(element), speed)
             })
         })
     }

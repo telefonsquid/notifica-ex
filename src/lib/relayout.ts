@@ -1,4 +1,4 @@
-import { cssEasing, duration } from '#lib/motion.ts';
+import { cssEasing, duration, type DurationToken } from '#lib/motion.ts';
 
 /*
     What the grid's markup promises this file and the masonry packer:
@@ -6,6 +6,7 @@ import { cssEasing, duration } from '#lib/motion.ts';
     data-flip-body on the part inside that resizes
     data-flip-card on the card inside it, whose corners follow the glide
     data-note-open on the body of the open note
+    data-flip-centred on a cell whose body is centred on a spot, it grows from its middle
     data-resizing on that part while it glides to a new size
     data-dragging on a cell that follows the pointer instead of gliding
     data-floating on a leaving cell out of the flow, the packer gives it no spot
@@ -46,8 +47,8 @@ export function withoutLeaving<T>(root: ParentNode, read: () => T): T {
 
 // GLIDE | cells move from where they were to where the update put them | data-flip-body marks the part inside that resizes
 // Layout runs once the cells hold their natural size, before the new rects are read
-export function glide(root: ParentNode, before: Map<string, DOMRect>, layout?: () => void){
-    const time = duration('slow')
+export function glide(root: ParentNode, before: Map<string, DOMRect>, layout?: () => void, speed: DurationToken = 'slow'){
+    const time = duration(speed)
     const timing = { duration: time, easing: cssEasing('emphasized') }
 
     // Glides still running would skew the new rects | a dragged cell follows the pointer instead
@@ -63,7 +64,10 @@ export function glide(root: ParentNode, before: Map<string, DOMRect>, layout?: (
         const to = after.get(cell.dataset.flip!)
         if(!from || !to) continue
 
-        const dx = from.left - to.left, dy = from.top - to.top
+        // A centred body moves its top while its height glides, its middle stays put
+        const centred = cell.dataset.flipCentred !== undefined
+        const dx = from.left - to.left
+        const dy = centred ? from.top + from.height / 2 - (to.top + to.height / 2) : from.top - to.top
         const resized = Math.abs(from.width - to.width) > 1 || Math.abs(from.height - to.height) > 1
         if(Math.abs(dx) < 1 && Math.abs(dy) < 1 && !resized) continue
         if(!resized && offscreen(from) && offscreen(to)) continue           // Unseen glides only cost frames on phones

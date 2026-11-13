@@ -22,7 +22,7 @@ Motion is deliberate: everything that changes place or size glides, nothing pops
 | `stagger` | Delay for lists that come in together |
 | `unfold` | Height changes inside a card, `in:` and `out:` both. Animates size, padding, margin and flex gap with a symmetric easing, so swapping two branches keeps the sum steady |
 | `morph` | Attachment, lets a band's height follow its content. Its own easing while the card is open and settled, the glide's while it closes. Animates to the height the layout grants, never past a capped scroll area, and never clips scroll areas (that reset the scroll and looped) |
-| `measure` / `glide` | FLIP for grids: `measure()` before the update, `glide()` after |
+| `measure` / `glide` | FLIP for grids: `measure()` before the update, `glide()` after. `glide()` takes a duration token, `slow` by default, a closing note goes back with `base` |
 | `withoutLeaving` | Filters out cells mid outro |
 
 ## Grid glides
@@ -33,12 +33,15 @@ Motion is deliberate: everything that changes place or size glides, nothing pops
 - Opening and closing a card call the page's `snapshot()` themselves, since a card's blocks can update before the page's `$effect.pre`.
 - The page's glide runs from `queueMicrotask` + `flushSync`. `tick()` waits a frame in async mode.
 - `html` keeps `scrollbar-gutter: stable`, the grid `overflow-anchor: none`.
+- A floating note (`afloat` on the cell, from `NoteOpening`) is centred with `translate: -50% -50%` on its frame, so its top moves while its height glides. `data-flip-centred` makes `glide()` take dy from the centres. The ghost's `::before` fades in through `@starting-style` and out with `closing`, its 100vmax spread is the dim, no scrim element.
 
 ## Masonry
 
 `#lib/masonry.ts` places every cell explicitly on 1px grid rows, each in the column (or column pair for a wide card) that ends highest, in sort order. CSS only sets the column count, the vertical gap is `--note-row-gap`. It repacks through a ResizeObserver, a new cell gets watched and its first report packs it, so a change never packs twice. `glide()` takes it as its layout step so cards glide straight to the packed spot. Leaving cells taken out of the flow by `floatCell()` (`data-floating`) are skipped. The `data-*` attributes the glides and the packer rely on are listed at the top of `#lib/relayout.ts`. `pack()` reads every span before it writes a placement: one read per placement forces a full layout each time, which cost seconds at 500 notes.
 
 An open card (`.wide`) keeps `--note-open-gap` from its neighbour on the side its label tabs show, above it only when a note sits there. `pack()` clears all placements to count the columns, so it holds the grid's height with `min-height` meanwhile: the collapsed page would clamp the scroll position to the top.
+
+The grid has `overflow-anchor: none`, so the browser never anchors the scroll. Packs from the observers and image loads (`pack(grid, true)`) anchor it themselves instead: the first card fully on screen stays where it was, else a card above the screen that grew or shrank (a window box swapped for its real card, a late image) pulls the page up or down under the reader. No anchoring while a card is open, resizing, dragged or floating, those move the page themselves. Glides and window resizes pack unanchored.
 
 ## Long lists
 

@@ -27,8 +27,10 @@
     import type { ViewFilter, ViewSort } from '#lib/schemas/views.ts';
     import { autoColorOrder } from '#lib/auto_colors.ts';
     import { groupReminders } from '#lib/reminders.ts';
+    import { freshDefaults } from '#lib/notes.ts';
     import { defaultSort, emptyFilter, matchesView, noteDefaults, noteText, sortNotes, wordsOf } from '#lib/views.ts';
-    import { linkedNote } from '#lib/links.ts';
+    import { linkedNote, linkedReschedule } from '#lib/links.ts';
+    import RescheduleDialog from '#lib/components/RescheduleDialog.svelte'
     import { NEW_CELL } from '#lib/relayout.ts';
     import { tip } from '#lib/tooltip.svelte.ts'
     import { CheckCheck, X } from '@lucide/svelte'
@@ -121,12 +123,17 @@
     })
 
     // Notification taps land on noteLink() | the address drops it first, that navigation would close the note again
+    // Reschedule asks for the new time instead of opening the note
+    let rescheduling = $state<{ occurrence: string, title: string } | null>(null)
+
     $effect(() => {
         const id = linkedNote(page.url)
         if (!id) return
+        const occurrence = linkedReschedule(page.url)
         const note = untrack(() => notes.find((item) => item.id === id))
         goto(resolve('/(app)/[[view]]', { view: page.params.view }), { shallow: true, replace: true }).then(() => {
-            if (note) opening.edit(note)
+            if (occurrence) rescheduling = { occurrence, title: note?.title || 'Reschedule' }
+            else if (note) opening.edit(note)
         })
     });
 
@@ -152,6 +159,11 @@
     // A shift press would otherwise mark the text between two cards
     function holdTextSelection(event: MouseEvent, id: string) {
         if (event.shiftKey && editing?.id !== id) event.preventDefault()
+    }
+
+    // Cards move by pointer, the browser's own drag would carry images and text off | the editor drags its checklist items itself
+    function stopNativeDrag(event: DragEvent) {
+        if (!(event.target as Element).closest?.('.ProseMirror')) event.preventDefault()
     }
 
     // A right click on a selected card acts on the whole selection
@@ -215,7 +227,7 @@
                         <NoteView
                             bind:this={opening.freshNote}
                             note={null}
-                            defaults={noteDefaults(filter)}
+                            defaults={freshDefaults(noteDefaults(filter), page.data.user.noteColor)}
                             seed={editing.shared}
                             open
                             closing={opening.closing}
@@ -231,9 +243,27 @@
             {/if}
             {#each visible as note, index (note.id)}
                 {@const open = editing?.id === note.id}
+                {@const afloat = open ? editing?.afloat : null}
                 <!-- A finger opens the menu with a long press, selecting goes through it | the open note keeps the trigger but turns it off -->
+                <!-- A floating note keeps its cell as a ghost, the frame inside carries the note to the centre -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
-                <div class={['note-cell @container/note', open && 'wide']} data-flip={note.id} in:enter={{ id: note.id, index }} out:leave={note.id} onpointerdown={(event) => drag.grab(event, note.id)} onclickcapture={(event) => drag.swallow(event) || modifiedClick(event, note.id)} onmousedown={(event) => holdTextSelection(event, note.id)} ondragstart={(event) => event.preventDefault()}>
+                <div
+                    class={['note-cell', open && !afloat && 'wide', afloat && 'afloat', afloat && opening.closing && 'closing']}
+                    data-flip={note.id}
+                    data-flip-centred={afloat ? '' : undefined}
+                    style:--ghost={afloat && `${afloat.ghost}px`}
+                    style:--float-x={afloat && `${afloat.x}px`}
+                    style:--float-y={afloat && `${afloat.y}px`}
+                    style:--float-width={afloat && `${afloat.width}px`}
+                    in:enter={{ id: note.id, index }}
+                    out:leave={note.id}
+                    onpointerdown={(event) => drag.grab(event, note.id)}
+                    onclickcapture={(event) => drag.swallow(event) || modifiedClick(event, note.id)}
+                    onmousedown={(event) => holdTextSelection(event, note.id)}
+                    ondragstart={stopNativeDrag}
+                    {@attach afloat ? opening.float : null}
+                >
+                    <div class="frame @container/note" {@attach afloat && opening.resizes ? opening.sizer : null}>
                     {#if !windowed || open || index < CARDS_ALWAYS_SHOWN || cards.shows(note.id)}
                     <ContextMenu.Root>
                         <ContextMenu.Trigger class="block" disabled={open}>
@@ -272,6 +302,7 @@
                     {:else}
                         <div style:height="{cards.height(note)}px"></div>
                     {/if}
+                    </div>
                 </div>
             {/each}
         </div>
@@ -281,6 +312,8 @@
 {/if}
 
 </div>
+
+<RescheduleDialog occurrence={rescheduling?.occurrence ?? null} title={rescheduling?.title ?? ''} onclose={() => rescheduling = null} />
 
 <!-- TOOLBAR | floats at the bottom, on phones to the right of the menu button -->
 <div class="toolbar vt-toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-end px-gutter sm:left-rail sm:justify-center">
@@ -329,6 +362,86 @@
     /* Scrolling to an open note keeps it clear of the toolbar */
     .note-cell {
         scroll-margin: 1rem 0 calc(var(--layout-bottom-clear) + 1.5rem);
+    }
+
+    /* AFLOAT | the open note leaves the grid alone and floats over the dimmed page | its cell stays behind as a sunken ghost */
+    .note-cell.afloat {
+        position: relative;
+        z-index: 2;
+        min-height: var(--ghost);
+    }
+
+    .afloat > .frame {
+        position: absolute;
+        left: var(--float-x);
+        top: var(--float-y);
+        width: var(--float-width);
+        max-height: calc(100dvh - 10rem);
+        translate: -50% -50%;
+    }
+
+    .afloat :global([data-flip-card]) {
+        max-height: calc(100dvh - 10rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    /* The text scrolls on its own so the formatting bar and the reminder band stay at the card's bottom */
+    .afloat :global([data-flip-card]:has(.editor)) {
+        overflow: hidden;
+    }
+
+    .afloat :global(.content:has(> .editor)),
+    .afloat :global(.editor) {
+        flex: 1 1 auto;
+        min-height: 0;
+    }
+
+    .afloat :global(.editor > :is(.rich, textarea)) {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    /* A note sized by its grip fills the frame */
+    .afloat > .frame:global([data-resized]) > :global(:not(.resize-grip)),
+    .afloat > .frame:global([data-resized]) :global(.note),
+    .afloat > .frame:global([data-resized]) :global([data-flip-card]) {
+        height: 100%;
+    }
+
+    /* The dim covers the whole page and takes its clicks, which land outside the note and close it | the toolbar stays above */
+    .note-cell.afloat::before,
+    .note-cell.afloat::after {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        transition: opacity var(--duration-base) var(--ease-out);
+
+        @starting-style {
+            opacity: 0;
+        }
+    }
+
+    .note-cell.afloat::before {
+        inset: -200vmax;
+        background: rgb(0 0 0 / 0.3);
+    }
+
+    /* The ghost is a faint black card with a wide soft shadow, as if the note still floated above it */
+    .note-cell.afloat::after {
+        inset: 0;
+        border-radius: var(--layout-radius-card);
+        background: black;
+        box-shadow: 0 0.75rem 2rem 0.5rem black;
+        opacity: 0.07;
+        pointer-events: none;
+    }
+
+    .note-cell.afloat.closing::before,
+    .note-cell.afloat.closing::after {
+        opacity: 0;
     }
 
     /* DRAG | the held card lifts above the rest */

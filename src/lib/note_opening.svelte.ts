@@ -3,12 +3,32 @@ import { duration, easing, rise, stagger } from '#lib/motion.ts';
 import { noteEditor } from '#lib/note_editor.svelte.ts';
 import { readable } from '#lib/note_lock.svelte.ts';
 import type { NoteGrid } from '#lib/note_grid.svelte.ts';
-import { bodyOf, cellOf, floatCell, forgetCell } from '#lib/relayout.ts';
+import { bodyOf, cellById, cellOf, floatCell, forgetCell } from '#lib/relayout.ts';
+import { resizable } from '#lib/resizable.ts';
 import type { Note } from '#lib/schemas/notes.ts';
 import { tick } from 'svelte';
+import type { Attachment } from 'svelte/attachments';
+import { MediaQuery } from 'svelte/reactivity';
 import type { TransitionConfig } from 'svelte/transition';
 
 const UNSEEN_FROM = 40      // Cards this far down the list skip their entrance, nobody sees it
+const FLOAT_FROM = 8        // Fewer notes make room for an open one in place
+const FLOAT_WIDTH = 640
+const TOOLBAR_ROOM = 80     // Floating notes centre in the screen above the toolbar
+
+// Where a floating note sits, in the coordinates of its cell
+type Afloat = { ghost: number, x: number, y: number, width: number }
+
+function afloatAt(cell: HTMLElement, grid: HTMLElement): Afloat {
+    const rect = cell.getBoundingClientRect()
+    const frame = grid.getBoundingClientRect()
+    return {
+        ghost: rect.height,
+        x: frame.left + frame.width / 2 - rect.left,
+        y: (innerHeight - TOOLBAR_ROOM) / 2 - rect.top,
+        width: Math.min(FLOAT_WIDTH, frame.width)
+    }
+}
 
 // Brings the whole open note into view, its top first when it is taller than the screen
 // The cell already has the size and spot the glide ends with
@@ -24,7 +44,7 @@ function reveal(cell: HTMLElement | null){
     Every step waits for the one before it, a click during a glide lands after that glide.
 */
 export class NoteOpening {
-    current = $state<{ key: number, id: string | null, fresh: boolean, focus?: string, shared: SharedNote | null } | null>(null)      // The key changes per opening, so every note starts with a fresh draft
+    current = $state<{ key: number, id: string | null, fresh: boolean, focus?: string, shared: SharedNote | null, afloat: Afloat | null } | null>(null)      // The key changes per opening, so every note starts with a fresh draft
     closing = $state(false)
     freshNote = $state<{ flush: () => Promise<string | null> }>()
     createButton = $state<HTMLElement>()
@@ -35,6 +55,12 @@ export class NoteOpening {
     #opened = 0
     #handover: string | null = null
     #returning = false
+    #wide = new MediaQuery('width >= 40rem')
+    #mouse = new MediaQuery('pointer: fine')
+
+    // Floating notes take a corner grip where a mouse can hold it
+    sizer = resizable({ centred: true, min: { width: 320, height: 200 } })
+    get resizes(){ return this.#mouse.current }
 
     constructor(grid: NoteGrid, ids: () => string[]){
         this.#grid = grid
@@ -58,18 +84,48 @@ export class NoteOpening {
 
             this.#grid.frozen = this.#ids()
             this.#grid.snapshot(note ? null : this.createButton?.getBoundingClientRect())
-            this.current = { key: ++this.#opened, id: note?.id ?? null, fresh: !note, focus, shared }
+            this.current = { key: ++this.#opened, id: note?.id ?? null, fresh: !note, focus, shared, afloat: this.#afloat(note) }
             this.closing = false
             await tick()
-            reveal(cellOf(document.querySelector('[data-note-open]')))
+            if(!this.current.afloat) reveal(cellOf(document.querySelector('[data-note-open]')))
         })
+    }
+
+    // A full grid on a wide screen keeps still, the note floats to the centre of the screen instead of pushing the others aside
+    #afloat(note: Note | null): Afloat | null {
+        const grid = this.#grid.element
+        const cell = note && grid && cellById(grid, note.id)
+        if(!cell || !this.#wide.current || this.#ids().length < FLOAT_FROM) return null
+        return afloatAt(cell, grid)
+    }
+
+    // Holds the page still under a floating note and keeps the note centred when the window changes size
+    float: Attachment<HTMLElement> = (cell) => {
+        const root = document.documentElement
+        root.style.overflow = 'hidden'
+
+        let frame = 0
+        const follow = () => {
+            cancelAnimationFrame(frame)
+            frame = requestAnimationFrame(() => {
+                const grid = this.#grid.element
+                if(this.current?.afloat && grid) this.current.afloat = { ...afloatAt(cell, grid), ghost: this.current.afloat.ghost }
+            })
+        }
+        addEventListener('resize', follow)
+
+        return () => {
+            cancelAnimationFrame(frame)
+            removeEventListener('resize', follow)
+            root.style.overflow = ''
+        }
     }
 
     close = () => {
         this.#busy = this.#busy.then(async () => {
             if(!this.current) return
             await this.#fold()
-            this.#grid.snapshot()
+            this.#grid.snapshot(null, true)
             this.shut()
         })
     }

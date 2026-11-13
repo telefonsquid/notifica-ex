@@ -24,6 +24,29 @@
     text-underline-offset: 2px;
 }
 
+/* Faded toward the text once opened */
+.markdown a:visited {
+    color: color-mix(in oklab, var(--theme-accent) 45%, var(--theme-ink-muted));
+}
+
+/* LINK ARROW | marks a link as leaving the app, nudges toward where it goes on hover */
+.markdown a[target='_blank']::after {
+    content: '';
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    margin-left: 0.15em;
+    background-color: currentColor;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M7 7h10v10'/%3E%3C/svg%3E") center / contain no-repeat;
+    vertical-align: -0.08em;    /* Centred on the capitals */
+    cursor: pointer;
+    transition: translate var(--duration-fast) var(--ease-out);
+}
+
+.markdown a[target='_blank']:hover::after {
+    translate: 0.12em -0.12em;
+}
+
 .markdown code {
     padding: 0.1em 0.35em;
     border-radius: 0.3em;

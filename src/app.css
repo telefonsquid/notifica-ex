@@ -126,6 +126,11 @@
     --color-cloud: #e4e8ee;
     --color-legal: #fbeea4;
 
+    /* PATTERN BASES | fixed surfaces the patterns paint on, the same in every theme */
+    --color-parchment: #f0e2c2;
+    --color-denim: #2d4775;
+    --color-neon: #0d0a1c;
+
     /* TYPE */
     --font-sans: 'Archivo Variable', ui-sans-serif, system-ui, sans-serif;
 
@@ -193,6 +198,22 @@
     --duration-slow: 460ms;
     --duration-page: 560ms;
 
+}
+
+/* COMPACT | device preference, smaller notes and tighter spacing so phones fit two notes side by side | the rest of the app keeps its size | the grid's container queries below follow its note sizes */
+:root[data-density='compact'] :is(.note-grid, .note) {
+    --layout-note-min: 9rem;
+    --layout-note-max: 14rem;
+    --layout-note-gap: 0.5rem;
+    --layout-card-padding: 0.75rem;
+    --layout-radius-card: 1rem;
+    --spacing: 0.225rem;
+}
+
+/* Narrow cards read better a step smaller */
+:root[data-density='compact'] .note {
+    --text-lg: 1rem;
+    font-size: 0.875rem;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -303,15 +324,36 @@
 
 /* ONE COLUMN | without room for a second note the one column takes the full width | container queries take no tokens, a test keeps 31rem above two notes and their gap */
 @container (width < 31rem) {
-    .note-grid {
+    :root:not([data-density='compact']) .note-grid {
         grid-template-columns: minmax(0, 1fr);
+        max-width: none;
+    }
+}
+
+@container (width < 18.5rem) {
+    :root[data-density='compact'] .note-grid {
+        grid-template-columns: minmax(0, 1fr);
+        max-width: none;
+    }
+}
+
+/* TWO COLUMNS | auto fit counts columns by the max width, so compact phones split the width in two until two max width notes fit */
+@container (18.5rem <= width < 29rem) {
+    :root[data-density='compact'] .note-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         max-width: none;
     }
 }
 
 /* OPEN CARD | two columns need room for two minimum width notes and the gap | the start is the packer's */
 @container (width >= 31rem) {
-    .note-cell.wide {
+    :root:not([data-density='compact']) .note-cell.wide {
+        grid-column-end: span 2;
+    }
+}
+
+@container (width >= 18.5rem) {
+    :root[data-density='compact'] .note-cell.wide {
         grid-column-end: span 2;
     }
 }
@@ -488,6 +530,25 @@ body:has([data-sorting]) * {
 
     &[data-state='closed'] {
         animation: menu-in var(--duration-fast) var(--ease-in) reverse forwards;
+    }
+}
+
+/* RESIZE GRIP | the corner resizable() in resizable.ts adds, its panel needs a position */
+@utility resize-grip {
+    position: absolute;
+    right: 0.125rem;
+    bottom: 0.125rem;
+    width: 0.875rem;
+    height: 0.875rem;
+    cursor: nwse-resize;
+    touch-action: none;
+    color: var(--theme-ink-faint);
+    background: linear-gradient(135deg, transparent 55%, currentColor 55% 62%, transparent 62% 75%, currentColor 75% 82%, transparent 82%);
+    border-bottom-right-radius: 0.5rem;
+    transition: color var(--duration-fast) var(--ease-out);
+
+    &:hover {
+        color: var(--theme-ink);
     }
 }
 

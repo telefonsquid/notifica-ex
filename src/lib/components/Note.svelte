@@ -16,10 +16,12 @@
     import { kept } from '#lib/note_list.ts';
     import { holdKey, lost, sealBody } from '#lib/note_lock.svelte.ts';
     import { NoteSession } from '#lib/note_session.svelte.ts';
+    import { offerArchiveUndo } from '#lib/note_removal.ts';
+    import { archiveChange } from '#lib/notes.ts';
     import { closeOnOutside } from '#lib/overlays.ts';
     import { autoColorOrder, shownColor } from '#lib/auto_colors.ts';
     import { safeAction } from '#lib/safe_action.ts';
-    import type { Label, Note, NoteContent, Person } from '#lib/schemas/notes.ts';
+    import type { Label, Note, NoteColor, NoteContent, Person } from '#lib/schemas/notes.ts';
     import type { Reminder } from '#lib/schemas/reminders.ts';
     import type { FileLimits } from '#lib/schemas/users.ts';
     import { showHistory } from '#lib/singletons/reminder_history.svelte.ts';
@@ -87,8 +89,14 @@
     let stored = $derived(id ?? '')         // Stored files only exist once the note does
     let draft = $derived(session.draft)
     let owned = $derived(session.owned)
-    let auto = $derived(shownColor({ color: '', labels: draft.labels }, autoColorOrder(labels)))
-    let shown = $derived(draft.color || auto)
+    let shown = $derived(shownColor(draft, autoColorOrder(labels)))
+
+    // Default goes back to the account's color, which labels still paint over
+    function pickColor(color: NoteColor){
+        const fallback = color ? '' : page.data.user?.noteColor ?? ''
+        draft.color = color || fallback
+        draft.colorDefault = !!fallback
+    }
     let card = $state<HTMLElement>()
 
     // For the page, which waits on a new note before it hands the card over
@@ -175,6 +183,12 @@
     function pinClosed(){
         if(note) safeAction(kept(updateNote({ id: note.id, pinned: !note.pinned })))
     }
+
+    async function archiveClosed(){
+        if(!note) return
+        const { id, archived, pinned } = note
+        if(await safeAction(kept(updateNote({ id, ...archiveChange(note, !archived) })))) offerArchiveUndo([{ id, archived, pinned }], !archived)
+    }
 </script>
 
 {#snippet actions()}
@@ -196,7 +210,7 @@
             {#if locked}<LockOpen class="size-4" />{:else}<Lock class="size-4" />{/if}
         </button>
     {/if}
-    <ColorPicker value={draft.color} {auto} onpick={(color) => draft.color = color} label="Note color" class="ml-1 mr-2" />
+    <ColorPicker value={draft.colorDefault ? '' : draft.color} labels={labels.filter((item) => draft.labels.includes(item.id))} onpick={pickColor} label="Note color" class="ml-1 mr-2" />
     {#if owned}
         <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={session.archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
             {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
@@ -242,7 +256,10 @@
 
             <!-- Above the cover, aligned with the header pin -->
             {#if owned}
-                <div class="hover-actions absolute top-[calc(var(--spacing-card)-0.25rem)] right-[calc(var(--spacing-card)-0.5rem)] z-10 flex items-center">
+                <div class="hover-actions absolute top-[calc(var(--spacing-card)-0.25rem)] right-[calc(var(--spacing-card)-0.5rem)] z-10 flex items-center gap-0.5">
+                    <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={archiveClosed} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
+                        {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
+                    </button>
                     <button class={['icon-button', draft.pinned && 'text-accent hover:text-accent']} aria-label={draft.pinned ? 'Unpin' : 'Pin'} aria-pressed={draft.pinned} onclick={pinClosed} {@attach tip(draft.pinned ? 'Unpin' : 'Pin to the top')}>
                         <Pin class="size-4" fill={draft.pinned ? 'currentColor' : 'none'} />
                     </button>
@@ -274,7 +291,7 @@
                     {@attach titleField}
                 >{initialTitle}</h3>
                 <!-- One row with the pin, so every button keeps the same distance -->
-                <div class={['-my-1 -mr-2 flex items-center gap-0.5', !open && owned && !draft.pinned && 'pin-room']}>
+                <div class={['-my-1 -mr-2 flex items-center gap-0.5', !open && owned && 'pin-room', draft.pinned && 'pinned']}>
                     {#if locked && !open}
                         <span class="pointer-events-auto relative z-10 grid size-8 place-items-center text-ink-faint" role="img" aria-label={gone ? 'Text lost' : 'Locked'} {@attach tip(gone ? 'Locked before a password reset, its text is lost' : 'Locked with your password')}><LockKeyhole class={unreadable ? 'size-5' : 'size-4'} /></span>
                     {/if}
@@ -367,6 +384,7 @@
         position: absolute;
         inset: 0;
         border-radius: inherit;
+        z-index: 1;     /* Over the hover buttons' backdrop too */
         background: var(--theme-signature);
         opacity: 0;
         pointer-events: none;
@@ -408,7 +426,7 @@
         pointer-events: auto;
     }
 
-    /* HOVER ACTIONS | the pin over a closed card, it takes over from the header pin meanwhile */
+    /* HOVER ACTIONS | archive and pin over a closed card, it takes over from the header pin meanwhile */
     .hover-actions {
         opacity: 0;
         pointer-events: none;
@@ -435,14 +453,42 @@
     }
 
     .card:is(:hover, :focus-within) .pin-room {
-        translate: -2rem 0;
+        translate: -4.125rem 0;
+    }
+
+    .card:is(:hover, :focus-within) .pin-room.pinned {
+        translate: -2.125rem 0;     /* The header pin already holds one place */
+    }
+
+    /* The buttons sit on a copy of the card's own background, text under them hides | a full size copy keeps every pattern in line */
+    .card:has(> .hover-actions)::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        border-radius: inherit;
+        background: inherit;
+        clip-path: inset(
+            calc(var(--spacing-card) - 0.25rem)
+            calc(var(--spacing-card) - 0.5rem)
+            calc(100% - var(--spacing-card) - 1.75rem)
+            calc(100% - var(--spacing-card) - 3.875rem)
+        );
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity var(--duration-fast) var(--ease-out);
+    }
+
+    .card:is(:hover, :focus-within)::before {
+        opacity: 1;
     }
 
     /* Fingers have no hover, they select by long press */
     @media (hover: none) {
         .hover-actions { display: none; }
+        .card::before { display: none; }
         .select-mark:not(.selected) { display: none; }
-        .card:is(:hover, :focus-within) .pin-room { translate: none; }
+        .card:is(:hover, :focus-within) .pin-room:is(*, .pinned) { translate: none; }
     }
 
     /* RESIZING | the card fills the box that glides to its new size, see glide() in #lib/relayout.ts */
@@ -451,8 +497,14 @@
         overflow: clip;
     }
 
+    /* Text squeezed by the glide would flash a scrollbar | hiding it keeps the scroll position, clipping would reset it */
+    .note:global([data-resizing]) :global(:is([data-flip-card], .rich, textarea)) {
+        scrollbar-width: none;
+    }
+
     /* Raised above the cover button, which comes first */
-    .content :global(input.task) {
+    .content :global(input.task),
+    .content :global(a) {
         pointer-events: auto;
         position: relative;
     }

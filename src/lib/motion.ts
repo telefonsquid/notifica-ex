@@ -12,7 +12,7 @@ import type { TransitionConfig } from 'svelte/transition';
 
 
 // TOKENS ====================================================================================================
-type DurationToken = 'instant' | 'fast' | 'base' | 'slow' | 'page'
+export type DurationToken = 'instant' | 'fast' | 'base' | 'slow' | 'page'
 type EasingToken = 'out' | 'in' | 'in-out' | 'emphasized' | 'spring'
 
 // FALLBACKS | used during SSR and if a token is missing

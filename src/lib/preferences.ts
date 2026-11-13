@@ -6,7 +6,10 @@ export type LabelPosition = 'top' | 'bottom'
 // Cropped to fill the card, or whole with plain ground around it
 export type ImageFit = 'cropped' | 'whole'
 
-export type Preferences = { theme: ThemeName, labels: LabelPosition, images: ImageFit }
+// Compact shrinks cards and gaps, phones fit two notes side by side
+export type Density = 'comfortable' | 'compact'
+
+export type Preferences = { theme: ThemeName, labels: LabelPosition, images: ImageFit, density: Density }
 export type PreferenceName = keyof Preferences
 
 // Per device, in a cookie of this name and on <html data-name> before first paint, app.html has a %name% for each | the first choice is the default
@@ -14,6 +17,7 @@ const CHOICES: { [N in PreferenceName]: readonly Preferences[N][] } = {
     theme: THEMES.map((theme) => theme.name),
     labels: ['top', 'bottom'],
     images: ['cropped', 'whole'],
+    density: ['comfortable', 'compact'],
 }
 
 export const PREFERENCE_NAMES = Object.keys(CHOICES) as [PreferenceName, ...PreferenceName[]]
@@ -29,5 +33,5 @@ export function isChoice(name: PreferenceName, value: string) {
 
 // Unknown and missing ones fall back to the default
 export function readPreferences(cookie: (name: string) => string | undefined): Preferences {
-    return { theme: choose('theme', cookie('theme')), labels: choose('labels', cookie('labels')), images: choose('images', cookie('images')) }
+    return { theme: choose('theme', cookie('theme')), labels: choose('labels', cookie('labels')), images: choose('images', cookie('images')), density: choose('density', cookie('density')) }
 }

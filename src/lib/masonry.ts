@@ -9,8 +9,11 @@ import type { Attachment } from 'svelte/attachments';
 
 
 // PACK | glide() runs it too, so cards glide straight to their packed place
-export function pack(grid: HTMLElement){
+// Anchored keeps the first card on screen where it was, the observers ask for it
+export function pack(grid: HTMLElement, anchored = false){
     const cells = [...grid.children].filter((cell): cell is HTMLElement => cell instanceof HTMLElement)
+    const anchor = anchored ? anchorOf(grid, cells) : undefined
+    const anchorTop = anchor?.getBoundingClientRect().top
 
     // Holds the page's height meanwhile, without placements it collapses and the browser scrolls to the top
     grid.style.minHeight = `${grid.offsetHeight}px`
@@ -53,12 +56,27 @@ export function pack(grid: HTMLElement){
 
     grid.style.minHeight = ''
     grid.dataset.packed = ''
+
+    // Cards above the screen that changed size would otherwise push the page under the reader
+    if(anchor && anchorTop !== undefined){
+        const shift = anchor.getBoundingClientRect().top - anchorTop
+        if(Math.abs(shift) >= 1) scrollBy({ top: shift, behavior: 'instant' })
+    }
+}
+
+// The first card fully on screen | an open, gliding or dragged card moves the page itself
+function anchorOf(grid: HTMLElement, cells: HTMLElement[]){
+    if(!scrollY || grid.querySelector('[data-note-open], [data-resizing], [data-dragging], [data-floating]')) return
+    return cells.find((cell) => {
+        const { top } = cell.getBoundingClientRect()
+        return top >= 0 && top < innerHeight
+    })
 }
 
 // MASONRY | packs again whenever a card changes size, the cards change or the window does
 // Only the cards get observed: every pack changes the grid's height, and an observed grid would trip the observer's loop guard
 export const masonry: Attachment<HTMLElement> = (grid) => {
-    const resizes = new ResizeObserver(() => pack(grid))
+    const resizes = new ResizeObserver(() => pack(grid, true))
     const watch = () => {
         resizes.disconnect()
         for(const cell of grid.children) resizes.observe(cell)
@@ -74,7 +92,7 @@ export const masonry: Attachment<HTMLElement> = (grid) => {
     addEventListener('resize', resized)
 
     // A late image grows its card, catch it even when the resize got lost to a running glide
-    const loaded = () => requestAnimationFrame(() => pack(grid))
+    const loaded = () => requestAnimationFrame(() => pack(grid, true))
     grid.addEventListener('load', loaded, true)
 
     // Watching a cell reports its size once, before the next paint, and that is what packs them

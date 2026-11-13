@@ -90,12 +90,20 @@ describe('note access', () => {
 describe('app.css', () => {
 
     const css = read('src/app.css')
-    const rem = (token: string) => Number(css.match(new RegExp(`--${token}: ([\\d.]+)rem`))?.[1])
+    const compact = css.slice(css.indexOf(":root[data-density='compact'] :is(.note-grid, .note) {"))
+    const rem = (token: string, tokens: string) => Number(tokens.match(new RegExp(`--${token}: ([\\d.]+)rem`))?.[1])
+    const breakpoints = [...css.matchAll(/@container \(width < ([\d.]+)rem\)/g)].map((match) => Number(match[1]))
 
-    test('the one column breakpoint leaves no room for two notes and their gap', () => {
-        const breakpoint = Number(css.match(/@container \(width < ([\d.]+)rem\)/)?.[1])
-        expect(breakpoint).toBeGreaterThanOrEqual(2 * rem('layout-note-min') + rem('layout-note-gap'))
+    // Comfortable comes first in app.css, compact second
+    test.each([['comfortable', 0, css], ['compact', 1, compact]] as const)('the %s one column breakpoint leaves no room for two notes and their gap', (_, index, tokens) => {
+        const breakpoint = breakpoints[index]
+        expect(breakpoint).toBeGreaterThanOrEqual(2 * rem('layout-note-min', tokens) + rem('layout-note-gap', tokens))
         expect(css).toContain(`@container (width >= ${breakpoint}rem)`)
+    })
+
+    test('compact keeps two columns until auto fit finds room for two max width notes', () => {
+        const top = Number(css.match(/@container \([\d.]+rem <= width < ([\d.]+)rem\)/)?.[1])
+        expect(top).toBeGreaterThanOrEqual(2 * rem('layout-note-max', compact) + rem('layout-note-gap', compact))
     })
 
 })
