@@ -1,4 +1,5 @@
 import { tasksOf, toggleTask } from '#lib/markdown.ts';
+import { freshDefaults } from '#lib/notes.ts';
 import { describeRule } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { idSchema, limitedText } from '#lib/schemas/base.ts';
@@ -106,7 +107,7 @@ const createNote = tool({
     run: async ({ labels: wanted, ...content }, user) => {
         if(!content.title && !content.body) error(400, 'A note needs a title or a body.')
         const labels = await labelIds(user.id, wanted)
-        const note = unwrap(await insertOnePartial('notes', { ...content, labels, archived: false, owner: user.id }), 'Could not save the note.')
+        const note = unwrap(await insertOnePartial('notes', { ...freshDefaults(content, user.noteColor), labels, archived: false, owner: user.id }), 'Could not save the note.')
         return summaryOf(note, await labelsOf(user.id), user)
     }
 })

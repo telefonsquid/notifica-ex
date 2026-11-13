@@ -83,4 +83,3 @@ export function streamFor(user: string, cursor: string, catchUp: () => Promise<P
 export function streamSubject(user: Pick<User, 'id' | 'streamEpoch'>) {
     return `app-stream:${user.id}:${user.streamEpoch ?? 0}`
 }
-

@@ -1,6 +1,6 @@
 import { isId } from '#lib/schemas/base.ts';
 import { keyHolder } from '#lib/server/stream_key.ts';
-import { checkFile, checkRoom } from '#lib/server/note_file_routes.ts';
+import { announcedSize, checkFile, checkRoom } from '#lib/server/note_file_routes.ts';
 import { requireOwnNote } from '#lib/server/note_access.ts';
 import { addNoteFile } from '#lib/server/note_files.ts';
 import { error, json } from '@sveltejs/kit';
@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ params, url, request }) => {
     const user = await keyHolder(params.user, url.searchParams.get('key') ?? '')
     if(!isId(params.note)) error(400, 'Malformed request.')
     const note = await requireOwnNote(params.note, user.id)
-    const most = await checkRoom('images', note, user, Number(request.headers.get('content-length')))
+    const most = await checkRoom('images', note, user, announcedSize(request))
 
     // CHECK THE FILE
     const bytes = await request.arrayBuffer()

@@ -22,22 +22,14 @@ const MIGRATIONS: Migration[] = [
         await addFields('users', 'noteColor')
     } },
     { version: '0.4.0-patterns', run: async () => {
-        await syncSelect('labels', 'color')
-        await syncSelect('notes', 'color')
-        await syncSelect('users', 'noteColor')
+        await syncColors()
         await renameColor('terrazzo', 'sakura')
         await renameColor('marble', 'subway')
         await renameColor('lava', 'sunburst')
     } },
-    { version: '0.4.0-flags', run: async () => {
-        await syncSelect('labels', 'color')
-        await syncSelect('notes', 'color')
-        await syncSelect('users', 'noteColor')
-    } },
+    { version: '0.4.0-flags', run: syncColors },
     { version: '0.4.0-asexual-flag', run: async () => {
-        await syncSelect('labels', 'color')
-        await syncSelect('notes', 'color')
-        await syncSelect('users', 'noteColor')
+        await syncColors()
         await renameColor('agender-flag', 'asexual-flag')
     } }
 ]
@@ -100,10 +92,17 @@ async function syncSelect(collection: Collection, name: string) {
     unwrap(await updateCollection(collection, { fields }), `Could not update ${name} in ${collection}.`)
 }
 
+// Every select that holds a note colour
+const COLOR_FIELDS = [['notes', 'color'], ['labels', 'color'], ['users', 'noteColor']] as const
+
+// New colours of this release become valid choices
+async function syncColors() {
+    for(const [collection, field] of COLOR_FIELDS) await syncSelect(collection, field)
+}
+
 // A retired pattern hands its notes, labels and account defaults to the one that replaced it
 async function renameColor(from: string, to: NoteColor) {
-    const places = [['notes', 'color'], ['labels', 'color'], ['users', 'noteColor']] as const
-    for(const [collection, field] of places){
+    for(const [collection, field] of COLOR_FIELDS){
         const found = unwrap(await getAll(collection, { filter: `${field} = "${from}"`, fields: 'id' }), `Could not read ${collection}.`)
         for(const record of found) unwrap(await updateOnePartial(collection, record.id, { [field]: to }), `Could not recolor ${collection} ${record.id}.`)
     }

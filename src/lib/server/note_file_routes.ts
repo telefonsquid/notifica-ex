@@ -66,7 +66,7 @@ export function uploadRoute(field: FileField) {
         const me = signedIn()
         if(!isId(params.id)) error(400, 'Malformed request.')
         const note = await requireNote(params.id, me.id)
-        const most = await checkRoom(field, note, me, Number(request.headers.get('content-length')) - UPLOAD_FORM_OVERHEAD)
+        const most = await checkRoom(field, note, me, announcedSize(request) - UPLOAD_FORM_OVERHEAD)
 
         // CHECK THE FILE
         const form = await request.formData().catch(() => null)
@@ -92,6 +92,13 @@ export async function checkRoom(field: FileField, note: Note, uploader: User, an
     const most = policy.bytes(limits)
     if(announced > most) error(413, tooLarge(policy, most))
     return most
+}
+
+// Every client of these routes says the size up front | without it a huge body would be read before checkRoom could refuse it
+export function announcedSize(request: Request) {
+    const size = Number(request.headers.get('content-length') ?? NaN)
+    if(!Number.isFinite(size) || size < 0) error(411, 'The upload needs a Content-Length.')
+    return size
 }
 
 export function checkFile(field: FileField, file: File, most: number) {
