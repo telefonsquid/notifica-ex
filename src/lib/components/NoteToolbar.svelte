@@ -191,7 +191,11 @@
     }
 
     .create:focus-visible::before {
-        translate: 6px 4.5px;
+        translate: 3px 2.25px;
+    }
+
+    .create:focus-visible::after {
+        translate: -3px -2.25px;
     }
 
     /* Gives up its room too, the gap included, so search and filter glide to the centre */

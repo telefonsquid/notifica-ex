@@ -405,23 +405,34 @@
         border-radius: inherit;
     }
 
+    /* Both passes slip half the offset each way, so the pair centres on the content */
+    &::before,
+    &::after {
+        transition: translate var(--duration-base) var(--ease-spring), background-color var(--duration-fast) var(--ease-out);
+    }
+
     &::before {
         background: var(--print-pass);
-        translate: 4px 3px;
-        transition: translate var(--duration-base) var(--ease-spring), background-color var(--duration-fast) var(--ease-out);
+        translate: 2px 1.5px;
     }
 
     &::after {
         background: var(--print-fill);
         mix-blend-mode: var(--print-blend, var(--theme-riso-ink-blend));
+        translate: -2px -1.5px;
     }
 
-    /* Drums drift apart on hover, a press brings them back in register */
+    /* Drums drift apart on hover, a press brings them together in the middle */
     &:hover::before {
-        translate: 6px 4.5px;
+        translate: 3px 2.25px;
     }
 
-    &:active::before {
+    &:hover::after {
+        translate: -3px -2.25px;
+    }
+
+    &:active::before,
+    &:active::after {
         translate: 0 0;
         transition-duration: var(--duration-instant);
     }
