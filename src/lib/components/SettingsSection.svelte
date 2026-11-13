@@ -5,18 +5,26 @@
     let {
         id,
         title,
+        index,
+        opensGroup = false,
         children
     }: {
         id: string
         title: string
+        index: number
+        opensGroup?: boolean
         children: Snippet
     } = $props()
 </script>
 
-<!-- One part of the settings scroll, a hairline sets it apart from the one before -->
-<div id={id} class="section" data-section={id} role="tabpanel" aria-label={title}>
+<!-- One part of the settings scroll, its heading rule marks where the next one starts -->
+<div id={id} class={['section', opensGroup && 'opens-group']} data-section={id} role="tabpanel" aria-label={title}>
     <div class="body">
-        <h2 class="title type-title text-xl">{title}</h2>
+        <header class="head">
+            <span class="number" aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
+            <h2 class="title">{title}</h2>
+            <span class="rule" aria-hidden="true"></span>
+        </header>
         {@render children()}
     </div>
 </div>
@@ -28,13 +36,12 @@
     }
 
     .section:not(:first-child) {
-        padding-top: 1.5rem;
-        border-top: 1px solid var(--theme-line-strong);
+        padding-top: 2.5rem;
     }
 
-    /* Ink over a pink pass slipped bottom right, like the wordmark */
-    .title {
-        text-shadow: 2px 1.5px 0 var(--theme-riso-pink);
+    /* A new group gets a wider gap before it, like the break in the tabs */
+    .section.opens-group {
+        padding-top: 5rem;
     }
 
     .body {
@@ -42,5 +49,39 @@
         grid-template-columns: minmax(0, 1fr);
         gap: 1.5rem;
         align-items: start;
+    }
+
+    /* HEADING | number, title and a printed rule that runs to the edge */
+    .head {
+        display: flex;
+        gap: 0.75rem;
+        align-items: baseline;
+    }
+
+    .number {
+        color: var(--theme-riso-orange);
+        font-size: 0.875rem;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+    }
+
+    /* Syne runs wide at heavy weights, a lighter cut keeps the title compact */
+    .title {
+        font-size: 1.5rem;
+        font-weight: 620;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
+    }
+
+    /* Blue ink over a pink pass slipped bottom right */
+    .rule {
+        flex: 1;
+        align-self: center;
+        height: 2px;
+        margin-left: 0.5rem;
+        border-radius: 1px;
+        background: var(--theme-riso-blue);
+        box-shadow: 1.5px 1.25px 0 var(--theme-riso-pink);
     }
 </style>

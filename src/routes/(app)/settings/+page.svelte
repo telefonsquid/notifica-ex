@@ -182,8 +182,8 @@
     <!-- STAGE | scrolls on its own, the tabs follow the section at its top -->
     <div bind:this={scroll.stage} class="stage" onscroll={scroll.follow} onscrollend={scroll.land}>
         <div class="track">
-            {#each sections as section (section.id)}
-                <SettingsSection id={section.id} title={section.label}>
+            {#each sections as section, index (section.id)}
+                <SettingsSection id={section.id} title={section.label} {index} opensGroup={index > 0 && section.group !== sections[index - 1].group}>
                     {@render section.body()}
                 </SettingsSection>
             {/each}
