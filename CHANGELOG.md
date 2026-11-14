@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.3 · 2026-11-14
+
+- reminders can be removed from their line on hover
+- fixed long grids reshuffling while scrolling
+- centred the toolbar on phones
+- the menu button's icon centres on the white
+- the default note color got a card with a note preview
+- new view, label, key and invite buttons are primary, right on desktop and centred on phones
+- fixed phone menu icons turning dark in charcoal
+
 ## 0.4.2 · 2026-11-14
 
 - centred the app icon
