@@ -109,7 +109,8 @@
             <Dialog.Content forceMount preventScroll={false}>
                 {#snippet child({ props, open })}
                     {#if open}
-                        <div {...props} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto overscroll-contain bg-canvas/95 px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(var(--layout-bottom-clear)+1.5rem)] outline-none sm:hidden" transition:spread>
+                        <!-- A tap on the empty space closes it -->
+                        <div {...props} onclick={(event) => { if(event.target === event.currentTarget) menuOpen = false }} class="phone-menu fixed inset-0 z-[60] flex flex-col justify-end overflow-y-auto overscroll-contain bg-canvas/95 px-gutter pt-[calc(2.5rem+env(safe-area-inset-top))] pb-[calc(var(--layout-bottom-clear)+1.5rem)] outline-none sm:hidden" transition:spread>
                             <Dialog.Title class="sr-only">Menu</Dialog.Title>
 
                             <nav class="flex flex-col gap-1">
@@ -201,6 +202,7 @@
         border-radius: var(--layout-radius-card);
         color: var(--theme-ink-muted);
         transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+        --riso-ghost: 0;   /* Unselected icons print once */
     }
 
     .entry.active {

@@ -120,22 +120,16 @@
 <div class="grid gap-4">
     <ul class="grid grid-cols-1 gap-px overflow-hidden rounded-card border border-line bg-line">
         <li class="row">
-            <span class="text-ink">Android app</span>
+            <span class="text-ink">Android Notifications</span>
             {#if phoneOn && phoneAllowed}{@render testButton('phone')}{/if}
             {#if phoneOn && !phoneAllowed}
                 <Button style="ghost" onclick={() => app?.openNotificationSettings?.()}>Allow</Button>
             {/if}
             <Switch checked={phoneOn} label="Reminders in the Android app" onchange={setPhone} />
         </li>
-        {#if app?.setInstant && phoneOn}
-            <li class="row">
-                <span class="text-ink">Instant updates</span>
-                <Switch checked={instantOn} label="Keep a live connection for instant updates" onchange={setInstant} />
-            </li>
-        {/if}
         {#if mounted && !app}
             <li class="row">
-                <span class="text-ink">This browser</span>
+                <span class="text-ink">Browser Notifications</span>
                 {#if browserBlocker}<span class="text-ink-faint">{browserBlocker}</span>{/if}
                 {#if browserOn}{@render testButton('browser')}{/if}
                 <Switch checked={browserOn} label="Reminders in this browser" disabled={!!browserBlocker || browserBusy} onchange={setBrowser} />
@@ -145,7 +139,7 @@
         {#if PUBLIC_NTFY_URL}
             <li class="grid bg-card">
                 <div class="row">
-                    <span class="text-ink">ntfy</span>
+                    <span class="text-ink">ntfy Notifications</span>
                     {#if stored && !user.ntfyPaused}{@render testButton('ntfy')}{/if}
                     <Switch checked={ntfyOpen} label="Reminders through ntfy" onchange={setNtfy} />
                 </div>
@@ -165,6 +159,20 @@
             </li>
         {/if}
     </ul>
+
+    {#if app?.setInstant && phoneOn}
+        <div class="grid overflow-hidden rounded-card border border-line bg-card" transition:unfold>
+            <div class="row">
+                <span class="text-ink">Instant updates</span>
+                <Switch checked={instantOn} label="Instant updates on this phone" onchange={setInstant} />
+            </div>
+            <p class="px-card pb-4 text-ink-muted">
+                Reminders added or changed in a browser reach this phone at once, not within 15 minutes.
+                It keeps a live connection to the server, which shows a small silent notification and uses more battery.
+                Only this phone, reminders already synced ring on time either way.
+            </p>
+        </div>
+    {/if}
 </div>
 
 {#snippet testButton(channel: TestChannel)}
