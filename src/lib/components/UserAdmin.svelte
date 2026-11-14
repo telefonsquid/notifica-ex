@@ -107,7 +107,9 @@
             <Input id="invite-email" label="Email" type="email" autocomplete="off" required bind:value={email} />
             <div class="mt-1 flex flex-wrap items-center justify-between gap-3">
                 {@render roles(role, (value) => (role = value))}
-                <Button type="submit" icon={Send} loading={inviting}>Send invite</Button>
+                <div class="flex justify-center max-sm:basis-full sm:ml-auto">
+                    <Button type="submit" icon={Send} loading={inviting}>Send invite</Button>
+                </div>
             </div>
         </form>
     </div>

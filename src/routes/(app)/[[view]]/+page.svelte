@@ -315,7 +315,7 @@
 
 <RescheduleDialog occurrence={rescheduling?.occurrence ?? null} title={rescheduling?.title ?? ''} onclose={() => rescheduling = null} />
 
-<!-- TOOLBAR | floats at the bottom, on phones to the right of the menu button -->
+<!-- TOOLBAR | floats at the bottom, on phones in one row with the menu button -->
 <div class="toolbar vt-toolbar pointer-events-none fixed inset-x-0 z-30 flex justify-end px-gutter sm:left-rail sm:justify-center">
     {#if selection.length}
         <!-- SELECTION BAR | stands in for the toolbar while notes are selected -->
@@ -327,7 +327,7 @@
             <button class="icon-button size-10 rounded-full" aria-label="Clear selection" onclick={() => selected.clear()}><X class="size-4" /></button>
         </div>
     {:else}
-    <div class="pointer-events-auto flex min-w-0 items-center gap-3" in:rise={{ y: 8, duration: 'base' }}>
+    <div class="tools pointer-events-auto flex min-w-0 items-center gap-3" in:rise={{ y: 8, duration: 'base' }}>
         <NoteToolbar
             {view}
             {filter}
@@ -349,7 +349,23 @@
     .toolbar {
         --menu-room: calc(var(--layout-menu-button) + 0.75rem);
         bottom: var(--layout-bottom-row);
-        padding-left: calc(var(--layout-content-gutter) + var(--menu-room));
+    }
+
+    /* On phones search and filter sit centred between the menu button and the create button */
+    @media (width < 40rem) {
+        .tools {
+            display: grid;
+            flex: 1;
+            grid-template-columns: minmax(var(--layout-menu-button), 1fr) minmax(0, auto) 1fr;
+        }
+
+        .tools > :global(:first-child) {
+            grid-column: 2;
+        }
+
+        .tools > :global(:last-child) {
+            justify-self: end;
+        }
     }
 
     @media (width >= 40rem) {

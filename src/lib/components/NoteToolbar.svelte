@@ -169,7 +169,7 @@
     }
 
     .search.open {
-        width: min(22rem, calc(100vw - 2 * var(--layout-content-gutter) - var(--menu-room) - 8.5rem));
+        width: min(22rem, calc(100vw - 2 * var(--layout-content-gutter) - 2 * var(--menu-room) - 6.75rem));     /* Phones keep it centred between menu and create button, with sort and filter beside it */
     }
 
     /* The field and its close button fade in while the pill slides open */

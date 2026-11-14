@@ -7,7 +7,7 @@
     import Administration from '#lib/components/Administration.svelte'
     import AutoColorPriority from '#lib/components/AutoColorPriority.svelte'
     import ChangelogSettings from '#lib/components/ChangelogSettings.svelte'
-    import ColorPicker from '#lib/components/ColorPicker.svelte'
+    import DefaultColorPicker from '#lib/components/DefaultColorPicker.svelte'
     import DensityPicker from '#lib/components/DensityPicker.svelte'
     import ImageFitPicker from '#lib/components/ImageFitPicker.svelte'
     import LabelFields from '#lib/components/LabelFields.svelte'
@@ -19,7 +19,7 @@
     import UserAdmin from '#lib/components/UserAdmin.svelte'
     import ViewSettings from '#lib/components/ViewSettings.svelte'
     import { linkedView, NEW_VIEW } from '#lib/links.ts'
-    import { colorName, randomLabelColor } from '#lib/note_colors.ts'
+    import { randomLabelColor } from '#lib/note_colors.ts'
     import { onCollectionChange } from '#lib/realtime.ts'
     import { safeAction } from '#lib/safe_action.ts'
     import Button from '#lib/ui/Button.svelte'
@@ -116,10 +116,7 @@
         </div>
         <div>
             <h3 class="type-meta mb-4 text-ink-faint">Default note color</h3>
-            <div class="flex items-center gap-3">
-                <ColorPicker value={data.user.noteColor ?? ''} onpick={pickNoteColor} label="Color of new notes" />
-                <span class="type-body text-ink-muted">{data.user.noteColor ? colorName(data.user.noteColor) : 'None'}</span>
-            </div>
+            <DefaultColorPicker value={data.user.noteColor ?? ''} onpick={pickNoteColor} />
         </div>
     </div>
 {/snippet}
@@ -140,8 +137,8 @@
     {:else}
         <p class="text-ink-faint">No labels yet. Add them here or right in a note.</p>
     {/if}
-    <div>
-        <Button style="ghost" icon={Plus} loading={creatingLabel} onclick={addLabel}>New label</Button>
+    <div class="flex justify-center sm:justify-end">
+        <Button icon={Plus} loading={creatingLabel} onclick={addLabel}>New label</Button>
     </div>
     {#if labels.length}
         <AutoColorPriority {labels} />

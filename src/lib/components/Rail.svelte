@@ -102,7 +102,7 @@
     <!-- MENU | everything the rail holds, spread over the screen on phones -->
     <Dialog.Root bind:open={menuOpen}>
         <Dialog.Trigger bind:ref={menuButton} class="riso-print riso-print-paper grid size-[var(--layout-menu-button)] shrink-0 place-items-center rounded-full sm:hidden" aria-label="Menu">
-            <Menu class="size-7" strokeWidth={2.25} />
+            <Menu class="on-paper size-7" strokeWidth={2.25} />
         </Dialog.Trigger>
         <Dialog.Portal>
             <!-- No scroll lock, restyling the body lays out the whole grid on the first frame | the menu contains its own overscroll -->
@@ -139,7 +139,7 @@
 
                             <!-- Sits right over the menu button, so the button seems to turn into a cross -->
                             <Dialog.Close class="menu-close riso-print riso-print-paper bottom-[var(--layout-bottom-row)] left-gutter grid size-[var(--layout-menu-button)] place-items-center rounded-full" aria-label="Close menu">
-                                <X class="size-7" strokeWidth={2.25} />
+                                <X class="on-paper size-7" strokeWidth={2.25} />
                             </Dialog.Close>
                         </div>
                     {/if}
@@ -192,6 +192,21 @@
         position: absolute;   /* riso-print would make it relative */
     }
 
+    /* The white reads as the button and the blue as its shadow, so the icon sits on the white and follows its drift */
+    :global(.on-paper) {
+        translate: -2px -1.5px;
+        transition: translate var(--duration-base) var(--ease-spring);
+    }
+
+    :global(:hover > .on-paper) {
+        translate: -3px -2.25px;
+    }
+
+    :global(:active > .on-paper) {
+        translate: 0 0;
+        transition-duration: var(--duration-instant);
+    }
+
     /* PHONE MENU | rail items laid out wide, the open one printed in ink */
     .entry {
         display: flex;
@@ -203,6 +218,7 @@
         color: var(--theme-ink-muted);
         transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
         --riso-ghost: 0;   /* Unselected icons print once */
+        --riso-icon-blend: normal;   /* Blended over the dark page they sank into it once the rise ended */
     }
 
     .entry.active {

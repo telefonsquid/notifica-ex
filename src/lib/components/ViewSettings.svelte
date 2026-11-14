@@ -188,8 +188,8 @@
     {/each}
 </ul>
 
-<div class="mt-4">
-    <Button style="ghost" icon={Plus} loading={creating} onclick={add}>New view</Button>
+<div class="mt-4 flex justify-center sm:justify-end">
+    <Button icon={Plus} loading={creating} onclick={add}>New view</Button>
 </div>
 
 <style>

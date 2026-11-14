@@ -119,7 +119,9 @@
             <div class="flex flex-wrap items-center gap-3">
                 <Glider name="Access" options={SCOPES} value={scope} onpick={(value) => (scope = value)} />
                 <Glider name="Expires" options={EXPIRIES} value={expiry} onpick={(value) => (expiry = value)} />
-                <Button type="submit" style="ghost" class="ml-auto" icon={Plus} loading={creating} disabled={!name.trim()}>New key</Button>
+                <div class="flex justify-center max-sm:basis-full sm:ml-auto">
+                    <Button type="submit" icon={Plus} loading={creating} disabled={!name.trim()}>New key</Button>
+                </div>
             </div>
         </form>
     {/if}
