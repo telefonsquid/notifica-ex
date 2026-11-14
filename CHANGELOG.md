@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1 · 2026-11-14
+
+- fixed the android app crashing at start
+- fixed notes piling up in long grids in firefox
+- renamed the notification channels
+- instant updates got its own card with an explanation
+- the phone menu prints unselected icons once and closes on a tap on empty space
+
 ## 0.4.0 · 2026-11-13
 
 - updated the logo to a riso print of a repeat arrow around a tick
