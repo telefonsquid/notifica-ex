@@ -30,16 +30,17 @@
     }
 </script>
 
-<div class="grid gap-note-gap sm:grid-cols-2">
+<!-- Phones fit both options in one row, the miniature above the name -->
+<div class="grid grid-cols-2 gap-note-gap">
     {#each options as option (option.value)}
         {@const active = selected === option.value}
         <button
-            class={['option motion-interactive flex items-center gap-5 rounded-card border bg-card p-card text-left text-ink', active ? 'border-accent' : 'border-line hover:border-line-strong']}
+            class={['option motion-interactive grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 rounded-card border bg-card p-3 text-left text-ink sm:flex sm:gap-5 sm:p-card', active ? 'border-accent' : 'border-line hover:border-line-strong']}
             aria-pressed={active}
             onclick={() => choose(option.value)}
         >
-            {@render miniature(option.value)}
-            <span class="type-title flex-1 text-lg">{option.name}</span>
+            <div class="col-span-2 sm:contents">{@render miniature(option.value)}</div>
+            <span class="type-title min-w-0 flex-1 truncate sm:text-lg">{option.name}</span>
             <CheckMark {active} />
         </button>
     {/each}

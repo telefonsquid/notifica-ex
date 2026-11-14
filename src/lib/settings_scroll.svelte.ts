@@ -22,6 +22,11 @@ export class SettingsScroll {
         return this.stage?.querySelector<HTMLElement>(`[data-section="${id}"]`)
     }
 
+    // Where sections count as on top | phones scroll them under the section list
+    #top(stage: HTMLElement){
+        return stage.getBoundingClientRect().top + parseFloat(getComputedStyle(stage).paddingTop)
+    }
+
     go = (id: string) => {
         const { stage } = this
         const section = this.#section(id)
@@ -32,7 +37,7 @@ export class SettingsScroll {
         clearTimeout(this.#landing)
         this.#landing = setTimeout(() => this.#jumping = false, 1000)       // In case scrollend never fires
 
-        const top = stage.scrollTop + section.getBoundingClientRect().top - stage.getBoundingClientRect().top
+        const top = stage.scrollTop + section.getBoundingClientRect().top - this.#top(stage)
         stage.scrollTo({ top, behavior: 'smooth' })
     }
 
@@ -47,7 +52,7 @@ export class SettingsScroll {
             return
         }
 
-        const line = stage.getBoundingClientRect().top + SLACK
+        const line = this.#top(stage) + SLACK
         let current = sections[0]
         for(const id of sections){
             const top = this.#section(id)?.getBoundingClientRect().top

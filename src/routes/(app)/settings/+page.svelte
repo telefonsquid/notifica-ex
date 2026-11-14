@@ -103,16 +103,16 @@
             <ThemePicker current={data.preferences.theme} />
         </div>
         <div>
+            <h3 class="type-meta mb-4 text-ink-faint">Density</h3>
+            <DensityPicker current={data.preferences.density} />
+        </div>
+        <div>
             <h3 class="type-meta mb-4 text-ink-faint">Label tabs</h3>
             <LabelPositionPicker current={data.preferences.labels} />
         </div>
         <div>
             <h3 class="type-meta mb-4 text-ink-faint">Images</h3>
             <ImageFitPicker current={data.preferences.images} />
-        </div>
-        <div>
-            <h3 class="type-meta mb-4 text-ink-faint">Density</h3>
-            <DensityPicker current={data.preferences.density} />
         </div>
         <div>
             <h3 class="type-meta mb-4 text-ink-faint">Default note color</h3>
@@ -195,6 +195,29 @@
         grid-template-rows: auto minmax(0, 1fr);
         gap: 1rem;
         height: calc(100dvh - var(--page-top) - var(--page-bottom));
+    }
+
+    /* Phones scroll the stage under the section list and the bottom row, edge to edge */
+    @media (width < 40rem) {
+        .settings {
+            display: block;
+            position: relative;
+            height: 100dvh;
+            margin-block: calc(-1 * var(--page-top)) calc(-1 * var(--page-bottom));
+        }
+
+        .settings > :global(.picker) {
+            position: absolute;
+            top: var(--page-top);
+            inset-inline: 0;
+            z-index: 10;
+        }
+
+        .stage {
+            height: 100%;
+            padding-top: calc(var(--page-top) + 4rem);
+            padding-bottom: var(--page-bottom);
+        }
     }
 
     @media (width >= 64rem) {

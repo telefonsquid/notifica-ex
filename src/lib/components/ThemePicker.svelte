@@ -20,27 +20,28 @@
     }
 </script>
 
-<div class="grid gap-note-gap sm:grid-cols-2">
+<!-- Phones fit both themes in one row -->
+<div class="grid grid-cols-2 gap-note-gap">
     {#each THEMES as theme (theme.name)}
         {@const active = selected === theme.name}
 
         <!-- Each preview carries its own data-theme, so it renders with that theme's real tokens -->
         <button
             data-theme={theme.name}
-            class={['preview motion-interactive group relative overflow-hidden rounded-card border bg-canvas p-card text-left text-ink', active ? 'border-accent' : 'border-line hover:border-line-strong']}
+            class={['preview motion-interactive group relative overflow-hidden rounded-card border bg-canvas p-3 text-left sm:p-card text-ink', active ? 'border-accent' : 'border-line hover:border-line-strong']}
             aria-pressed={active}
             onclick={(event) => choose(theme.name, event)}
         >
             <!-- MINIATURE -->
-            <div class="mb-5 flex h-28 gap-2" aria-hidden="true">
-                <div class="flex w-6 flex-col items-center gap-1.5 rounded-control bg-card py-2">
+            <div class="mb-3 flex h-20 gap-1.5 sm:mb-5 sm:h-28 sm:gap-2" aria-hidden="true">
+                <div class="flex w-4 flex-col sm:w-6 items-center gap-1.5 rounded-control bg-card py-2">
                     <span class="size-2 rounded-full bg-accent"></span>
                     <span class="size-2 rounded-full bg-line-strong"></span>
                     <span class="size-2 rounded-full bg-line-strong"></span>
                 </div>
                 <div class="grid flex-1 grid-cols-3 gap-[calc(var(--layout-note-gap)/3)]">
                     {#each [0, 1, 2] as index (index)}
-                        <div class="mini-note flex flex-col gap-1.5 rounded-[calc(var(--layout-radius-card)/2)] border border-line bg-card p-2" style:--index={index}>
+                        <div class="mini-note flex flex-col gap-1.5 rounded-[calc(var(--layout-radius-card)/2)] border border-line bg-card p-1 sm:p-2" style:--index={index}>
                             <span class={['h-1.5 w-3/4 rounded-full', index === 1 ? 'bg-accent' : 'bg-ink-faint']}></span>
                             <span class="h-1 w-full rounded-full bg-line-strong"></span>
                             <span class="h-1 w-2/3 rounded-full bg-line-strong"></span>
@@ -51,11 +52,8 @@
             </div>
 
             <!-- LABEL -->
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="type-title text-lg">{theme.label}</p>
-                    <p class="type-meta text-ink-faint">{theme.scheme}</p>
-                </div>
+            <div class="flex items-center justify-between gap-2">
+                <p class="type-title min-w-0 truncate sm:text-lg">{theme.label}</p>
                 <CheckMark {active} />
             </div>
         </button>
