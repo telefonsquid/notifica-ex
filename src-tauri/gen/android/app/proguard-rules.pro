@@ -19,3 +19,7 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# WORKMANAGER | Room 2.6 keeps its database class but not the constructor it builds it with by name
+# Full mode R8 dropped it and the app died at start (0.4.0)
+-keep class * extends androidx.room.RoomDatabase { <init>(); }

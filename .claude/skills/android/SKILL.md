@@ -55,6 +55,7 @@ description: The Android app, a Tauri 2 mobile shell in src-tauri that opens the
 otifica-ex` (`release.jks`, `password.txt`), CI has it as the secrets `ANDROID_KEYSTORE` (base64) and `ANDROID_KEYSTORE_PASSWORD`. Losing it means phones can't update, only reinstall.
 - Gradle reads `src-tauri/gen/android/keystore.properties` (gitignored) for release signing, without it release builds come out unsigned. Locally it points at the keystore above.
 - `versionCode` is `major * 1000000 + minor * 1000 + patch`, Tauri derives it from the version. It must rise, so every release bumps the version.
+- Release builds run R8 in full mode, debug builds don't shrink, so a class built by reflection can work in debug and crash in release. `app/proguard-rules.pro` keeps what library rules miss (Room's `WorkDatabase_Impl` constructor took 0.4.0 down at launch). Test a new dependency in a release build, `adb logcat -b crash` shows the stack.
 - A debug build and the release are signed differently: switching between them needs an uninstall, which drops the saved server and settings.
 
 ## Run on the phone
