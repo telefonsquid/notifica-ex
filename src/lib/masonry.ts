@@ -2,7 +2,7 @@ import { withoutLeaving } from '#lib/relayout.ts';
 import type { Attachment } from 'svelte/attachments';
 
 /*
-    Notes tile without holes: each one takes the highest free spot, in order.
+    Notes tile without holes: each one takes the highest free spot, in order. A card that only changes height keeps its column.
     CSS still decides the columns, this module stacks every cell in the one row and pushes it down by a top margin.
     Rows of a pixel each ran out past 10000 px in Firefox, its grids end there and the rest piled up.
 */
@@ -20,6 +20,7 @@ export function pack(grid: HTMLElement, anchored = false){
     grid.style.minHeight = `${grid.offsetHeight}px`
 
     // Count the columns without the old placements | a card left past the last column keeps an extra one alive, squeezed to its narrowest
+    const before = new Map(cells.map((cell) => [cell, parseInt(cell.style.gridColumnStart) - 1]))
     cells.forEach((cell) => Object.assign(cell.style, { gridRow: '', gridColumnStart: '', marginTop: '' }))
     const style = getComputedStyle(grid)
     const columns = style.gridTemplateColumns.split(' ').length
@@ -36,15 +37,26 @@ export function pack(grid: HTMLElement, anchored = false){
     const heights = withoutLeaving(grid, () => placed.map((cell) => Math.ceil(cell.offsetHeight)))
     const spans = placed.map((cell) => Math.min(columns, parseInt(getComputedStyle(cell).gridColumnEnd.replace('span', '')) || 1))
 
+    // Same cards in the same order keep their columns, a card that only changed height would reshuffle all after it
+    const layout = `${columns}|${placed.map((cell, index) => `${cell.dataset.flip}:${spans[index]}`).join(',')}`
+    const keep = grid.dataset.layout === layout
+    grid.dataset.layout = layout
+
     // Every column remembers where it ends | a wide card needs neighbours that are free at once
     const bottoms: number[] = new Array(columns).fill(0)
     placed.forEach((cell, index) => {
         const span = spans[index]
+        const kept = before.get(cell) ?? -1
 
         let column = 0, top = Infinity
-        for(let start = 0; start + span <= columns; start++){
-            const free = Math.max(...bottoms.slice(start, start + span))
-            if(free < top) [column, top] = [start, free]
+        if(keep && kept >= 0 && kept + span <= columns){
+            column = kept
+            top = Math.max(...bottoms.slice(kept, kept + span))
+        } else {
+            for(let start = 0; start + span <= columns; start++){
+                const free = Math.max(...bottoms.slice(start, start + span))
+                if(free < top) [column, top] = [start, free]
+            }
         }
 
         const open = cell.classList.contains('wide')

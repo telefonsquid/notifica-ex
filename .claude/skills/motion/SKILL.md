@@ -45,7 +45,7 @@ The grid has `overflow-anchor: none`, so the browser never anchors the scroll. P
 
 ## Long lists
 
-Above `CARD_WINDOW_FROM` (200) visible notes, `#lib/card_window.svelte.ts` keeps only cards within `REACH` of the screen. The others stay in the grid as empty boxes of their remembered height, `estimatedHeight()` until they were seen once, so masonry, `measure()` and `glide()` need no special case. The open card and the first `CARDS_ALWAYS_SHOWN` always render. Browser find only sees rendered cards, the app's search sees all.
+Above `CARD_WINDOW_FROM` (200) visible notes, `#lib/card_window.svelte.ts` keeps only cards within `REACH` of the screen. The others stay in the grid as empty boxes of their remembered height, `estimatedHeight()` until they were seen once, so masonry, `measure()` and `glide()` need no special case. A card swapping its guess for its real height keeps its column: the packer only places afresh when the order, the spans or the column count changed, else every scroll reshuffled the grid. The open card and the first `CARDS_ALWAYS_SHOWN` always render. Browser find only sees rendered cards, the app's search sees all.
 
 ## Page changes
 

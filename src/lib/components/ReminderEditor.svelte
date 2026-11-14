@@ -252,7 +252,12 @@
             {/if}
         </button>
         {#if due}
-            <DoneButton class={['pointer-events-auto', !trailing && '-mr-1.5']} count={reminder.open} pulse aria-label={reminder.open > 1 ? `${reminder.open} open, show history` : 'Done'} onclick={done} />
+            <DoneButton class={['pointer-events-auto', !trailing && !editable && '-mr-1.5']} count={reminder.open} pulse aria-label={reminder.open > 1 ? `${reminder.open} open, show history` : 'Done'} onclick={done} />
+        {/if}
+        {#if editable}
+            <button class={['quick-remove icon-button shrink-0', !trailing && '-mr-2']} aria-label="Remove reminder" disabled={saving} onclick={remove} {@attach tip('Remove reminder')}>
+                <Trash2 class="size-4" />
+            </button>
         {/if}
         {@render trailing?.()}
     </div>
@@ -279,5 +284,23 @@
 
     .line.due {
         color: var(--theme-ink);
+    }
+
+    /* QUICK REMOVE | mouse only, shows while the line is hovered | touch removes through the form */
+    .quick-remove {
+        display: none;
+    }
+
+    @media (hover: hover) and (pointer: fine) {
+        .quick-remove {
+            display: grid;
+            opacity: 0;
+            transition: opacity var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
+        }
+
+        .line:hover .quick-remove,
+        .quick-remove:focus-visible {
+            opacity: 1;
+        }
     }
 </style>
