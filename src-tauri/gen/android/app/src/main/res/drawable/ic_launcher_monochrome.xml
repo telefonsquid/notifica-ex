@@ -5,7 +5,7 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <group android:scaleX="1.2558" android:scaleY="1.2558" android:translateX="13.81" android:translateY="16.33">
+    <group android:scaleX="1.2558" android:scaleY="1.2558" android:translateX="13.81" android:translateY="13.81">
         <path
             android:pathData="M41.5,15.55A19,19 0,0 1,46.87 43.83M46.23,44.59A19,19 0,0 1,17.77 44.59M17.13,43.83A19,19 0,0 1,22.5 15.55"
             android:strokeColor="#000000"
