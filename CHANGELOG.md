@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.2 · 2026-11-14
+
+- centred the app icon
+
 ## 0.4.1 · 2026-11-14
 
 - fixed the android app crashing at start
