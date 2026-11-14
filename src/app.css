@@ -325,14 +325,13 @@
     overflow-anchor: none;
 }
 
-/* PACKED | every cell sits on rows of a pixel, hidden until the first pack so the plain grid never shows */
+/* PACKED | every cell sits in one row at its own top margin, hidden until the first pack so the plain grid never shows */
 .note-grid:not([data-packed]) {
     visibility: hidden;
 }
 
 .note-grid[data-packed] {
     row-gap: 0;
-    grid-auto-rows: 1px;
 }
 
 /* ONE COLUMN | without room for a second note the one column takes the full width | container queries take no tokens, a test keeps 31rem above two notes and their gap */

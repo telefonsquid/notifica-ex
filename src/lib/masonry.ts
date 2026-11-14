@@ -3,7 +3,8 @@ import type { Attachment } from 'svelte/attachments';
 
 /*
     Notes tile without holes: each one takes the highest free spot, in order.
-    CSS still decides the columns, this module places every cell on rows of a single pixel.
+    CSS still decides the columns, this module stacks every cell in the one row and pushes it down by a top margin.
+    Rows of a pixel each ran out past 10000 px in Firefox, its grids end there and the rest piled up.
 */
 
 
@@ -19,7 +20,7 @@ export function pack(grid: HTMLElement, anchored = false){
     grid.style.minHeight = `${grid.offsetHeight}px`
 
     // Count the columns without the old placements | a card left past the last column keeps an extra one alive, squeezed to its narrowest
-    cells.forEach((cell) => Object.assign(cell.style, { gridRow: '', gridColumnStart: '' }))
+    cells.forEach((cell) => Object.assign(cell.style, { gridRow: '', gridColumnStart: '', marginTop: '' }))
     const style = getComputedStyle(grid)
     const columns = style.gridTemplateColumns.split(' ').length
     const gap = Math.round(parseFloat(style.getPropertyValue('--note-row-gap')) || 0)
@@ -50,7 +51,8 @@ export function pack(grid: HTMLElement, anchored = false){
         if(open && !roomBelow && top > 0) top += room
 
         cell.style.gridColumnStart = `${column + 1}`
-        cell.style.gridRow = `${top + 1} / span ${Math.max(1, heights[index])}`
+        cell.style.gridRow = '1'
+        cell.style.marginTop = `${top}px`
         bottoms.fill(top + heights[index] + gap + (open && roomBelow ? room : 0), column, column + span)
     })
 
