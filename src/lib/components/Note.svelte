@@ -210,7 +210,7 @@
             {#if locked}<LockOpen class="size-4" />{:else}<Lock class="size-4" />{/if}
         </button>
     {/if}
-    <ColorPicker value={draft.colorDefault ? '' : draft.color} labels={labels.filter((item) => draft.labels.includes(item.id))} onpick={pickColor} label="Note color" class="ml-1 mr-2" />
+    <ColorPicker value={draft.colorDefault ? '' : draft.color} labels={labels.filter((item) => draft.labels.includes(item.id))} onpick={pickColor} label="Note color" rainbow class="ml-1 mr-2" />
     {#if owned}
         <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={session.archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
             {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}

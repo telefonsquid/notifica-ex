@@ -490,6 +490,24 @@
     }
 }
 
+/* SWATCH RING | a colour keeps its size on hover, a ring drifts out around it instead | the pick wears the accent */
+@utility swatch-ring {
+    outline: 2px solid transparent;
+    outline-offset: 0px;
+    transition: outline-color var(--duration-fast) var(--ease-out), outline-offset var(--duration-base) var(--ease-out), rotate var(--duration-slow) var(--ease-out);
+
+    &:hover,
+    &[data-highlighted] {
+        outline-color: var(--theme-ink-faint);
+        outline-offset: 2px;
+    }
+
+    &[data-picked] {
+        outline-color: var(--theme-accent);
+        outline-offset: 2px;
+    }
+}
+
 /* SEARCH FIELD | pill with a leading icon around a bare input */
 @utility search-field {
     display: flex;

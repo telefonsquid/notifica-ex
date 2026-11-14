@@ -11,12 +11,14 @@
         onpick,
         label,
         labels = [],
+        rainbow = false,
         class: className = ''
     }: {
         value: NoteColor
         onpick: (color: NoteColor) => void
         label: string                           // what gets colored, for screen readers
         labels?: Label[]                        // the note's labels, their colors join Default as quick picks
+        rainbow?: boolean                       // on a note, which already wears its color
         class?: string
     } = $props()
 
@@ -27,7 +29,8 @@
 {#snippet swatch(color: NoteColor, name: string, picked: boolean, extra = '')}
     <!-- The ring sits outside the colored part, which brings its own ink -->
     <button
-        class={['motion-interactive size-7 rounded-full hover:scale-110', picked && 'picked']}
+        class="swatch-ring size-7 rounded-full"
+        data-picked={picked ? '' : undefined}
         role="radio"
         aria-checked={picked}
         aria-label={name}
@@ -41,14 +44,16 @@
 {/snippet}
 
 <!-- Stays open while picking, so colors can be tried on the note behind it -->
-<!-- The rainbow ring sets it apart from a note of the same color and says what it opens -->
+<!-- A note shows its color already, its trigger is a rainbow that says colors live here | elsewhere the color itself is what counts -->
 <Popover.Root>
     <Popover.Trigger
-        class={['color-trigger motion-interactive grid size-7 shrink-0 place-items-center rounded-full hover:scale-110', className]}
+        class={['swatch-ring size-7 shrink-0 rounded-full', rainbow && 'rainbow', className]}
         aria-label={`${label}: ${colorName(value)}`}
         {@attach tip(`${label}: ${colorName(value)}`)}
     >
-        <span class="swatch note-surface size-full rounded-full border-2 border-raised" data-note={value || undefined}></span>
+        {#if !rainbow}
+            <span class={['swatch note-surface block size-full rounded-full border border-line-strong', !value && 'default']} data-note={value || undefined}></span>
+        {/if}
     </Popover.Trigger>
     <Popover.Portal>
         <Popover.Content
@@ -76,14 +81,13 @@
 </Popover.Root>
 
 <style>
-    :global(.color-trigger) {
-        padding: 2px;
+    /* The colors turn a little under the pointer, as if picking one */
+    :global(.rainbow) {
         background: conic-gradient(oklch(0.72 0.17 25), oklch(0.82 0.16 85), oklch(0.75 0.15 150), oklch(0.7 0.13 230), oklch(0.65 0.17 300), oklch(0.72 0.17 25));
     }
 
-    .picked {
-        outline: 2px solid var(--theme-accent);
-        outline-offset: 2px;
+    :global(.rainbow:hover) {
+        rotate: 90deg;
     }
 
     /* Default holds no color of its own, the dashed edge tells it from Plain */

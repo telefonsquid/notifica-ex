@@ -116,7 +116,8 @@
             {#each group.colors as color (color)}
                 {@const picked = notes.every((note) => note.color === color)}
                 <Menu.Item
-                    class={['motion-interactive size-7 rounded-full data-highlighted:scale-110', picked && 'outline-2 outline-offset-2 outline-accent']}
+                    class="swatch-ring size-7 rounded-full"
+                    data-picked={picked ? '' : undefined}
                     aria-label={colorName(color)}
                     {@attach tip(colorName(color))}
                     closeOnSelect={false}

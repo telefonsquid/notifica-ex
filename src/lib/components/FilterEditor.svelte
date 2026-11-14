@@ -269,7 +269,8 @@
                             {@const on = filter.colors.includes(color)}
                             <button
                                 type="button"
-                                class={['swatch note-surface grid aspect-square place-items-center rounded-full border border-line-strong text-ink', on && 'on']}
+                                class="swatch swatch-ring note-surface grid aspect-square place-items-center rounded-full border border-line-strong text-ink"
+                                data-picked={on ? '' : undefined}
                                 data-note={color || undefined}
                                 aria-pressed={on}
                                 aria-label={colorName(color)}
@@ -479,12 +480,4 @@
         font-size: 0.625rem;
         line-height: 1;
     }
-
-    /* SWATCHES */
-    .swatch {
-        transition: scale var(--duration-base) var(--ease-spring);
-    }
-
-    .swatch:hover { scale: 1.12; }
-    .swatch.on { outline: 2px solid var(--theme-accent); outline-offset: 2px; }
 </style>
