@@ -16,14 +16,13 @@ const FLOAT_FROM = 8        // Fewer notes make room for an open one in place
 const FLOAT_WIDTH = 640
 const TOOLBAR_ROOM = 80     // Floating notes centre in the screen above the toolbar
 
-// Where a floating note sits, in the coordinates of its cell
+// Where a floating note sits, in the coordinates of its cell | a new note's cell sits on the grid's corner
 type Afloat = { ghost: number, x: number, y: number, width: number }
 
-function afloatAt(cell: HTMLElement, grid: HTMLElement): Afloat {
-    const rect = cell.getBoundingClientRect()
+function afloatAt(rect: DOMRect, grid: HTMLElement, ghost = rect.height): Afloat {
     const frame = grid.getBoundingClientRect()
     return {
-        ghost: rect.height,
+        ghost,
         x: frame.left + frame.width / 2 - rect.left,
         y: (innerHeight - TOOLBAR_ROOM) / 2 - rect.top,
         width: Math.min(FLOAT_WIDTH, frame.width)
@@ -92,11 +91,14 @@ export class NoteOpening {
     }
 
     // A full grid on a wide screen keeps still, the note floats to the centre of the screen instead of pushing the others aside
+    // A new note floats too and joins the grid only once it closes with something in it
     #afloat(note: Note | null): Afloat | null {
         const grid = this.#grid.element
-        const cell = note && grid && cellById(grid, note.id)
-        if(!cell || !this.#wide.current || this.#ids().length < FLOAT_FROM) return null
-        return afloatAt(cell, grid)
+        if(!grid || !this.#wide.current || this.#ids().length < FLOAT_FROM) return null
+        if(!note) return afloatAt(grid.getBoundingClientRect(), grid, 0)
+
+        const cell = cellById(grid, note.id)
+        return cell && afloatAt(cell.getBoundingClientRect(), grid)
     }
 
     // Holds the page still under a floating note and keeps the note centred when the window changes size
@@ -109,7 +111,7 @@ export class NoteOpening {
             cancelAnimationFrame(frame)
             frame = requestAnimationFrame(() => {
                 const grid = this.#grid.element
-                if(this.current?.afloat && grid) this.current.afloat = { ...afloatAt(cell, grid), ghost: this.current.afloat.ghost }
+                if(this.current?.afloat && grid) this.current.afloat = afloatAt(cell.getBoundingClientRect(), grid, this.current.afloat.ghost)
             })
         }
         addEventListener('resize', follow)
@@ -173,10 +175,11 @@ export class NoteOpening {
             return {}
         }
 
-        // Starts where it is seen, an open glide still running included
+        // Starts where it is seen, an open glide still running included | a floating one leaves its spot in the centre to the cell
         const from = body.getBoundingClientRect();
         [node, body].forEach((part) => part.getAnimations().forEach((animation) => animation.cancel()))
         const radius = parseFloat(getComputedStyle(card).borderTopLeftRadius)
+        node.classList.remove('afloat')
 
         floatCell(node, { height: '', zIndex: '1' })
         body.dataset.resizing = ''

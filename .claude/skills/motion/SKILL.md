@@ -57,7 +57,7 @@ Above `CARD_WINDOW_FROM` (200) visible notes, `#lib/card_window.svelte.ts` keeps
 ## Card patterns
 
 - Open only controls fade under `.folded` first, then fold away while the card shrinks. Open only parts (`.extra`) fade in after the card grew.
-- New notes grow out of the create button and shrink back into it when empty. The shrink places the note every frame, its width following the body.
+- New notes grow out of the create button and shrink back into it when empty. The shrink places the note every frame, its width following the body. A floating new note's cell sits on the grid's corner (`fresh afloat`), it has no ghost and drops `afloat` before the shrink.
 - Reminder band changes unfold only once the card finished growing (`settled`), before that the glide covers them.
 - Segmented controls (`#lib/ui/Glider.svelte`) and tab indicators glide one thumb to the pick.
 - Tooltips show after 250 ms with a soft `rise`.

@@ -222,8 +222,21 @@
     <div class="@container">
         <div bind:this={grid.element} class="note-grid relative items-start" data-selecting={selection.length > 0 || undefined} {@attach masonry} {@attach windowed && cards.watch} style:--notes={visible.length + (editing ? 1 : 0) + (editing?.fresh ? 1 : 0)}>
             {#if editing?.fresh}
+                {@const afloat = editing.afloat}
                 {#key editing.key}
-                    <div class="note-cell fresh wide @container/note" data-flip={editing.id ?? NEW_CELL} out:retreat|global>
+                    <!-- A floating new note takes no spot in the grid, its cell waits on the grid's corner -->
+                    <div
+                        class={['note-cell fresh', !afloat && 'wide', afloat && 'afloat', afloat && opening.closing && 'closing']}
+                        data-flip={editing.id ?? NEW_CELL}
+                        data-flip-centred={afloat ? '' : undefined}
+                        data-floating={afloat ? '' : undefined}
+                        style:--float-x={afloat && `${afloat.x}px`}
+                        style:--float-y={afloat && `${afloat.y}px`}
+                        style:--float-width={afloat && `${afloat.width}px`}
+                        out:retreat|global
+                        {@attach afloat ? opening.float : null}
+                    >
+                        <div class="frame @container/note" {@attach afloat && opening.resizes ? opening.sizer : null}>
                         <NoteView
                             bind:this={opening.freshNote}
                             note={null}
@@ -238,6 +251,7 @@
                             oncreate={opening.created}
                             onclose={opening.close}
                         />
+                        </div>
                     </div>
                 {/key}
             {/if}
@@ -453,6 +467,16 @@
         box-shadow: 0 0.75rem 2rem 0.5rem black;
         opacity: 0.07;
         pointer-events: none;
+    }
+
+    /* A new note has no card left behind */
+    .note-cell.fresh.afloat {
+        position: absolute;
+        inset: 0 auto auto 0;
+    }
+
+    .note-cell.fresh.afloat::after {
+        display: none;
     }
 
     .note-cell.afloat.closing::before,
