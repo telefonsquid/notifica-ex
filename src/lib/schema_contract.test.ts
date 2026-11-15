@@ -101,9 +101,12 @@ describe('app.css', () => {
         expect(css).toContain(`@container (width >= ${breakpoint}rem)`)
     })
 
-    test('compact keeps two columns until auto fit finds room for two max width notes', () => {
-        const top = Number(css.match(/@container \([\d.]+rem <= width < ([\d.]+)rem\)/)?.[1])
-        expect(top).toBeGreaterThanOrEqual(2 * rem('layout-note-max', compact) + rem('layout-note-gap', compact))
+    const ranges = [...css.matchAll(/@container \(([\d.]+)rem <= width < ([\d.]+)rem\)/g)].map((match) => [Number(match[1]), Number(match[2])])
+
+    test.each([['comfortable', 0, css], ['compact', 1, compact]] as const)('%s keeps two columns from its one column breakpoint until auto fit finds room for two max width notes', (_, index, tokens) => {
+        const [bottom, top] = ranges[index]
+        expect(bottom).toBe(breakpoints[index])
+        expect(top).toBeGreaterThanOrEqual(2 * rem('layout-note-max', tokens) + rem('layout-note-gap', tokens))
     })
 
 })

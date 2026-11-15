@@ -349,7 +349,14 @@
     }
 }
 
-/* TWO COLUMNS | auto fit counts columns by the max width, so compact phones split the width in two until two max width notes fit */
+/* TWO COLUMNS | auto fit counts columns by the max width, so the width splits in two until two max width notes fit | else an open card spans into a column that isn't there */
+@container (31rem <= width < 41rem) {
+    :root:not([data-density='compact']) .note-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        max-width: none;
+    }
+}
+
 @container (18.5rem <= width < 29rem) {
     :root[data-density='compact'] .note-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
