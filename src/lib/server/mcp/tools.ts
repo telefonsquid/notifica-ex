@@ -218,6 +218,21 @@ const createLabel = tool({
     }
 })
 
+const updateLabel = tool({
+    name: 'update_label',
+    title: 'Change a label',
+    description: 'Renames a label or sets its color, by name or id. Labels that create_note makes on its own get a random color, use create_label first to pick one.',
+    readOnly: false,
+    input: z.object({ label: labelRef, name: labelNameSchema.optional(), color: noteColorSchema.optional() }),
+    run: async ({ label: wanted, ...changes }, user) => {
+        const found = findLabel(await labelsOf(user.id), wanted)
+        if(!found) error(404, `No label called ${wanted}.`)
+
+        const label = unwrap(await updateOnePartial('labels', found.id, changes), 'A label with that name already exists.')
+        return { id: label.id, name: label.name, color: label.color }
+    }
+})
+
 
 
 // REMINDERS ==================================================================================================
@@ -266,7 +281,7 @@ const deleteReminder = tool({
     }
 })
 
-export const TOOLS: Tool[] = [searchNotes, getNote, createNote, updateNote, setTask, addNoteImage, listLabels, createLabel, listReminders, createReminder, deleteReminder]
+export const TOOLS: Tool[] = [searchNotes, getNote, createNote, updateNote, setTask, addNoteImage, listLabels, createLabel, updateLabel, listReminders, createReminder, deleteReminder]
 
 
 
