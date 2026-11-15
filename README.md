@@ -2,6 +2,18 @@
 
 Self-hosted notes in the spirit of Google Keep, with reminders pushed to the Android app, the browser and [ntfy](https://ntfy.sh).
 
+## Android app
+
+The app comes from its own F-Droid repository and updates through it. In F-Droid (or a client like Droid-ify or Neo Store), add the repository by scanning the code or opening the link on the phone:
+
+<img src="docs/fdroid-qr.svg" alt="QR code of the F-Droid repository" width="200">
+
+```
+https://telefonsquid.github.io/notifica-ex/repo?fingerprint=447BC75EE4E4E98F1AE78A96C5D8AC35632ACADDA58C610FF84911D56D794888
+```
+
+On first start the app asks for your server's address.
+
 ## Local development
 
 Needs [Bun](https://bun.sh) and a PocketBase on port 8091 (the compose `pocketbase` service works, or a local binary).
