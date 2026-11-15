@@ -59,7 +59,7 @@
         <Popover.Content
             sideOffset={10}
             collisionPadding={12}
-            class="popover z-[60] grid gap-4 rounded-card border border-line-strong bg-raised p-4 text-ink shadow-2xl"
+            class="color-panel popover z-[60] grid max-h-(--bits-popover-content-available-height) gap-4 overflow-y-auto overscroll-contain rounded-card border border-line-strong bg-raised p-4 text-ink shadow-2xl max-sm:max-h-[calc(100dvh-env(safe-area-inset-top)-2rem)]"
         >
             {#each COLOR_GROUPS as group (group.name)}
                 <div>
@@ -88,6 +88,24 @@
 
     :global(.rainbow:hover) {
         rotate: 90deg;
+    }
+
+    /* Phones get it in the middle of the screen, away from the trigger | the empty rest lets touches through to close it */
+    @media (width < 40rem) {
+        :global([data-bits-floating-content-wrapper]:has(> .color-panel)) {
+            position: fixed !important;
+            inset: env(safe-area-inset-top) 0 0 !important;
+            transform: none !important;
+            min-width: 0 !important;
+            display: grid;
+            place-items: center;
+            pointer-events: none;
+        }
+
+        :global(.color-panel) {
+            transform-origin: center;
+            pointer-events: auto;
+        }
     }
 
     /* Default holds no color of its own, the dashed edge tells it from Plain */
