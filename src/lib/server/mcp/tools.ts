@@ -8,6 +8,9 @@ import { reminderRuleSchema, type Reminder } from '#lib/schemas/reminders.ts';
 import type { User } from '#lib/schemas/users.ts';
 import { findLabel, labelIds, labelsOf } from '#lib/server/label_names.ts';
 import { collaboratorChanges, getAllNotesFor, requireNote } from '#lib/server/note_access.ts';
+import { checkFile, checkRoom } from '#lib/server/note_file_routes.ts';
+import { addNoteFile } from '#lib/server/note_files.ts';
+import { fetchRemoteImage } from '#lib/server/remote_image.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { ruleFields } from '#lib/server/reminder_rules.ts';
 import { unwrap } from '#lib/server/result.ts';
@@ -169,6 +172,27 @@ const setTask = tool({
 
 
 
+// IMAGES =====================================================================================================
+const addNoteImage = tool({
+    name: 'add_note_image',
+    title: 'Attach an image to a note',
+    description: 'Downloads the picture at an https address and attaches it to the note as an image. It is shrunk to at most 900 px and saved as WebP, so the original can be any size. Call it once per image, a note holds up to 12.',
+    readOnly: false,
+    input: z.object({ id: idSchema, url: z.url({ protocol: /^https$/ }).max(LIMITS.IMAGE_URL).describe('Direct address of the image file') }),
+    run: async ({ id, url }, user) => {
+        const note = await requireNote(id, user.id)
+        const most = await checkRoom('images', note, user, 0)
+
+        const file = await fetchRemoteImage(url)
+        checkFile('images', file, most)
+
+        const saved = await addNoteFile(note, 'images', file)
+        return { id, images: saved.images.length, bytes: file.size }
+    }
+})
+
+
+
 // LABELS =====================================================================================================
 const listLabels = tool({
     name: 'list_labels',
@@ -242,7 +266,7 @@ const deleteReminder = tool({
     }
 })
 
-export const TOOLS: Tool[] = [searchNotes, getNote, createNote, updateNote, setTask, listLabels, createLabel, listReminders, createReminder, deleteReminder]
+export const TOOLS: Tool[] = [searchNotes, getNote, createNote, updateNote, setTask, addNoteImage, listLabels, createLabel, listReminders, createReminder, deleteReminder]
 
 
 

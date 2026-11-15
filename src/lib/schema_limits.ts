@@ -48,7 +48,8 @@ export const LIMITS = {
 
     // NUMBERS
     PAGE_SIZE: 200,                     // records one fetch may pull
-    API_KEY_DAYS: 3650,                 // longest a key may live before it expires
+    IMAGE_URL: 2048,                    // longest address an image may be fetched from
+    API_KEY_DAYS: 3650,                // longest a key may live before it expires
     REMINDER_EVERY: 999,                // largest step between two reminders, in the chosen unit
     REMINDER_RULES: 20,                 // only and except limits on one reminder
     VIEW_AMOUNT: 999,                   // days, weeks or months a date filter reaches back or ahead
