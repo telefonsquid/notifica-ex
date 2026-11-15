@@ -238,7 +238,8 @@
         </button>
     {/if}
 
-    <NoteTabs bind:picked={draft.labels} {labels} {open} {owned} onfilter={onlabel} />
+    <!-- A closed card has no autosave, a label picked on it goes out at once -->
+    <NoteTabs bind:picked={() => draft.labels, (value) => { draft.labels = value; if(!open) session.save() }} {labels} {open} {owned} onfilter={onlabel} />
 
     <article
         bind:this={card}

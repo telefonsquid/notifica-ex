@@ -9,7 +9,7 @@
 
     /*
         A note's labels as folder tabs on the top or bottom edge of its card, named on hover
-        and while open. The add tab keeps to the far end.
+        and while open. The add tab keeps to the far end and shows with the names.
     */
 
     // PROPS
@@ -35,7 +35,8 @@
 
     // Its menu and editor sit outside the card, so hover alone would fold the tab under them
     let menu = $state<string | null>(null)
-    let held = $derived(editing !== null || menu !== null)
+    let adding = $state(false)
+    let held = $derived(editing !== null || menu !== null || adding)
 
     function drop(id: string){
         picked = picked.filter((item) => item !== id)
@@ -47,7 +48,7 @@
     }
 </script>
 
-{#if tabs.length || (open && owned)}
+{#if tabs.length || owned}
     <ul class={['tabs absolute flex gap-1', held && 'held']} aria-label="Labels">
         {#each tabs as label (label.id)}
             <!-- A closed card's right click opens the note's menu, an open one gives each tab its own -->
@@ -103,9 +104,9 @@
                 </ContextMenu.Portal>
             </ContextMenu.Root>
         {/each}
-        {#if open && owned}
-            <li class="adder-tab ml-auto shrink-0" in:appear out:unfold={{ axis: 'x' }}>
-                <LabelAdder class="h-full" {labels} {picked} onadd={(id) => picked = [...picked, id]} onremove={drop} />
+        {#if owned}
+            <li class="adder-tab ml-auto shrink-0">
+                <LabelAdder class="h-full" {labels} {picked} onadd={(id) => picked = [...picked, id]} onremove={drop} ontoggle={(value) => adding = value} />
             </li>
         {/if}
     </ul>
@@ -116,14 +117,13 @@
     .tabs {
         bottom: 100%;
         left: var(--layout-radius-card);
-        max-width: calc(100% - 2 * var(--layout-radius-card));
+        right: var(--layout-radius-card);
         align-items: end;
         overflow: hidden;
         pointer-events: none;
     }
 
     :global(.note.open) .tabs {
-        right: var(--layout-radius-card);
         pointer-events: auto;
     }
 
@@ -136,9 +136,13 @@
         transition: height var(--duration-base) var(--ease-spring);
     }
 
+    /* Folded away on a closed card until it gets hovered */
     .adder-tab {
-        height: var(--layout-note-tab);
-        transition: opacity var(--duration-fast) var(--ease-in);
+        height: 0;
+        overflow: hidden;
+        opacity: 0;
+        pointer-events: auto;
+        transition: height var(--duration-base) var(--ease-spring), opacity var(--duration-fast) var(--ease-in);
     }
 
     /* Bottom edge as picked in the settings, the tabs then grow downwards */
@@ -152,17 +156,24 @@
         border-radius: 0 0 0.375rem 0.375rem;
     }
 
-    :global(.note:hover) .tab,
-    :global(.note:focus-within) .tab {
+    :global(.note:hover) :is(.tab, .adder-tab),
+    :global(.note:focus-within) :is(.tab, .adder-tab) {
         height: 1.25rem;
     }
 
-    :global(.note.open) .tab {
+    :global(.note.open) :is(.tab, .adder-tab) {
         height: var(--layout-note-tab);
     }
 
-    :global(.note:not(.open)) .held .tab {
+    :global(.note:not(.open)) .held :is(.tab, .adder-tab) {
         height: 1.25rem;
+    }
+
+    :global(.note.open) .adder-tab,
+    :global(.note:hover) .adder-tab,
+    :global(.note:focus-within) .adder-tab,
+    .held .adder-tab {
+        opacity: 1;
     }
 
     .tab :global(.name) {

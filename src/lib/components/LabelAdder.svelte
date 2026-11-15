@@ -15,12 +15,14 @@
         picked,
         onadd,
         onremove,
+        ontoggle,
         class: className = ''
     }: {
         labels: Label[]
         picked: string[]                // already on the note, shown checked
         onadd: (id: string) => void
         onremove: (id: string) => void
+        ontoggle?: (open: boolean) => void
         class?: ClassValue
     } = $props()
 
@@ -45,7 +47,7 @@
 </script>
 
 <!-- Stays open after a pick, so several labels go on in one go -->
-<Popover.Root onOpenChange={(open) => { if(!open) query = '' }}>
+<Popover.Root onOpenChange={(open) => { if(!open) query = ''; ontoggle?.(open) }}>
     <Popover.Trigger class={['adder type-label motion-interactive flex h-full items-center gap-1 px-2 text-ink-muted hover:text-ink', className]} aria-label="Add label">
         <Plus class="size-3" />Label
     </Popover.Trigger>
