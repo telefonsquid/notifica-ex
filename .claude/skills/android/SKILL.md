@@ -57,7 +57,7 @@ otifica-ex` (`release.jks`, `password.txt`), CI has it as the secrets `ANDROID_K
 - Gradle reads `src-tauri/gen/android/keystore.properties` (gitignored) for release signing, without it release builds come out unsigned. Locally it points at the keystore above.
 - `versionCode` is `major * 1000000 + minor * 1000 + patch`, Tauri derives it from the version. It must rise, so every release bumps the version.
 - Release builds run R8 in full mode, debug builds don't shrink, so a class built by reflection can work in debug and crash in release. `app/proguard-rules.pro` keeps what library rules miss (Room's `WorkDatabase_Impl` constructor took 0.4.0 down at launch). Test a new dependency in a release build, `adb logcat -b crash` shows the stack.
-- A debug build and the release are signed differently: switching between them needs an uninstall, which drops the saved server and settings.
+- Debug builds install beside the release as `ex.notifica.app.debug`, named Notifica Debug (`bundle.android.debugApplicationIdSuffix` in `tauri.conf.json`, the CLI writes it into Gradle and drops a hand written suffix, the name comes from `src/debug/res`). Run as and devtools take the `.debug` package.
 
 ## Run on the phone
 
