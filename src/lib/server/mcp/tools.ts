@@ -1,15 +1,16 @@
 import { tasksOf, toggleTask } from '#lib/markdown.ts';
-import { freshDefaults } from '#lib/notes.ts';
+import { contentOf, freshDefaults } from '#lib/notes.ts';
 import { describeRule } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import { idSchema, limitedText } from '#lib/schemas/base.ts';
-import { labelNameSchema, noteColorSchema, noteContentSchema, type Label, type Note } from '#lib/schemas/notes.ts';
-import { reminderRuleSchema, type Reminder } from '#lib/schemas/reminders.ts';
+import { fileNameSchema, labelNameSchema, noteColorSchema, noteContentSchema, type Label, type Note } from '#lib/schemas/notes.ts';
+import { reminderRuleSchema, type Occurrence, type Reminder } from '#lib/schemas/reminders.ts';
 import type { User } from '#lib/schemas/users.ts';
 import { findLabel, labelIds, labelsOf } from '#lib/server/label_names.ts';
-import { collaboratorChanges, getAllNotesFor, requireNote } from '#lib/server/note_access.ts';
+import { collaboratorChanges, getAllNotesFor, ownLabels, requireNote } from '#lib/server/note_access.ts';
 import { checkFile, checkRoom } from '#lib/server/note_file_routes.ts';
-import { addNoteFile } from '#lib/server/note_files.ts';
+import { addNoteFile, duplicateWithFiles, removeNoteFile } from '#lib/server/note_files.ts';
+import { getNewestOpenOccurrence, getOccurrences, getOpenOccurrences, setDone } from '#lib/server/occurrences.ts';
 import { fetchRemoteImage } from '#lib/server/remote_image.ts';
 import { deleteOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { ruleFields } from '#lib/server/reminder_rules.ts';
@@ -79,7 +80,7 @@ const searchNotes = tool({
 const getNote = tool({
     name: 'get_note',
     title: 'Read a note',
-    description: 'The full note: markdown body, labels, checklist state and the reminders the user set on it. A locked note has an empty body, its text is encrypted and only the user can read it. tasks lists every checklist item in reading order, its position is the index set_task takes.',
+    description: 'The full note: markdown body, labels, checklist state and the reminders the user set on it. A locked note has an empty body, its text is encrypted and only the user can read it. tasks lists every checklist item in reading order, its position is the index set_task takes. images and attachments list the files with the name remove_note_file takes.',
     readOnly: true,
     input: z.object({ id: idSchema }),
     run: async ({ id }, user) => {
@@ -88,8 +89,8 @@ const getNote = tool({
             ...summaryOf(note, labels, user),
             body: note.body,
             tasks: tasksOf(note.body),
-            images: note.images.length,
-            attachments: note.attachments.length,
+            images: filesOf(note, 'images'),
+            attachments: filesOf(note, 'attachments'),
             reminders: reminders.filter((reminder) => reminder.note === id).map(reminderOf)
         }
     }
@@ -172,6 +173,23 @@ const setTask = tool({
 
 
 
+const duplicateNote = tool({
+    name: 'duplicate_note',
+    title: 'Copy a note',
+    description: 'Makes a copy of a note with its text, labels and files. Reminders and sharing stay behind. The copy belongs to the user.',
+    readOnly: false,
+    input: z.object({ id: idSchema }),
+    run: async ({ id }, user) => {
+        const stored = await requireNote(id, user.id)
+        const content = contentOf(stored)
+        const labels = await ownLabels(user.id, content.labels)
+        const copy = await duplicateWithFiles(stored, { ...content, labels, owner: user.id, sealed: stored.sealed })
+        return summaryOf(copy, await labelsOf(user.id), user)
+    }
+})
+
+
+
 // IMAGES =====================================================================================================
 const addNoteImage = tool({
     name: 'add_note_image',
@@ -188,6 +206,22 @@ const addNoteImage = tool({
 
         const saved = await addNoteFile(note, 'images', file)
         return { id, images: saved.images.length, bytes: file.size }
+    }
+})
+
+const removeNoteFileTool = tool({
+    name: 'remove_note_file',
+    title: 'Remove an image or file from a note',
+    description: 'Removes one image or attached file for good, by the name get_note lists.',
+    readOnly: false,
+    destructive: true,
+    input: z.object({ id: idSchema, field: z.enum(['images', 'attachments']).default('images'), name: fileNameSchema }),
+    run: async ({ id, field, name }, user) => {
+        const note = await requireNote(id, user.id)
+        if(!note[field].includes(name)) error(404, 'The note has no such file.')
+
+        const saved = await removeNoteFile(note, field, name)
+        return { id, images: saved.images.length, attachments: saved.attachments.length }
     }
 })
 
@@ -235,6 +269,24 @@ const updateLabel = tool({
 
 
 
+const deleteLabel = tool({
+    name: 'delete_label',
+    title: 'Delete a label',
+    description: 'Deletes a label and takes it off every note that carried it. The notes themselves stay.',
+    readOnly: false,
+    destructive: true,
+    input: z.object({ label: labelRef }),
+    run: async ({ label: wanted }, user) => {
+        const found = findLabel(await labelsOf(user.id), wanted)
+        if(!found) error(404, `No label called ${wanted}.`)
+
+        unwrap(await deleteOne('labels', found.id), 'Could not delete the label.')
+        return { removed: found.name }
+    }
+})
+
+
+
 // REMINDERS ==================================================================================================
 const listReminders = tool({
     name: 'list_reminders',
@@ -267,6 +319,67 @@ const createReminder = tool({
     }
 })
 
+const updateReminder = tool({
+    name: 'update_reminder',
+    title: 'Change a reminder',
+    description: 'Replaces the rule of a reminder, give the whole rule as create_reminder takes it. A changed rule starts over, its history stays.',
+    readOnly: false,
+    input: reminderRuleSchema.extend({
+        id: idSchema,
+        repeat: reminderRuleSchema.shape.repeat.default('never'),
+        every: reminderRuleSchema.shape.every.default(1),
+        task: z.boolean().default(false),
+        timezone: reminderRuleSchema.shape.timezone.describe('IANA zone like Europe/Berlin, keeps the clock time across daylight saving')
+    }),
+    run: async ({ id, ...rule }, user) => {
+        unwrap(await getOwned('reminders', id, user.id), 'Reminder not found.')
+        const reminder = unwrap(await updateOnePartial('reminders', id, ruleFields(rule)), 'Could not save the reminder.')
+        return reminderOf(reminder)
+    }
+})
+
+const getReminderHistory = tool({
+    name: 'get_reminder_history',
+    title: 'Read the reminder history of a note',
+    description: 'The times reminders on a note went off, newest first, and which of them were checked off. Only reminders with a Done button can be checked off. Each entry\'s id is what set_occurrence_done takes.',
+    readOnly: true,
+    input: z.object({ note: idSchema, limit: z.number().int().min(1).max(100).default(20) }),
+    run: async ({ note, limit }, user) => {
+        const [page, open] = await Promise.all([getOccurrences(note, user.id, limit), getOpenOccurrences(note, user.id)])
+        const { items, totalItems } = unwrap(page, 'Could not load the history.')
+        return { total: totalItems, open: unwrap(open, 'Could not load the history.').length, items: items.map(occurrenceOf) }
+    }
+})
+
+const checkOffReminder = tool({
+    name: 'check_off_reminder',
+    title: 'Check off a reminder',
+    description: 'Ticks off the newest time of a reminder that is still open, like its Done button.',
+    readOnly: false,
+    input: z.object({ id: idSchema }),
+    run: async ({ id }, user) => {
+        unwrap(await getOwned('reminders', id, user.id), 'Reminder not found.')
+        const occurrence = unwrap(await getNewestOpenOccurrence(id), 'Nothing left to check off.')
+        const [done] = unwrap(await setDone([occurrence], true), 'Could not check off the reminder.')
+        return occurrenceOf(done ?? occurrence)
+    }
+})
+
+const setOccurrenceDone = tool({
+    name: 'set_occurrence_done',
+    title: 'Check off or undo one time in the history',
+    description: 'Checks off or undoes one entry of get_reminder_history, with an optional comment on it.',
+    readOnly: false,
+    input: z.object({ id: idSchema, done: z.boolean(), comment: z.string().trim().max(LIMITS.OCCURRENCE_COMMENT).optional() }),
+    run: async ({ id, done, comment }, user) => {
+        const occurrence = unwrap(await getOwned('occurrences', id, user.id), 'Occurrence not found.')
+        if(!occurrence.task) error(400, 'This reminder had no Done button.')
+
+        const [updated] = unwrap(await setDone([occurrence], done, comment), 'Could not update the reminder.')
+        return occurrenceOf(updated ?? occurrence)
+    }
+})
+
 const deleteReminder = tool({
     name: 'delete_reminder',
     title: 'Remove a reminder',
@@ -281,7 +394,7 @@ const deleteReminder = tool({
     }
 })
 
-export const TOOLS: Tool[] = [searchNotes, getNote, createNote, updateNote, setTask, addNoteImage, listLabels, createLabel, updateLabel, listReminders, createReminder, deleteReminder]
+export const TOOLS: Tool[] = [searchNotes, getNote, createNote, updateNote, setTask, duplicateNote, addNoteImage, removeNoteFileTool, listLabels, createLabel, updateLabel, deleteLabel, listReminders, createReminder, updateReminder, getReminderHistory, checkOffReminder, setOccurrenceDone, deleteReminder]
 
 
 
@@ -312,6 +425,14 @@ function summaryOf(note: Note, labels: Label[], user: User) {
         done_tasks: tasks.filter(Boolean).length,
         updated: note.updated
     }
+}
+
+function filesOf(note: Note, field: 'images' | 'attachments') {
+    return note[field].map((name) => ({ name, shown: note.fileInfo?.[name]?.name ?? null, bytes: note.fileInfo?.[name]?.bytes ?? null }))
+}
+
+function occurrenceOf(occurrence: Occurrence) {
+    return { id: occurrence.id, reminder: occurrence.reminder || null, at: occurrence.at, rule: occurrence.rule, task: occurrence.task, done: occurrence.done || null, comment: occurrence.comment }
 }
 
 function reminderOf(reminder: Reminder) {
