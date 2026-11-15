@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.4 · 2026-11-15
+
+- added the f-droid repository and its qr code to the readme
+- the add label tab shows on hover over closed notes too
+- debug builds install beside the release as notifica debug
+- fixed links not opening on android
+- a note's color button is a rainbow, label colors show only the color
+- color swatches show a ring on hover instead of growing
+- phone settings scroll under the section list and the bottom row
+- appearance options fit two per row on phones
+- themes are called light and dark
+- density moved after the theme
+- new notes float like opened ones
+
 ## 0.4.3 · 2026-11-14
 
 - reminders can be removed from their line on hover
