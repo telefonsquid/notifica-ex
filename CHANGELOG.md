@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.5 · 2026-11-15
+
+- added more mcp tools
+- added mcp tool for changing labels
+- added mcp tool for attaching images
+- fixed notes beside an open note getting squished at medium widths
+- fixed the color picker running off small screens
+
 ## 0.4.4 · 2026-11-15
 
 - added the f-droid repository and its qr code to the readme
