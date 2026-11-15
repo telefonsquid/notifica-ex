@@ -133,7 +133,7 @@
 
 		// ====================================================================================================
 
-		async function open(url) {
+		async function connectTo(url) {
 			status.className = 'status';
 			status.textContent = 'Connecting…';
 			button.disabled = true;
@@ -156,7 +156,7 @@
 
 		form.addEventListener('submit', (event) => {
 			event.preventDefault();
-			open(input.value.trim());
+			connectTo(input.value.trim());
 		});
 
 		// START | a saved server opens right away, the form only shows when there is none or it fails
@@ -164,7 +164,7 @@
 			if (saved) input.value = saved;
 
 			if (saved && !window.NotificaAndroid?.changingServer?.()) {
-				open(saved);
+				connectTo(saved);
 			} else {
 				document.body.classList.remove('waiting');
 				input.focus();

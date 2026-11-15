@@ -66,7 +66,7 @@ pub fn run() {
     let server = Server::default();
 
     tauri::Builder::default()
-        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_opener::Builder::new().open_js_links_on_click(false).build())     // Its link script calls a command pages may not use, on_navigation opens links instead
         .manage(server.clone())
         .invoke_handler(tauri::generate_handler![saved_server, connect])
         .setup(move |app| {
@@ -81,8 +81,10 @@ pub fn run() {
                     if is_local(url) || on_server || url.scheme() == "about" {
                         return true;
                     }
+                    // Off the UI thread | the opener waits on it on Android, which this callback blocks
                     if matches!(url.scheme(), "http" | "https" | "mailto" | "tel") {
-                        let _ = handle.opener().open_url(url.as_str(), None::<&str>);
+                        let (handle, url) = (handle.clone(), url.to_string());
+                        std::thread::spawn(move || handle.opener().open_url(url, None::<&str>));
                     }
                     false
                 })

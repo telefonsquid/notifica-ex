@@ -172,7 +172,8 @@
         const onArrow = !!last && event.clientX >= last.right - parseFloat(getComputedStyle(link).fontSize)
         if(!onArrow && !event.ctrlKey && !event.metaKey) return false
 
-        window.open(link.href, '_blank', 'noopener,noreferrer')
+        // A detached anchor instead of window.open, which the Android webview ignores
+        Object.assign(document.createElement('a'), { href: link.href, target: '_blank', rel: 'noopener noreferrer' }).click()
         markVisited(link.getAttribute('href')!)
         return true
     }
