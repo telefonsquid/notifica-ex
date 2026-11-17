@@ -69,12 +69,26 @@ export function formatDistance(value: string, now: number): string {
     const left = date.getTime() - now
     if(left < -60_000) return ''
     if(left < 60_000) return 'now'
+    return inUnits(left)
+}
 
-    // Rounding may reach the next unit, 59.6 minutes read as in 1 hour, not in 60 minutes
-    let index = Math.max(0, STEPS.findLastIndex(([, size]) => left >= size))
-    if(index < STEPS.length - 1 && Math.round(left / STEPS[index][1]) * STEPS[index][1] >= STEPS[index + 1][1]) index++
-    const [unit, size] = STEPS[index]
-    return relative.format(Math.round(left / size), unit)
+// Time passed as "3 hours ago" or "1 week ago"
+export function formatAgo(value: string, now: number): string {
+    const date = parseTimestamp(value)
+    if(!date) return ''
+
+    const passed = now - date.getTime()
+    if(passed < 60_000) return 'now'
+    return inUnits(-passed)
+}
+
+// Largest unit that fits at least once | rounding may reach the next unit, 59.6 minutes read as 1 hour, not 60 minutes
+function inUnits(span: number): string {
+    const size = Math.abs(span)
+    let index = Math.max(0, STEPS.findLastIndex(([, step]) => size >= step))
+    if(index < STEPS.length - 1 && Math.round(size / STEPS[index][1]) * STEPS[index][1] >= STEPS[index + 1][1]) index++
+    const [unit, step] = STEPS[index]
+    return relative.format(Math.round(span / step), unit)
 }
 
 // Value format of datetime-local inputs, in the browser's own zone

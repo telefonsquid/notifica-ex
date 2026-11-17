@@ -16,7 +16,7 @@ const note = (overrides: Partial<Note>): Note => ({
 const reminder = (overrides: Partial<Reminder>): Reminder => ({
     id: 'r', collectionId: 'c', collectionName: 'reminders', created: '', updated: '', note: 'n', owner: 'me',
     at: '2026-10-20 07:00:00.000Z', repeat: 'never', every: 1, weekdays: [], until: '', timezone: 'UTC', task: false, rules: [],
-    next: '2026-10-20 07:00:00.000Z', open: 0, ...overrides
+    next: '2026-10-20 07:00:00.000Z', open: 0, openSince: '', ...overrides
 })
 
 const NOW = new Date('2026-10-15T12:00:00Z')

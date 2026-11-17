@@ -92,11 +92,11 @@ export async function countOpenOccurrences(reminder: string) {
     return run((pb) => recount(pb, reminder))
 }
 
-// Keeps the count on the reminder in step with its log, the card badge and filters read it from there
+// Keeps the count and the oldest open time on the reminder in step with its log, the card and filters read them from there
 async function recount(pb: PocketBase, reminder: string) {
     const filter = pb.filter(`reminder = {:reminder} && ${OPEN}`, { reminder })
-    const page = await pb.collection('occurrences').getList(1, 1, { filter, fields: 'id' })
-    return await pb.collection('reminders').update(reminder, { open: page.totalItems }) as Reminder
+    const page = await pb.collection('occurrences').getList(1, 1, { filter, sort: 'at', fields: 'at' })
+    return await pb.collection('reminders').update(reminder, { open: page.totalItems, openSince: page.items[0]?.at ?? '' }) as Reminder
 }
 
 

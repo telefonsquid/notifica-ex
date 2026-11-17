@@ -1,3 +1,4 @@
+import { countOpenOccurrences } from '#lib/server/occurrences.ts';
 import { getAll, getCollection, importCollections, insertOnePartial, updateCollection, updateOnePartial } from '#lib/server/queries.ts';
 import { unwrap } from '#lib/server/result.ts';
 import type { NoteColor } from '#lib/schemas/notes.ts';
@@ -31,6 +32,10 @@ const MIGRATIONS: Migration[] = [
     { version: '0.4.0-asexual-flag', run: async () => {
         await syncColors()
         await renameColor('agender-flag', 'asexual-flag')
+    } },
+    { version: '0.4.6-open-since', run: async () => {
+        await addFields('reminders', 'openSince')
+        await fillOpenSince()
     } }
 ]
 
@@ -73,7 +78,7 @@ async function addCollections(...names: string[]) {
     unwrap(await importCollections(added), `Could not add ${names.join(', ')}.`)
 }
 
-type Collection = 'notes' | 'users' | 'labels'
+type Collection = 'notes' | 'users' | 'labels' | 'reminders'
 
 // Keeps the collection's other fields, its rules and its data
 async function addFields(collection: Collection, ...names: string[]) {
@@ -106,4 +111,10 @@ async function renameColor(from: string, to: NoteColor) {
         const found = unwrap(await getAll(collection, { filter: `${field} = "${from}"`, fields: 'id' }), `Could not read ${collection}.`)
         for(const record of found) unwrap(await updateOnePartial(collection, record.id, { [field]: to }), `Could not recolor ${collection} ${record.id}.`)
     }
+}
+
+// Reminders with open times learn when the oldest went off
+async function fillOpenSince() {
+    const found = unwrap(await getAll('reminders', { filter: 'open > 0', fields: 'id' }), 'Could not read reminders.')
+    for(const reminder of found) unwrap(await countOpenOccurrences(reminder.id), `Could not recount reminder ${reminder.id}.`)
 }

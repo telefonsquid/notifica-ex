@@ -2,7 +2,7 @@
     import { now } from '#lib/clock.svelte.ts';
     import { describeRule, isCounted, isOpenTask, localWeekday, normalizeRule, parseTimestamp, UNITS } from '#lib/reminders.ts';
     import { safeAction } from '#lib/safe_action.ts';
-    import { formatDistance, formatMoment, toLocalInput } from '#lib/time_format.ts';
+    import { formatAgo, formatDistance, formatMoment, toLocalInput } from '#lib/time_format.ts';
     import type { Reminder, ReminderLimit, ReminderRepeat, Weekday } from '#lib/schemas/reminders.ts';
     import DayPicker from '#lib/components/DayPicker.svelte';
     import DoneButton from '#lib/components/DoneButton.svelte';
@@ -247,7 +247,10 @@
         <button class={['type-meta flex min-w-0 flex-1 items-center gap-2 text-left', editable ? 'hover:text-ink' : 'pointer-events-none']} tabindex={editable ? 0 : -1} aria-label={`Edit reminder ${describeRule(reminder)}`} onclick={() => open = true}>
             {#if reminder.task}<SquareCheckBig class="size-3.5 shrink-0" />{:else}<Bell class="size-3.5 shrink-0" />{/if}
             <span class="truncate">{summary(reminder)}</span>
-            {#if !editable && reminder.next}
+            <!-- An unchecked task counts from its oldest open time, not the next one -->
+            {#if !editable && due && reminder.openSince}
+                <span class="ml-auto shrink-0">{formatAgo(reminder.openSince, now())}</span>
+            {:else if !editable && reminder.next}
                 <span class="ml-auto shrink-0">{formatDistance(reminder.next, now())}</span>
             {/if}
         </button>

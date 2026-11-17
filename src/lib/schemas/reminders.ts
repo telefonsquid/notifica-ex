@@ -47,6 +47,7 @@ export type Reminder = RecordModel & ReminderRule & {
     owner: string;
     next: string; // Empty once a one off reminder went out
     open: number; // Logged task occurrences not checked off yet
+    openSince: string; // When the oldest of them went off, empty with none
 }
 
 // One time a reminder went off | keeps what the reminder looked like then, so later edits leave the history alone

@@ -1248,6 +1248,17 @@
                 "hidden": false,
                 "presentable": false,
                 "system": false,
+                "id": "date1700174220",
+                "max": "",
+                "min": "",
+                "name": "openSince",
+                "required": false,
+                "type": "date"
+            },
+            {
+                "hidden": false,
+                "presentable": false,
+                "system": false,
                 "id": "autodate2990389176",
                 "name": "created",
                 "onCreate": true,
