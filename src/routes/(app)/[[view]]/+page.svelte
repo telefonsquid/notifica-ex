@@ -495,9 +495,45 @@
         box-shadow: 0 1.5rem 3rem -1rem rgb(0 0 0 / 0.35);
     }
 
-    .note-cell:global([data-drop-target] .card) {
-        outline: 2px solid var(--theme-signature);
-        outline-offset: 3px;
+    /* The bar sits in the gap where the held card lands, nothing moves until the drop | above the held card, which hangs over it */
+    .note-cell:global([data-drop]) {
+        position: relative;
+    }
+
+    .note-cell:global([data-drop])::after {
+        content: '';
+        position: absolute;
+        inset-block: 0;
+        z-index: 11;
+        width: 0.25rem;
+        border-radius: 999px;
+        background: var(--theme-signature);
+        pointer-events: none;
+    }
+
+    .note-cell:global([data-drop='before'])::after {
+        left: calc(var(--layout-note-gap) / -2 - 0.125rem);
+    }
+
+    .note-cell:global([data-drop='after'])::after {
+        right: calc(var(--layout-note-gap) / -2 - 0.125rem);
+    }
+
+    /* One column stacks, the bar lies across the gap above or below */
+    @container (width < 31rem) {
+        :root:not([data-density='compact']) .note-cell:global([data-drop])::after {
+            inset: auto 0;
+            width: auto;
+            height: 0.25rem;
+        }
+
+        :root:not([data-density='compact']) .note-cell:global([data-drop='before'])::after {
+            top: calc(var(--layout-note-gap) / -2 - 0.125rem);
+        }
+
+        :root:not([data-density='compact']) .note-cell:global([data-drop='after'])::after {
+            bottom: calc(var(--layout-note-gap) / -2 - 0.125rem);
+        }
     }
 
     :global(body:has([data-dragging])) {

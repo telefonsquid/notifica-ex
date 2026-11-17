@@ -2,14 +2,11 @@ import { cssEasing, duration } from '#lib/motion.ts';
 import type { NoteGrid } from '#lib/note_grid.svelte.ts';
 import { kept } from '#lib/note_list.ts';
 import { positionBetween } from '#lib/note_position.ts';
-import { cellById, cellOf } from '#lib/relayout.ts';
+import { cellOf } from '#lib/relayout.ts';
 import { safeAction } from '#lib/safe_action.ts';
 import type { Note } from '#lib/schemas/notes.ts';
 import type { ViewSort } from '#lib/schemas/views.ts';
 import { moveNote } from '../routes/api/notes.remote';
-
-// Past this many cards the grid holds still until the drop, a reorder on every pass sends them all flying
-const LIVE_DRAG_LIMIT = 10
 
 type Held = {
     id: string
@@ -17,8 +14,7 @@ type Held = {
     start: { x: number, y: number }
     offset: { x: number, y: number }        // Where on the card it was grabbed
     from: string[] | null                   // The order when the drag began, null until the pointer really moved
-    over: string | null
-    target: HTMLElement | null
+    target: { cell: HTMLElement, after: boolean } | null       // The card it lands beside
 }
 
 type Page = {
@@ -31,7 +27,7 @@ type Page = {
 }
 
 /*
-    The mouse moves cards in a manual sort, each card it passes gives up its place.
+    The mouse moves cards in a manual sort. The grid holds still, a bar in the gap marks where the card lands.
 */
 export class NoteDrag {
     #grid: NoteGrid
@@ -52,7 +48,7 @@ export class NoteDrag {
 
         const cell = event.currentTarget as HTMLElement
         const rect = cell.getBoundingClientRect()
-        this.#held = { id, cell, start: { x: event.clientX, y: event.clientY }, offset: { x: event.clientX - rect.left, y: event.clientY - rect.top }, from: null, over: null, target: null }
+        this.#held = { id, cell, start: { x: event.clientX, y: event.clientY }, offset: { x: event.clientX - rect.left, y: event.clientY - rect.top }, from: null, target: null }
     }
 
     move = (event: PointerEvent) => {
@@ -71,29 +67,38 @@ export class NoteDrag {
         this.#follow()
 
         // The card under the pointer, the dragged one itself left out
-        const over = document.elementsFromPoint(pointer.x, pointer.y).map(cellOf).find((cell) => cell && cell !== held.cell)?.dataset.flip ?? null
-        if(over === held.over) return
-        held.over = over
-        if(!over || !grid.frozen) return
+        const over = document.elementsFromPoint(pointer.x, pointer.y).map(cellOf).find((cell) => cell && cell !== held.cell) ?? null
+        if(!over && this.#inGrid()) return      // Gaps between cards keep the last mark
+        this.#mark(over && this.#accepts(over.dataset.flip!) ? { cell: over, after: this.#past(over) } : null)
+    }
 
-        // Pinned notes stay among themselves while they sort first
+    #inGrid = () => {
+        const rect = this.#grid.element?.getBoundingClientRect()
+        return !!rect && this.#pointer.x >= rect.left && this.#pointer.x <= rect.right && this.#pointer.y >= rect.top && this.#pointer.y <= rect.bottom
+    }
+
+    // Pinned notes stay among themselves while they sort first
+    #accepts = (id: string) => {
         const notes = this.#page.notes()
-        const moving = notes.find((note) => note.id === held.id)
-        const passed = notes.find((note) => note.id === over)
-        if(!moving || !passed || (this.#page.sort().pinnedFirst && moving.pinned !== passed.pinned)) return
+        const moving = notes.find((note) => note.id === this.#held?.id)
+        const passed = notes.find((note) => note.id === id)
+        return !!moving && !!passed && (!this.#page.sort().pinnedFirst || moving.pinned === passed.pinned)
+    }
 
-        // Many cards only mark where the drop lands
-        if(grid.frozen.length > LIVE_DRAG_LIMIT){
-            if(held.target) delete held.target.dataset.dropTarget
-            held.target = cellById(document, over)
-            if(held.target) held.target.dataset.dropTarget = ''
-            return
-        }
+    // Past the card's middle lands after it | a single column reads top to bottom, else left to right
+    #past = (cell: HTMLElement) => {
+        const rect = cell.getBoundingClientRect()
+        const single = rect.width >= (this.#grid.element?.clientWidth ?? Infinity) - 1
+        return single ? this.#pointer.y > rect.top + rect.height / 2 : this.#pointer.x > rect.left + rect.width / 2
+    }
 
-        const order = grid.frozen.filter((id) => id !== held.id)
-        order.splice(grid.frozen.indexOf(over), 0, held.id)
-        grid.frozen = order
-        requestAnimationFrame(this.#follow)     // The packer moved the cell's own place meanwhile
+    #mark = (target: Held['target']) => {
+        const held = this.#held!
+        if(held.target?.cell === target?.cell && held.target?.after === target?.after) return
+
+        if(held.target) delete held.target.cell.dataset.drop
+        held.target = target
+        if(target) target.cell.dataset.drop = target.after ? 'after' : 'before'
     }
 
     // Under the pointer wherever the grid placed the cell | offsets ignore the lift's scale
@@ -120,11 +125,11 @@ export class NoteDrag {
         this.#dropped = true
         setTimeout(() => this.#dropped = false)
 
-        // A marked target reorders only now
+        // The grid reorders only now
         const order = target ? from.filter((other) => other !== id) : from
         if(target){
-            delete target.dataset.dropTarget
-            order.splice(from.indexOf(target.dataset.flip!), 0, id)
+            delete target.cell.dataset.drop
+            order.splice(order.indexOf(target.cell.dataset.flip!) + (target.after ? 1 : 0), 0, id)
         }
         const moved = order.some((other, index) => other !== from[index])
 

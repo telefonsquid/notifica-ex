@@ -407,7 +407,7 @@ Invariant: logout always reaches the login page when the server answered, unsave
 
 ## Drag
 
-`drag` on the same page. Idle, Pressed, Dragging. Only mouse and pen, only sort `manual`, only with nothing open or selected. Drop writes one `position`.
+`#lib/note_drag.ts`. Idle, Pressed, Dragging. Only mouse and pen, only sort `manual`, only with nothing open or selected. While dragging the grid holds still and the card under the pointer marks a side (`data-drop`, before or after), gaps keep the last mark. Drop reorders once and writes one `position`.
 
 ## Overlays and back
 
