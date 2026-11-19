@@ -7,7 +7,7 @@ import { ntfyTopicSchema, pushSubscriptionSchema } from '#lib/schemas/users.ts';
 import { streamSubject } from '#lib/server/app_stream.ts';
 import { deliverTest } from '#lib/server/delivery.ts';
 import { requireNote } from '#lib/server/note_access.ts';
-import { getNewestOpenOccurrence, getOccurrenceAt, getOccurrences, getOpenOccurrences, setDone, snooze } from '#lib/server/occurrences.ts';
+import { completeEarly, getNewestOpenOccurrence, getOccurrenceAt, getOccurrences, getOpenOccurrences, setDone, snooze } from '#lib/server/occurrences.ts';
 import { parseSlot } from '#lib/server/push.ts';
 import { deleteOne, findOne, getAllOwned, getOwned, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { ruleFields } from '#lib/server/reminder_rules.ts';
@@ -70,6 +70,21 @@ export const setReminderDone = command(idSchema, async (id) => {
     unwrap(await getOwned('reminders', id, me.id), 'Reminder not found.')
     const occurrence = unwrap(await getNewestOpenOccurrence(id), 'Nothing left to check off.')
     unwrap(await setDone([occurrence], true), 'Could not check off the reminder.')
+
+    await getReminders().refresh()
+    return true
+
+});
+
+
+
+// Ticks off the coming time of a task before it goes off
+export const completeReminderEarly = command(idSchema, async (id) => {
+
+    const me = signedIn()
+    const reminder = unwrap(await getOwned('reminders', id, me.id), 'Reminder not found.')
+    if(!reminder.task) error(400, 'This reminder has no Done button.')
+    if(!await completeEarly(reminder)) error(409, 'This time is about to go off.')
 
     await getReminders().refresh()
     return true

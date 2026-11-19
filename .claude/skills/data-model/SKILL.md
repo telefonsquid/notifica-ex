@@ -11,13 +11,15 @@ Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas/` holds zod for what 
 
 | Collection | Fields | List/view rule |
 |---|---|---|
-| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it), appPaused, appResumed (phone reminders, see the `reminders` skill), limits (json, per user overrides), noteLock (json, the wrapped key for locked notes), noteColor (new notes start with it) | own record, admins all (names for sharing come from `getPeople()` on the server) |
+| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it), appPaused, appResumed (phone reminders, see the `reminders` skill), limits (json, per user overrides), noteLock (json, the wrapped key for locked notes), noteColor (new notes start with it) | own record, admins all (names for sharing come from `getPeople()` on the server, see Sharing) |
 | `labels` | owner, name, color, autoColor, colorPriority (order in the auto color chart, lowest first) | owner |
-| `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images and attachments (protected files), fileInfo (json, original name and size per file), shared (users, max 20), sealed (the body encrypted, body empty then), colorDefault (the colour came from the account default, a picked colour clears it) | `owner = @request.auth.id \|\| shared.id ?= @request.auth.id` (a multi relation needs `.id ?=`, plain `?=` silently matches nothing) |
+| `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images and attachments (protected files), fileInfo (json, original name and size per file), shared (users, max 20), sealed (the body encrypted, body empty then), colorDefault (the colour came from the account default, a picked colour clears it), linkMode (read or write, empty while off), linkToken (hidden), linked (users who joined through the link, max 100) | `owner = @request.auth.id \|\| shared.id ?= @request.auth.id \|\| (linkMode != "" && linked.id ?= @request.auth.id)` (a multi relation needs `.id ?=`, plain `?=` silently matches nothing) |
 | `reminders` | note, owner, at, repeat, weekdays, until, every, timezone, task, next, open, openSince (oldest open time, a closed card counts from it) | owner, so a collaborator's reminders stay private |
 | `occurrences` | owner, note, reminder, at, rule, timezone, task, done, comment | owner, the reminder history |
 | `views` | owner, name, icon (lucide name, text), position, filter (json), sort (json) | owner |
 | `api_keys` | owner, name, prefix (first 10 chars, shown in the list), hash (sha256 of the key, unique), scope (read or write), expires, lastUsed (written at most once a minute) | superuser only, the key itself is never stored |
+| `invites` | owner, hash (sha256 of the link token, unique), expires (a week) | superuser only, the link is shown once |
+| `contacts` | owner, person (one row each way, unique pair) | superuser only |
 | `push_subscriptions` | owner, endpoint (unique), p256dh, auth | superuser only, one per browser |
 | `app_settings` | limits (json, server defaults, one row, none until first changed) | superuser only |
 | `migrations` | bookkeeping | superuser only |
@@ -34,9 +36,12 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 ## Sharing
 
 - The owner picks people in `ShareEditor`, stored in `notes.shared`.
+- Who shows up there comes from `peopleFor()` in `#lib/server/contacts.ts`: admins see every active account, everyone else their contacts plus the owners and co-sharers of notes they see. `shareNote` accepts only that set, so taking someone off still works after the contact is gone.
+- Contacts come from invite links (Settings → Account, `Contacts.svelte`): one use, 7 days, revocable, at most `LIMITS.INVITES` open. `/invite/[token]` sends a visitor without a session through the login first, then Connect writes both contact rows and deletes the invite. Removing a contact drops both rows, notes already shared stay shared.
 - Collaborators edit title, body, colour, images and attachments and add their own reminders. Pin, archive, labels, manual order and delete stay with the owner, the server strips those fields from a collaborator's update.
 - `removeNote` deletes for the owner and leaves for a collaborator (removes them from `shared`), both through `removeFor` in `#lib/server/note_access.ts`. Its `ACCESS` filter mirrors the notes list and view rules, a contract test keeps them equal. `removeFile` drops an image or attachment. Duplicating someone else's note drops their labels.
 - Leaving, or being taken off a note, deletes that person's reminders on it (`deleteRemindersOn`), and dispatch drops any reminder whose owner lost the note. Their history stays.
+- **Note link** (`#lib/server/note_links.ts`, `links.remote.ts`): one per note, owner only, view or edit, New link swaps the token. `/n/[token]` shows guests title, text and files, a write link lets them edit title and body (`saveLinkedNote`, 409 once `updated` moved), files load through `/n/[token]/images|attachments/[name]`. A signed in visitor joins `linked` and lands on the note. Joined people count as collaborators with the link's mode: `canSee()` and `canEdit()` in `note_access.ts`, every write goes through `requireEditableNote`. Turning the link off empties `linked`. Added by migration `0.4.6-note-links` (`addFields`, then `syncRules` for the new rules). States: [Note link](../../../docs/state-machines.md#note-link).
 - UI: `owned = note.owner === me` decides which actions show.
 
 ## Locked notes

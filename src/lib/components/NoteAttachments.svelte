@@ -21,7 +21,7 @@
         fileInfo: FileInfo | null
         sending: { key: string, name: string, bytes: number, share: number }[]      // On their way up, share runs from 0 to 1
         open: boolean
-        onremove: (name: string) => void
+        onremove?: (name: string) => void      // without it the files can only be downloaded
     } = $props()
 
     let count = $derived(attachments.length + sending.length)
@@ -39,7 +39,7 @@
                     <span class="min-w-0 flex-1 truncate">{shown}</span>
                     {#if info}<span class="type-meta shrink-0 text-ink-faint">{formatBytes(info.bytes)}</span>{/if}
                 </a>
-                <button class="icon-button" aria-label={`Remove ${shown}`} onclick={() => onremove(name)}><X class="size-4" /></button>
+                {#if onremove}<button class="icon-button" aria-label={`Remove ${shown}`} onclick={() => onremove(name)}><X class="size-4" /></button>{/if}
             </li>
         {/each}
         {#each sending as file (file.key)}

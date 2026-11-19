@@ -54,8 +54,17 @@ export type Note = RecordModel & NoteContent & {
     fileInfo: FileInfo | null; // Sizes of both, what storage limits count
     shared: string[]; // People who may see and edit it besides the owner
     sealed: string; // The encrypted body of a locked note, its body stays empty meanwhile
+    linkMode: NoteLinkMode; // Empty while the note has no link
+    linked: string[]; // People who joined through the link
+    linkToken?: string; // Hidden in pocketbase, only the server reads it
     unreadable?: boolean; // Browser only, a locked note whose text isn't decrypted
 }
 
-// What the others on a shared note get to know about someone
-export type Person = { id: string, name: string }
+// What anyone holding a note's link may do with it
+export type NoteLinkMode = '' | 'read' | 'write'
+
+// A note as a visitor without an account sees it through the link
+export type LinkedNote = Pick<Note, 'id' | 'title' | 'body' | 'color' | 'images' | 'attachments' | 'fileInfo' | 'updated'> & { mode: NoteLinkMode, owner: string }
+
+// What the others on a shared note get to know about someone | people met only through a link can't be picked for sharing
+export type Person = { id: string, name: string, viaLink?: boolean }

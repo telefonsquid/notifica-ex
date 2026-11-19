@@ -31,6 +31,10 @@ describe('checklists', () => {
         })
     }
 
+    test('an empty task still shows its box', () => {
+        expect(renderMarkdown('- [ ] ')).not.toContain('[ ]')
+    })
+
     test('an index without a task changes nothing', () => {
         expect(toggleTask('- [ ] a', 3)).toBe('- [ ] a')
     })

@@ -2,6 +2,7 @@
     import { invalidateAll } from '$app/navigation';
     import { page } from '$app/state';
     import ApiKeys from '#lib/components/ApiKeys.svelte';
+    import Contacts from '#lib/components/Contacts.svelte';
     import GoogleImport from '#lib/components/GoogleImport.svelte';
     import { androidApp } from '#lib/device_notifications.ts';
     import { unfold } from '#lib/motion.ts';
@@ -138,6 +139,8 @@
         </div>
     </form>
 {/if}
+
+<Contacts />
 
 {#if page.data.limits.aiAccess}
     <ApiKeys />

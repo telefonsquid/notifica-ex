@@ -46,6 +46,7 @@
     let single = $derived(notes.length === 1 ? notes[0] : null)
     let attached = $derived(notes.flatMap((note) => reminders.get(note.id) ?? []))
     let owned = $derived(notes.filter((note) => note.owner === me))
+    let paintable = $derived(notes.filter((note) => note.owner === me || note.shared.includes(me) || note.linkMode === 'write' && note.linked.includes(me)))     // Read only links leave the colour alone
     let allPinned = $derived(owned.every((note) => note.pinned))
     let allArchived = $derived(owned.every((note) => note.archived))
 
@@ -58,7 +59,7 @@
     }
 
     function paint(color: NoteColor){
-        each((note) => updateNote({ id: note.id, color }))
+        each((note) => updateNote({ id: note.id, color }), paintable)
     }
 
     // A label goes on every note once one lacks it, otherwise it comes off all of them
@@ -85,7 +86,7 @@
     }
 
     // One owned note at a time, the password prompt is about a single one
-    let lockable = $derived(!!single && single.owner === me && !lost(single) && (!!single.sealed || !single.shared.length && !single.images.length && !single.attachments.length))
+    let lockable = $derived(!!single && single.owner === me && !lost(single) && (!!single.sealed || !single.shared.length && !single.linkMode && !single.images.length && !single.attachments.length))
 
     function lock(){
         if(single) toggleLock(single)
@@ -188,10 +189,12 @@
 {/if}
 
 <!-- COLOR -->
+{#if paintable.length}
 <Menu.Sub>
     <Menu.SubTrigger class="menu-item"><Palette class="size-4" />Color<ChevronRight class="ml-auto size-3.5" /></Menu.SubTrigger>
     <Menu.SubContent class="menu flex flex-col gap-3 p-3" sideOffset={6} collisionPadding={12}>{@render colorItems()}</Menu.SubContent>
 </Menu.Sub>
+{/if}
 
 <!-- LABELS -->
 {#if owned.length}

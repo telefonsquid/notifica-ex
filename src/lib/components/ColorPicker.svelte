@@ -82,12 +82,20 @@
 
 <style>
     /* The colors turn a little under the pointer, as if picking one */
+    @property --rainbow-turn {
+        syntax: '<angle>';
+        inherits: false;
+        initial-value: 0deg;
+    }
+
+    /* Turns the gradient, not the button | a rotated button snaps back a subpixel once it stops */
     :global(.rainbow) {
-        background: conic-gradient(oklch(0.72 0.17 25), oklch(0.82 0.16 85), oklch(0.75 0.15 150), oklch(0.7 0.13 230), oklch(0.65 0.17 300), oklch(0.72 0.17 25));
+        background: conic-gradient(from var(--rainbow-turn), oklch(0.72 0.17 25), oklch(0.82 0.16 85), oklch(0.75 0.15 150), oklch(0.7 0.13 230), oklch(0.65 0.17 300), oklch(0.72 0.17 25));
+        transition: outline-color var(--duration-fast) var(--ease-out), outline-offset var(--duration-base) var(--ease-out), --rainbow-turn var(--duration-slow) var(--ease-out);
     }
 
     :global(.rainbow:hover) {
-        rotate: 90deg;
+        --rainbow-turn: 90deg;
     }
 
     /* Phones get it in the middle of the screen, away from the trigger | the empty rest lets touches through to close it */

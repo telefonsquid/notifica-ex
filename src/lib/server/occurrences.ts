@@ -1,4 +1,4 @@
-import { describeRule, pbTime } from '#lib/reminders.ts';
+import { describeRule, occurrenceAfter, parseTimestamp, pbTime } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import type { Occurrence, Reminder } from '#lib/schemas/reminders.ts';
 import { deleteOne, findOne, getOne, insertOnePartial, run, updateOnePartial } from '#lib/server/queries.ts';
@@ -97,6 +97,27 @@ async function recount(pb: PocketBase, reminder: string) {
     const filter = pb.filter(`reminder = {:reminder} && ${OPEN}`, { reminder })
     const page = await pb.collection('occurrences').getList(1, 1, { filter, sort: 'at', fields: 'at' })
     return await pb.collection('reminders').update(reminder, { open: page.totalItems, openSince: page.items[0]?.at ?? '' }) as Reminder
+}
+
+
+
+// COMPLETING EARLY ===========================================================================================
+
+// Too close to the dispatch run, which would log it a second time
+const EARLY_MARGIN = 60_000
+
+// Logs the coming time as done before it goes off, the rule moves on without a push | false once it is too late for that
+export async function completeEarly(reminder: Reminder) {
+    const at = parseTimestamp(reminder.next)
+    if(!at || at.getTime() - Date.now() < EARLY_MARGIN) return false
+
+    // Moving on first keeps a dispatch run in between from sending it
+    const next = occurrenceAfter(reminder, at)?.toISOString() ?? ''
+    unwrap(await updateOnePartial('reminders', reminder.id, { next }), 'Could not complete the reminder.')
+
+    const logged = unwrap(await logOccurrence(reminder), 'Could not complete the reminder.')
+    unwrap(await setDone([logged], true, 'Completed early'), 'Could not complete the reminder.')
+    return true
 }
 
 

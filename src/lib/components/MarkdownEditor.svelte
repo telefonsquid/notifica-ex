@@ -50,13 +50,22 @@
 
     // LIST ITEMS | a handle on the left drags the item through sortable(), its neighbours glide aside
     // The drag styles the rows itself, the editor must not read them back as edits
-    const draggingStyle = (mutation: ViewMutationRecord, node: Node) => mutation.type === 'attributes' && mutation.target === node && ['style', 'data-lifted', 'data-sorting'].includes(mutation.attributeName ?? '')
+    const draggingStyle = (mutation: ViewMutationRecord, node: Node) => mutation.type === 'attributes' && mutation.target === node && ['style', 'data-lifted', 'data-sorting', 'data-drop'].includes(mutation.attributeName ?? '')
+
+    // Items move between lists of this note that hold the same kind, bullets and numbers share theirs
+    const editorKey = crypto.randomUUID()
+    const listPositions = new WeakMap<HTMLElement, () => number | undefined>()
 
     function sortableList(tag: 'ul' | 'ol', type: string): NodeViewRenderer {
         return ({ editor, getPos, HTMLAttributes }) => {
             const list = withAttributes(document.createElement(tag), HTMLAttributes)
             if(type === 'taskList') list.dataset.type = type
-            const detach = sortable((from, to) => moveItem(editor, getPos(), from, to), { handleOnly: true })(list)
+            listPositions.set(list, getPos)
+            const detach = sortable((from, to) => moveItem(editor, getPos(), from, to), {
+                handleOnly: true,
+                group: `${editorKey}:${type === 'taskList' ? 'tasks' : 'items'}`,
+                transfer: (from, target, to) => transferItem(editor, getPos(), from, listPositions.get(target)?.(), to)
+            })(list)
             return { dom: list, contentDOM: list, ignoreMutation: (mutation) => draggingStyle(mutation, list), destroy: () => detach?.() }
         }
     }
@@ -110,6 +119,29 @@
         const items = [...Array(list.childCount).keys()].map((index) => list.child(index))
         items.splice(to, 0, ...items.splice(from, 1))
         instance.view.dispatch(instance.state.tr.replaceWith(at + 1, at + list.nodeSize - 1, Fragment.fromArray(items)))
+    }
+
+    // The item goes in first, then leaves its old list, which goes too once empty
+    function transferItem(instance: Editor, at: number | undefined, from: number, targetAt: number | undefined, to: number){
+        const { doc } = instance.state
+        const source = at === undefined ? null : doc.nodeAt(at)
+        const target = targetAt === undefined ? null : doc.nodeAt(targetAt)
+        if(at === undefined || targetAt === undefined || !source || !target) return
+
+        const offset = (list: typeof source, index: number) => [...Array(index).keys()].reduce((sum, i) => sum + list.child(i).nodeSize, 1)
+        const item = source.child(from)
+        const start = at + offset(source, from)
+
+        const tr = instance.state.tr.insert(targetAt + offset(target, to), item)
+        if(source.childCount === 1){
+            const listStart = tr.mapping.map(at)
+            tr.delete(listStart, listStart + source.nodeSize)
+        }
+        else {
+            const itemStart = tr.mapping.map(start)
+            tr.delete(itemStart, itemStart + item.nodeSize)
+        }
+        instance.view.dispatch(tr)
     }
 
     // EDITOR | built from the current text whenever rich mode comes back
@@ -301,6 +333,15 @@
 
     .rich :global(.drag-handle:active) {
         cursor: grabbing;
+    }
+
+    /* The spot in another list a held item lands on */
+    .rich :global(li[data-drop='before']) {
+        box-shadow: 0 -2px 0 var(--theme-accent);
+    }
+
+    .rich :global(li[data-drop='after']) {
+        box-shadow: 0 2px 0 var(--theme-accent);
     }
 
     /* A touch on the handle drags instead of scrolling */

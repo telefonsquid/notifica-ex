@@ -24,7 +24,7 @@
         uploads: { key: string, url: string }[]
         editable?: boolean
         alone?: boolean                                         // nothing else on the card, the images fill it to every edge
-        onremove: (name: string) => void
+        onremove?: (name: string) => void      // without it the images can only be looked at
     } = $props()
 
     let count = $derived(images.length + uploads.length)
@@ -88,9 +88,11 @@
                         <a class="control" href={imageUrl(note, name, 'full')} download aria-label="Download image" {@attach tip('Download')}>
                             <Download class="size-3.5" />
                         </a>
-                        <button class="control" aria-label="Remove image" onclick={() => onremove(name)}>
-                            <X class="size-4" />
-                        </button>
+                        {#if onremove}
+                            <button class="control" aria-label="Remove image" onclick={() => onremove(name)}>
+                                <X class="size-4" />
+                            </button>
+                        {/if}
                     </div>
                 {:else}
                     <!-- The one part of a closed card that takes clicks | bottom right, the card's archive and pin take the top -->

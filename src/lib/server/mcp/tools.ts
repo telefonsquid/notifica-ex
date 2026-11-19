@@ -7,7 +7,7 @@ import { fileNameSchema, labelNameSchema, noteColorSchema, noteContentSchema, ty
 import { reminderRuleSchema, type Occurrence, type Reminder } from '#lib/schemas/reminders.ts';
 import type { User } from '#lib/schemas/users.ts';
 import { findLabel, labelIds, labelsOf } from '#lib/server/label_names.ts';
-import { collaboratorChanges, getAllNotesFor, ownLabels, requireNote } from '#lib/server/note_access.ts';
+import { collaboratorChanges, getAllNotesFor, ownLabels, requireEditableNote, requireNote } from '#lib/server/note_access.ts';
 import { checkFile, checkRoom } from '#lib/server/note_file_routes.ts';
 import { addNoteFile, duplicateWithFiles, removeNoteFile } from '#lib/server/note_files.ts';
 import { getNewestOpenOccurrence, getOccurrences, getOpenOccurrences, setDone } from '#lib/server/occurrences.ts';
@@ -133,7 +133,7 @@ const updateNote = tool({
         remove_labels: labelList.optional()
     }),
     run: async ({ id, labels: replaced, add_labels, remove_labels, ...changes }, user) => {
-        const note = await requireNote(id, user.id)
+        const note = await requireEditableNote(id, user.id)
         const owned = note.owner === user.id
         const touchesLabels = replaced || add_labels || remove_labels
 
@@ -160,7 +160,7 @@ const setTask = tool({
     readOnly: false,
     input: z.object({ id: idSchema, index: z.number().int().min(0), done: z.boolean() }),
     run: async ({ id, index, done }, user) => {
-        const note = await requireNote(id, user.id)
+        const note = await requireEditableNote(id, user.id)
         if(note.sealed) error(403, 'This note is locked, only the user can check off its items.')
         const tasks = tasksOf(note.body)
         if(index >= tasks.length) error(400, `The note has ${tasks.length} checklist items.`)
@@ -198,7 +198,7 @@ const addNoteImage = tool({
     readOnly: false,
     input: z.object({ id: idSchema, url: z.url({ protocol: /^https$/ }).max(LIMITS.IMAGE_URL).describe('Direct address of the image file') }),
     run: async ({ id, url }, user) => {
-        const note = await requireNote(id, user.id)
+        const note = await requireEditableNote(id, user.id)
         const most = await checkRoom('images', note, user, 0)
 
         const file = await fetchRemoteImage(url)
@@ -217,7 +217,7 @@ const removeNoteFileTool = tool({
     destructive: true,
     input: z.object({ id: idSchema, field: z.enum(['images', 'attachments']).default('images'), name: fileNameSchema }),
     run: async ({ id, field, name }, user) => {
-        const note = await requireNote(id, user.id)
+        const note = await requireEditableNote(id, user.id)
         if(!note[field].includes(name)) error(404, 'The note has no such file.')
 
         const saved = await removeNoteFile(note, field, name)

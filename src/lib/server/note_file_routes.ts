@@ -4,7 +4,7 @@ import { isId } from '#lib/schemas/base.ts';
 import { fileNameSchema, type Note } from '#lib/schemas/notes.ts';
 import type { FileLimits, User } from '#lib/schemas/users.ts';
 import { limitsFor } from '#lib/server/limits.ts';
-import { requireNote } from '#lib/server/note_access.ts';
+import { requireEditableNote, requireNote } from '#lib/server/note_access.ts';
 import { addNoteFile, fetchNoteFile, type FileField } from '#lib/server/note_files.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
 import { error, json, type RequestEvent } from '@sveltejs/kit';
@@ -65,7 +65,7 @@ export function uploadRoute(field: FileField) {
         // VERIFY
         const me = signedIn()
         if(!isId(params.id)) error(400, 'Malformed request.')
-        const note = await requireNote(params.id, me.id)
+        const note = await requireEditableNote(params.id, me.id)
         const most = await checkRoom(field, note, me, announcedSize(request) - UPLOAD_FORM_OVERHEAD)
 
         // CHECK THE FILE
@@ -114,23 +114,31 @@ function tooLarge(policy: FilePolicy, most: number) {
 
 
 
+// Who may load a file is the note's business | finds it for the signed in user by default
+type NoteFinder = (params: Record<string, string>) => Promise<Note>
+
+const signedInNote: NoteFinder = (params) => {
+    const me = signedIn()
+    if(!isId(params.id)) error(400, 'Malformed request.')
+    return requireNote(params.id, me.id)
+}
+
 // DOWNLOAD | passes the protected file through to the owner and those the note is shared with
-export function downloadRoute(field: FileField) {
+export function downloadRoute(field: FileField, find: NoteFinder = signedInNote) {
     const policy = POLICIES[field]
     const capitalized = policy.noun[0].toUpperCase() + policy.noun.slice(1)
 
-    return async ({ params, url }: RequestEvent<{ id: string, name: string }>) => {
+    return async ({ params, url }: RequestEvent<Record<string, string> & { name: string }>) => {
 
         // VERIFY
-        const me = signedIn()
         const thumb = url.searchParams.get('thumb') ?? undefined
-        if(!isId(params.id) || !fileNameSchema.safeParse(params.name).success || (thumb && !policy.thumbs.includes(thumb))) error(400, 'Malformed request.')
+        if(!fileNameSchema.safeParse(params.name).success || (thumb && !policy.thumbs.includes(thumb))) error(400, 'Malformed request.')
 
-        const note = await requireNote(params.id, me.id)
+        const note = await find(params)
         if(!note[field].includes(params.name)) error(404, `${capitalized} not found.`)
 
         // STREAM | names never get reused, so the browser may keep it for good
-        const file = await fetchNoteFile(params.id, params.name, thumb)
+        const file = await fetchNoteFile(note.id, params.name, thumb)
         if(!file.ok || !file.body) error(file.status === 404 ? 404 : 502, `Could not load the ${policy.noun}.`)
 
         const length = file.headers.get('content-length')

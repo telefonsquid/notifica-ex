@@ -6,6 +6,7 @@ import { flushSync } from 'svelte';
     Mouse and pen work anywhere on a row, touch only from a [data-drag-handle], the rest of a touch scrolls.
     With handleOnly every pointer needs the handle, which then sits right inside its row so nested lists keep to their own rows.
     Neighbours glide aside on inline translates, the list itself only changes once the drop has settled.
+    Lists of one group take each other's rows, a line marks the spot in the other list, see transfer.
 */
 
 const LIFT_AFTER = 6            // px, less is a click
@@ -15,9 +16,20 @@ const SCROLL_STEP = 6           // px per frame
 const GLIDE = 'translate var(--duration-base) var(--ease-in-out)'
 const LANDING = `${GLIDE}, box-shadow var(--duration-base) var(--ease-out)`
 
+// Every list attached with a group, to find the ones a row may move to
+const groups = new Map<string, Set<HTMLElement>>()
+
+type Options = {
+    handleOnly?: boolean
+    group?: string                                                          // lists sharing it exchange rows
+    transfer?: (from: number, target: HTMLElement, to: number) => void      // a row went to another list of the group
+}
+
+type Peer = { list: HTMLElement, rows: HTMLElement[], middles: number[], top: number, bottom: number }
+
 // ====================================================================================================
 
-export function sortable(commit: (from: number, to: number) => void, options: { handleOnly?: boolean } = {}) {
+export function sortable(commit: (from: number, to: number) => void, options: Options = {}) {
     return (list: HTMLElement) => {
         let press: { id: number, item: HTMLElement, y: number } | null = null
         let drag: Drag | null = null
@@ -34,6 +46,8 @@ export function sortable(commit: (from: number, to: number) => void, options: { 
             bottoms: number[]
             shift: number               // how far a neighbour steps aside
             scroll: number              // the list's scroll at the start
+            peers: Peer[]
+            target: { peer: Peer, index: number } | null      // another list the row lands in
         }
 
         // START
@@ -70,13 +84,29 @@ export function sortable(commit: (from: number, to: number) => void, options: { 
                 tops: boxes.map((box) => box.top),
                 bottoms: boxes.map((box) => box.bottom),
                 shift: boxes[from].height + gap,
-                scroll: list.scrollTop
+                scroll: list.scrollTop,
+                peers: peersOf(item),
+                target: null
             }
 
             for(const row of items) row.style.transition = row === item ? 'box-shadow var(--duration-fast) var(--ease-out)' : GLIDE
             list.dataset.sorting = ''
             item.dataset.lifted = ''
             frame = requestAnimationFrame(autoScroll)
+        }
+
+        // Lists of the same group, never one inside the held row
+        function peersOf(item: HTMLElement): Peer[] {
+            if(!options.group || !options.transfer) return []
+            return [...groups.get(options.group) ?? []]
+                .filter((other) => other !== list && other.isConnected && !item.contains(other))
+                .map((other) => {
+                    const rows = [...other.children] as HTMLElement[]
+                    const box = other.getBoundingClientRect()
+                    const middles = rows.map((row) => row.getBoundingClientRect()).map((row) => (row.top + row.bottom) / 2)
+                    return { list: other, rows, middles, top: box.top, bottom: box.bottom }
+                })
+                .filter((peer) => peer.rows.length)
         }
 
         // MOVE
@@ -92,13 +122,26 @@ export function sortable(commit: (from: number, to: number) => void, options: { 
 
         function follow(){
             if(!drag || !press) return
-            const { item, items, from, tops, bottoms, shift } = drag
+            const { item, items, from, tops, bottoms, shift, peers } = drag
             const last = items.length - 1
 
-            // Stays within the list, also counts what the list scrolled meanwhile
+            // Stays within the list and its peers, also counts what the list scrolled meanwhile
             const moved = pointerY - press.y + list.scrollTop - drag.scroll
-            const y = Math.min(Math.max(moved, tops[0] - tops[from]), bottoms[last] - bottoms[from])
+            const highest = Math.min(tops[0], ...peers.map((peer) => peer.top))
+            const lowest = Math.max(bottoms[last], ...peers.map((peer) => peer.bottom))
+            const y = Math.min(Math.max(moved, highest - tops[from]), lowest - bottoms[from])
             item.style.translate = `0 ${y}px`
+
+            // The closest list takes the row, its own one wins a tie
+            const centre = (tops[from] + bottoms[from]) / 2 + y
+            const away = (top: number, bottom: number) => Math.max(top - centre, centre - bottom, 0)
+            const peer = peers.reduce<Peer | null>((best, next) => away(next.top, next.bottom) < away(best?.top ?? tops[0], best?.bottom ?? bottoms[last]) ? next : best, null)
+            mark(peer ? { peer, index: peer.middles.filter((middle) => middle < centre).length } : null)
+            if(peer){
+                drag.to = from
+                for(const row of items) if(row !== item) row.style.translate = ''
+                return
+            }
 
             // A row gives way once the leading edge passes its middle, so the list's ends stay reachable when clamped
             const middle = (index: number) => (tops[index] + bottoms[index]) / 2
@@ -114,6 +157,20 @@ export function sortable(commit: (from: number, to: number) => void, options: { 
                 else if(to <= index && index < from) row.style.translate = `0 ${shift}px`
                 else row.style.translate = ''
             })
+        }
+
+        function mark(target: Drag['target']){
+            if(!drag) return
+            const old = drag.target
+            if(old?.peer === target?.peer && old?.index === target?.index) return
+
+            for(const row of old?.peer.rows ?? []) delete row.dataset.drop
+            drag.target = target
+            if(!target) return
+
+            const { rows } = target.peer
+            if(target.index < rows.length) rows[target.index].dataset.drop = 'before'
+            else rows[rows.length - 1].dataset.drop = 'after'
         }
 
         function autoScroll(){
@@ -151,7 +208,24 @@ export function sortable(commit: (from: number, to: number) => void, options: { 
             if(!landed) return
             swallowClick()
 
-            const { item, items, from, tops, bottoms } = landed
+            const { item, items, from, tops, bottoms, target } = landed
+            for(const row of target?.peer.rows ?? []) delete row.dataset.drop
+
+            // To another list at once, the editor rebuilds both
+            if(target){
+                for(const row of items){
+                    row.style.translate = ''
+                    row.style.transition = ''
+                }
+                delete item.dataset.lifted
+                delete list.dataset.sorting
+                if(keep){
+                    options.transfer!(from, target.peer.list, target.index)
+                    flushSync()
+                }
+                return
+            }
+
             const to = keep ? landed.to : from
             if(!keep) for(const row of items) row.style.translate = ''
 
@@ -189,8 +263,13 @@ export function sortable(commit: (from: number, to: number) => void, options: { 
 
         list.addEventListener('pointerdown', onDown)
         list.addEventListener('dragstart', noNativeDrag)
+        if(options.group){
+            if(!groups.has(options.group)) groups.set(options.group, new Set())
+            groups.get(options.group)!.add(list)
+        }
 
         return () => {
+            if(options.group) groups.get(options.group)?.delete(list)
             list.removeEventListener('pointerdown', onDown)
             list.removeEventListener('dragstart', noNativeDrag)
             removeEventListener('pointermove', onMove)

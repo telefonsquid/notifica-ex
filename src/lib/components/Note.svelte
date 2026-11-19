@@ -5,6 +5,7 @@
     import NoteAttachments from '#lib/components/NoteAttachments.svelte';
     import NoteImages from '#lib/components/NoteImages.svelte';
     import NoteTabs from '#lib/components/NoteTabs.svelte';
+    import Faces from '#lib/components/Faces.svelte';
     import ShareEditor from '#lib/components/ShareEditor.svelte';
     import { imagesIn } from '#lib/images.ts';
     import { IMAGE_TYPES } from '#lib/schema_limits.ts';
@@ -130,16 +131,26 @@
 
     // The owner picks who else sees the note, the others see whose it is
     let names = $derived(new Map(people.map((person) => [person.id, person.name])))
-    let others = $derived((owned ? extras.shared : [note!.owner, ...extras.shared.filter((person) => person !== me)]).map((person) => ({ id: person, name: names.get(person) ?? 'Someone' })))
-    let othersTip = $derived(owned ? `Shared with ${others.map((person) => person.name).join(', ')}` : `From ${others[0]?.name}`)
-    let lockable = $derived(!!note && owned && (locked || !extras.shared.length && !extras.images.length && !extras.attachments.length && !extras.uploads.length && !extras.sending.length))
+    let others = $derived((owned ? [...extras.shared, ...extras.linked] : [note!.owner, ...extras.shared.filter((person) => person !== me)]).map((person) => ({ id: person, name: names.get(person) ?? 'Someone' })))
+    let ownerTip = $derived(`From ${others[0]?.name}`)
+
+    // People who joined through a read only link only look
+    let readonly = $derived(!!note && !owned && !extras.shared.includes(me) && extras.linkMode !== 'write')
+    let link = $derived({
+        id: stored,
+        mode: extras.linkMode,
+        linked: extras.linked.map((person) => ({ id: person, name: names.get(person) ?? 'Someone' })),
+        onmode: extras.link,
+        onremove: extras.unlink
+    })
+    let lockable = $derived(!!note && owned && (locked || !extras.shared.length && !extras.linkMode && !extras.images.length && !extras.attachments.length && !extras.uploads.length && !extras.sending.length))
 
     // Pasted or dropped onto the open note | caught before the editor, which would ignore them or paste a file name
     function catchFiles(event: Event, list?: FileList | null){
         const files = [...list ?? []]
         const pictures = imagesIn(files)
         const others = limits.attachments ? files.filter((file) => !pictures.includes(file)) : []
-        if(!open || locked || (!pictures.length && !others.length)) return
+        if(!open || locked || readonly || (!pictures.length && !others.length)) return
 
         event.preventDefault()
         event.stopPropagation()
@@ -155,7 +166,7 @@
     const initialTitle = untrack(() => draft.title)
 
     function titleField(node: HTMLElement){
-        node.contentEditable = open ? 'plaintext-only' : 'false'
+        node.contentEditable = open && !readonly ? 'plaintext-only' : 'false'
         if(document.activeElement !== node && node.textContent !== draft.title) node.textContent = draft.title
     }
 
@@ -173,7 +184,7 @@
     // CARD CLICKS | checkboxes and the hover buttons sit above the cover button
     function clickTask(event: MouseEvent){
         const box = event.target
-        if(open || !note || unreadable || !(box instanceof HTMLInputElement) || !box.classList.contains('task')) return
+        if(open || !note || unreadable || readonly || !(box instanceof HTMLInputElement) || !box.classList.contains('task')) return
         const tasks = [...(event.currentTarget as HTMLElement).querySelectorAll('input.task')]
         const { id } = note
         const body = toggleTask(note.body, tasks.indexOf(box))
@@ -192,7 +203,7 @@
 </script>
 
 {#snippet actions()}
-    {#if !locked}
+    {#if !locked && !readonly}
         <button class="icon-button" aria-label="Add images" onclick={() => picker?.click()} {@attach tip('Add images')}>
             <ImagePlus class="size-4" />
         </button>
@@ -202,7 +213,7 @@
             </button>
         {/if}
         {#if owned}
-            <ShareEditor people={people.filter((person) => person.id !== me)} shared={extras.shared} onchange={extras.share} />
+            <ShareEditor people={people.filter((person) => person.id !== me)} shared={extras.shared} faces={others} {link} onchange={extras.share} />
         {/if}
     {/if}
     {#if lockable}
@@ -210,7 +221,9 @@
             {#if locked}<LockOpen class="size-4" />{:else}<Lock class="size-4" />{/if}
         </button>
     {/if}
-    <ColorPicker value={draft.colorDefault ? '' : draft.color} labels={labels.filter((item) => draft.labels.includes(item.id))} onpick={pickColor} label="Note color" rainbow class="ml-1 mr-2" />
+    {#if !readonly}
+        <ColorPicker value={draft.colorDefault ? '' : draft.color} labels={labels.filter((item) => draft.labels.includes(item.id))} onpick={pickColor} label="Note color" rainbow class="ml-1 mr-2" />
+    {/if}
     {#if owned}
         <button class="icon-button" aria-label={draft.archived ? 'Unarchive' : 'Archive'} onclick={session.archive} {@attach tip(draft.archived ? 'Back to the notes' : 'Archive')}>
             {#if draft.archived}<ArchiveRestore class="size-4" />{:else}<Archive class="size-4" />{/if}
@@ -222,8 +235,8 @@
     </button>
 {/snippet}
 
-<!-- The tabs sit beside the colored card, not on it, so they keep the page ink -->
-<div class={['note relative', open && 'open', (closing || !open) && 'folded']} data-flip-body data-note-open={open ? '' : undefined} {@attach open ? closeOnOutside(() => onclose?.()) : null}>
+<!-- The tabs sit beside the colored card, not on it, so they keep the page ink | isolated so nothing inside rises above a floating note -->
+<div class={['note relative isolate', open && 'open', (closing || !open) && 'folded']} data-flip-body data-note-open={open ? '' : undefined} {@attach open ? closeOnOutside(() => onclose?.()) : null}>
 
     <!-- SELECT | on the corner, faint on hover, filled once selected -->
     {#if !open}
@@ -269,7 +282,7 @@
         {/if}
 
         <!-- IMAGES | on top, edge to edge, the pickers sit hidden for the buttons among the actions -->
-        <NoteImages note={stored} images={extras.images} uploads={extras.uploads} editable={open} alone={!open && !draft.title && !draft.body && !draft.pinned && !reminders.length && !extras.attachments.length} onremove={(name) => extras.drop('images', name)} />
+        <NoteImages note={stored} images={extras.images} uploads={extras.uploads} editable={open} alone={!open && !draft.title && !draft.body && !draft.pinned && !reminders.length && !extras.attachments.length} onremove={readonly ? undefined : (name) => extras.drop('images', name)} />
         <input bind:this={picker} type="file" accept={IMAGE_TYPES.join(',')} multiple hidden onchange={(event) => {
             extras.addImages(imagesIn(event.currentTarget.files))
             event.currentTarget.value = ''
@@ -296,16 +309,11 @@
                     {#if locked && !open}
                         <span class="pointer-events-auto relative z-10 grid size-8 place-items-center text-ink-faint" role="img" aria-label={gone ? 'Text lost' : 'Locked'} {@attach tip(gone ? 'Locked before a password reset, its text is lost' : 'Locked with your password')}><LockKeyhole class={unreadable ? 'size-5' : 'size-4'} /></span>
                     {/if}
-                    {#if others.length}
-                        <!-- The others on a shared note, the owner first when it's someone else's -->
-                        <span class="pointer-events-auto relative z-10 mr-1 flex -space-x-1.5" role="img" aria-label={othersTip} {@attach tip(othersTip)}>
-                            {#each others.slice(0, 3) as person (person.id)}
-                                <span class="face type-meta grid size-6 place-items-center rounded-full bg-secondary-soft text-ink">{person.name.slice(0, 1).toUpperCase()}</span>
-                            {/each}
-                            {#if others.length > 3}
-                                <span class="face type-meta grid size-6 place-items-center rounded-full bg-line text-ink-muted">+{others.length - 3}</span>
-                            {/if}
-                        </span>
+                    <!-- The others on a shared note, the owner first when it's someone else's | the owner's open them to share, an open note has them among its actions -->
+                    {#if others.length && owned && !open}
+                        <ShareEditor class="faces pointer-events-auto relative z-10" people={people.filter((person) => person.id !== me)} shared={extras.shared} faces={others} {link} onchange={extras.share} />
+                    {:else if others.length && !owned}
+                        <span class="faces pointer-events-auto relative z-10 mr-1" role="img" aria-label={ownerTip} {@attach tip(ownerTip)}><Faces people={others} /></span>
                     {/if}
                     {#if open}
                         <div class="open-only hidden items-center gap-0.5 @min-[26rem]/note:flex" in:appear out:unfold={{ axis: 'x' }}>{@render actions()}</div>
@@ -333,11 +341,11 @@
         {#if open || draft.body}
             <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
             <div class={['content flex flex-col gap-2', !open && 'pointer-events-none']} onclick={clickTask} in:appear out:unfold>
-                {#if open && noteEditor.component}
+                {#if open && noteEditor.component && !readonly}
                     <noteEditor.component bind:value={draft.body} autofocus={!draft.title && !focus} />
                 {:else}
                     <Markdown source={draft.body} class={['text-ink-muted', open ? 'min-h-32' : 'line-clamp-[12]']} />
-                    {#if open}
+                    {#if open && !readonly}
                         <div class="open-only flex min-h-8 items-center gap-1.5" aria-hidden="true" in:appear out:unfold>
                             {#each { length: 7 }, index (index)}<span class="skeleton size-5 rounded-md"></span>{/each}
                             <span class="skeleton ml-auto size-5 rounded-md"></span>
@@ -354,7 +362,7 @@
 
         <!-- ATTACHMENTS -->
         {#if extras.attachments.length || extras.sending.length}
-            <NoteAttachments note={stored} attachments={extras.attachments} fileInfo={extras.fileInfo} sending={extras.sending} {open} onremove={(name) => extras.drop('attachments', name)} />
+            <NoteAttachments note={stored} attachments={extras.attachments} fileInfo={extras.fileInfo} sending={extras.sending} {open} onremove={readonly ? undefined : (name) => extras.drop('attachments', name)} />
         {/if}
 
         <!-- ACTIONS | their own row below the text while the note is narrow -->
@@ -434,8 +442,8 @@
         transition: opacity var(--duration-fast) var(--ease-out);
     }
 
-    .card:hover .hover-actions,
-    .card:focus-within .hover-actions {
+    /* Not while selecting, a click there picks the card */
+    :global(.note-grid:not([data-selecting])) .card:is(:hover, :focus-within) .hover-actions {
         opacity: 1;
         pointer-events: auto;
     }
@@ -444,21 +452,25 @@
         transition: opacity var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
     }
 
-    .card:has(.hover-actions):is(:hover, :focus-within) .header-pin {
+    :global(.note-grid:not([data-selecting])) .card:has(.hover-actions):is(:hover, :focus-within) .header-pin {
         opacity: 0;
     }
 
-    /* Lock and faces step aside for the hover pin, a moved box would repack the grid */
+    /* Lock and faces step aside for the hover pin, a moved box would repack the grid | above the background copy, which would hide them otherwise */
     .pin-room {
+        z-index: 2;
         transition: translate var(--duration-fast) var(--ease-out);
     }
 
-    .card:is(:hover, :focus-within) .pin-room {
-        translate: -4.125rem 0;
-    }
+    /* Fingers have no hover buttons to make room for */
+    @media (hover: hover) {
+        :global(.note-grid:not([data-selecting])) .card:is(:hover, :focus-within) .pin-room {
+            translate: -4.125rem 0;
+        }
 
-    .card:is(:hover, :focus-within) .pin-room.pinned {
-        translate: -2.125rem 0;     /* The header pin already holds one place */
+        :global(.note-grid:not([data-selecting])) .card:is(:hover, :focus-within) .pin-room.pinned {
+            translate: -2.125rem 0;     /* The header pin already holds one place */
+        }
     }
 
     /* The buttons sit on a copy of the card's own background, text under them hides | a full size copy keeps every pattern in line */
@@ -480,7 +492,7 @@
         transition: opacity var(--duration-fast) var(--ease-out);
     }
 
-    .card:is(:hover, :focus-within)::before {
+    :global(.note-grid:not([data-selecting])) .card:is(:hover, :focus-within)::before {
         opacity: 1;
     }
 
@@ -509,7 +521,6 @@
         .hover-actions { display: none; }
         .card::before { display: none; }
         .select-mark:not(.selected) { display: none; }
-        .card:is(:hover, :focus-within) .pin-room:is(*, .pinned) { translate: none; }
     }
 
     /* RESIZING | the card fills the box that glides to its new size, see glide() in #lib/relayout.ts */
@@ -531,7 +542,8 @@
     }
 
     /* While selecting, a click anywhere on a card picks it */
-    :global([data-selecting]) .content :global(:is(input.task, a)) {
+    :global([data-selecting]) .content :global(:is(input.task, a)),
+    :global([data-selecting]) .card :global(.faces) {
         pointer-events: none;
     }
 
@@ -561,10 +573,5 @@
 
     @keyframes shimmer {
         to { opacity: 0.4; }
-    }
-
-    /* A ring in the card's own colour keeps overlapping faces apart */
-    .face {
-        box-shadow: 0 0 0 2px var(--note-bg, var(--theme-card));
     }
 </style>

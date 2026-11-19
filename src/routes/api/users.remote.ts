@@ -3,6 +3,7 @@ import type { Person } from '#lib/schemas/notes.ts';
 import { changePasswordSchema, setPasswordSchema, startNoteLockSchema, userEditSchema, userInputSchema, userStateSchema, type User, type UserSummary } from '#lib/schemas/users.ts';
 import { endStreams } from '#lib/server/app_stream.ts';
 import { confirmPasswordReset, login, passwordMatches, renewStreamKey, requestPasswordReset, userOfToken } from '#lib/server/accounts.ts';
+import { peopleFor } from '#lib/server/contacts.ts';
 import { removeFor } from '#lib/server/note_access.ts';
 import { deleteOne, findOne, getAll, getOne, insertOnePartial, run, updateOnePartial } from '#lib/server/queries.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
@@ -25,12 +26,11 @@ export const getUsers = query(async () => {
 
 });
 
-// Everyone a note can be shared with, names only so the others' mail addresses stay private
+// Everyone a note can be shared with, names only so the others' mail addresses stay private | admins see all accounts, the rest their contacts and co-sharers
 export const getPeople = query(async (): Promise<Person[]> => {
 
-    signedIn()
-    const users = unwrap(await getAll('users', { filter: 'state = "active"', sort: 'name', fields: 'id,name,email' }), 'Could not load people.')
-    return users.map(({ id, name, email }) => ({ id, name: name || email.split('@')[0] }))
+    const me = signedIn()
+    return peopleFor(me)
 
 });
 

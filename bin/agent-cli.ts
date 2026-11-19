@@ -116,7 +116,8 @@ async function stackUp(json: boolean): Promise<number> {
     // Docker Desktop takes up to a minute after a reboot
     if(s.docker === 'down') {
         if(!existsSync(DOCKER_DESKTOP)) { emit(json, { error: 'docker desktop not found' }, 'docker desktop not found'); return 1 }
-        Bun.spawn([DOCKER_DESKTOP], { stdout: 'ignore', stderr: 'ignore' }).unref()
+        // Through Explorer, an agent's shell kills its own children once the command ends
+        Bun.spawn(['explorer.exe', DOCKER_DESKTOP], { stdout: 'ignore', stderr: 'ignore' }).unref()
         for(let i = 0; i < 60 && (await sh(['docker', 'info'])).code !== 0; i++) await sleep(2000)
     }
 

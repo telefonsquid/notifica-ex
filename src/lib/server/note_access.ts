@@ -2,6 +2,7 @@ import type { FetchOptions } from '#lib/schemas/base.ts';
 import type { Note, NoteContent } from '#lib/schemas/notes.ts';
 import { deleteOne, getAllOwned, getOwned, run } from '#lib/server/queries.ts';
 import { OK, unwrap, type Result } from '#lib/server/result.ts';
+import { error } from '@sveltejs/kit';
 import type PocketBase from 'pocketbase';
 
 // Who may see and change which note | every note read on behalf of a person goes through here
@@ -9,10 +10,17 @@ import type PocketBase from 'pocketbase';
 // READING ====================================================================================================
 
 // The notes listRule and viewRule in pb_schema.json say the same for a signed in request
-const ACCESS = '(owner = {:user} || shared.id ?= {:user})'
+const ACCESS = '(owner = {:user} || shared.id ?= {:user} || (linkMode != "" && linked.id ?= {:user}))'
 
-export function canSee(note: Pick<Note, 'owner' | 'shared'>, user: string) {
-    return note.owner === user || note.shared.includes(user)
+type Members = Pick<Note, 'owner' | 'shared' | 'linkMode' | 'linked'>
+
+export function canSee(note: Members, user: string) {
+    return note.owner === user || note.shared.includes(user) || !!note.linkMode && note.linked.includes(user)
+}
+
+// People who joined through a read only link only look
+export function canEdit(note: Members, user: string) {
+    return note.owner === user || note.shared.includes(user) || note.linkMode === 'write' && note.linked.includes(user)
 }
 
 export async function getAllNotesFor(user: string, options?: Omit<FetchOptions, 'filter'>) {
@@ -31,6 +39,12 @@ async function getNoteFor(id: string, user: string) {
 
 export async function requireNote(id: string, user: string) {
     return unwrap(await getNoteFor(id, user), 'Note not found.')
+}
+
+export async function requireEditableNote(id: string, user: string) {
+    const note = await requireNote(id, user)
+    if(!canEdit(note, user)) error(403, 'This note is read only for you.')
+    return note
 }
 
 export async function requireOwnNote(id: string, user: string) {
@@ -68,7 +82,7 @@ async function dropReminders(pb: PocketBase, note: string, owners: string[]) {
 
 async function leave(id: string, user: string) {
     return run(async (pb) => {
-        await pb.collection('notes').update(id, { 'shared-': [user] })
+        await pb.collection('notes').update(id, { 'shared-': [user], 'linked-': [user] })
         return await dropReminders(pb, id, [user])
     })
 }

@@ -36,6 +36,11 @@ const MIGRATIONS: Migration[] = [
     { version: '0.4.6-open-since', run: async () => {
         await addFields('reminders', 'openSince')
         await fillOpenSince()
+    } },
+    { version: '0.4.6-contacts', run: () => addCollections('invites', 'contacts') },
+    { version: '0.4.6-note-links', run: async () => {
+        await addFields('notes', 'linkMode', 'linkToken', 'linked')
+        await syncRules('notes')
     } }
 ]
 
@@ -95,6 +100,13 @@ async function syncSelect(collection: Collection, name: string) {
     if(!wanted?.values) return
     const fields = live.fields.map((field) => field.name === name ? { ...field, values: [...new Set([...(field.values ?? []), ...wanted.values])] } : field)
     unwrap(await updateCollection(collection, { fields }), `Could not update ${name} in ${collection}.`)
+}
+
+// List and view rules as the schema has them | realtime follows them
+async function syncRules(collection: Collection) {
+    const wanted = (pbSchema as unknown as CollectionModel[]).find((model) => model.name === collection)
+    if(!wanted) return
+    unwrap(await updateCollection(collection, { listRule: wanted.listRule, viewRule: wanted.viewRule }), `Could not update the rules of ${collection}.`)
 }
 
 // Every select that holds a note colour

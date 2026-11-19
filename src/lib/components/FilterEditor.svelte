@@ -200,8 +200,8 @@
 
 {#snippet words()}
     <div class="grid gap-2 min-[28rem]:grid-cols-2">
-        <input class="field min-w-0" value={filter.words} placeholder="Contains all of" aria-label="Words the note contains" oninput={(event) => update({ words: event.currentTarget.value })} />
-        <input class="field min-w-0" value={filter.without} placeholder="Leaves out" aria-label="Words the note leaves out" oninput={(event) => update({ without: event.currentTarget.value })} />
+        <input class="field min-w-0" value={filter.words} placeholder="Contains" aria-label="Words the note contains" oninput={(event) => update({ words: event.currentTarget.value })} />
+        <input class="field min-w-0" value={filter.without} placeholder="Does not contain" aria-label="Words the note does not contain" oninput={(event) => update({ without: event.currentTarget.value })} />
     </div>
     <div class="flags mt-2" role="group" aria-label="How words match">
         {@render flag(Heading, 'Title only', filter.titleOnly, () => update({ titleOnly: !filter.titleOnly }))}

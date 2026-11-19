@@ -4,6 +4,8 @@ export const LIMITS = {
     // TEXT => IDENTIFIERS
     ID: 64,                             // pocketbase ids are 15 chars, client generated ones are uuids at 36
     RESET_TOKEN: 2048,                  // jwt from the set password link
+    INVITE_TOKEN: 64,                   // random part of an invite link
+    NOTE_LINK_TOKEN: 64,                // random part of a note link, matches max of the linkToken field
 
     // TEXT => NAMES
     USER_NAME: 128,
@@ -40,9 +42,11 @@ export const LIMITS = {
     NOTE_IMAGES: 12,                    // matches maxSelect of the images field
     NOTE_ATTACHMENTS: 20,               // matches maxSelect of the attachments field
     NOTE_SHARES: 20,                    // matches maxSelect of the shared field
+    NOTE_LINKED: 100,                   // people who joined through a note link, matches maxSelect of the linked field
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them
     API_KEYS: 20,                       // keys per user
+    INVITES: 20,                        // open invite links per user
     IMPORT_BATCH: 25,                   // notes one import call creates
     IMPORT_REMINDERS: 100,              // reminders an imported note brings along
 

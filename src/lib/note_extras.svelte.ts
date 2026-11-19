@@ -6,9 +6,10 @@ import { kept } from '#lib/note_list.ts';
 import { notify } from '#lib/notifications.svelte.ts';
 import { safeAction } from '#lib/safe_action.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
-import type { Note } from '#lib/schemas/notes.ts';
+import type { Note, NoteLinkMode } from '#lib/schemas/notes.ts';
 import type { FileLimits } from '#lib/schemas/users.ts';
 import { untrack } from 'svelte';
+import { dropLinked, setNoteLink } from '../routes/api/links.remote';
 import { removeFile, shareNote } from '../routes/api/notes.remote';
 
 type Options = {
@@ -40,6 +41,8 @@ export class NoteExtras {
     attachments = $state<string[]>([])
     fileInfo = $state.raw<FileInfo | null>(null)
     shared = $state<string[]>([])
+    linkMode = $state<NoteLinkMode>('')
+    linked = $state<string[]>([])
     uploads = $state<{ key: string, url: string }[]>([])
     sending = $state<{ key: string, name: string, bytes: number, share: number }[]>([])
 
@@ -56,6 +59,8 @@ export class NoteExtras {
         this.attachments = initial?.attachments ?? []
         this.fileInfo = initial?.fileInfo ?? null
         this.shared = initial?.shared ?? []
+        this.linkMode = initial?.linkMode ?? ''
+        this.linked = initial?.linked ?? []
         this.#at = initial?.updated ?? ''
 
         // A copy older than the last change made here is stale
@@ -66,6 +71,8 @@ export class NoteExtras {
             if(!this.sending.length) this.attachments = note.attachments
             if(!this.uploads.length && !this.sending.length) this.fileInfo = note.fileInfo
             this.shared = note.shared
+            this.linkMode = note.linkMode
+            this.linked = note.linked
         })
     }
 
@@ -74,6 +81,8 @@ export class NoteExtras {
         this.attachments = result.attachments
         this.fileInfo = result.fileInfo
         this.shared = result.shared
+        this.linkMode = result.linkMode
+        this.linked = result.linked
         this.#at = result.updated
     }
 
@@ -136,6 +145,23 @@ export class NoteExtras {
         this.shared = people
         const noteId = await this.#session.store()
         const result = noteId && await safeAction(kept(shareNote({ id: noteId, people })))
+        if(result) this.#stored(result)
+    }
+
+    // A renewed link stops the old one
+    link = async (mode: NoteLinkMode, renew = false) => {
+        this.linkMode = mode
+        if(!mode) this.linked = []
+        const noteId = await this.#session.store()
+        const result = noteId && await safeAction(kept(setNoteLink({ id: noteId, mode, renew })))
+        if(result) this.#stored(result)
+    }
+
+    unlink = async (person: string) => {
+        const { id } = this.#session
+        if(!id) return
+        this.linked = this.linked.filter((item) => item !== person)
+        const result = await safeAction(kept(dropLinked({ id, person })))
         if(result) this.#stored(result)
     }
 }

@@ -41,12 +41,25 @@ const marked = new Marked({
 })
 
 export function renderMarkdown(source: string): string {
-    return marked.parse(source, { async: false })
+    return marked.parse(filled(source), { async: false })
 }
+
+// An empty task needs some text after its box, else marked shows the raw brackets
+const EMPTY_TASK = /^(\s*(?:>\s*)*(?:[-*+]|\d+[.)])\s+\[[ xX]\])\s*$/
+
+function filled(source: string): string {
+    let inCode = false
+    return source.split('\n').map((line) => {
+        if(FENCE.test(line)) inCode = !inCode
+        return !inCode && EMPTY_TASK.test(line) ? line.replace(EMPTY_TASK, `$1 ${BLANK}`) : line
+    }).join('\n')
+}
+
+const BLANK = '​'
 
 // Plain text for places that show markdown as is, like push notifications
 export function markdownToText(source: string): string {
-    return plain(marked.lexer(source)).replace(/\n{3,}/g, '\n\n').trim()
+    return plain(marked.lexer(filled(source))).replaceAll(BLANK, '').replace(/\n{3,}/g, '\n\n').trim()
 }
 
 const BLOCKS = new Set(['paragraph', 'heading', 'code', 'blockquote'])
@@ -68,7 +81,7 @@ function plain(tokens: Token[]): string {
 // Done state of every task, in reading order
 export function tasksOf(source: string): boolean[] {
     const done: boolean[] = []
-    collectTasks(marked.lexer(source), done)
+    collectTasks(marked.lexer(filled(source)), done)
     return done
 }
 

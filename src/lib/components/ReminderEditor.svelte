@@ -11,9 +11,9 @@
     import { tip } from '#lib/tooltip.svelte.ts';
     import Choice from '#lib/ui/Choice.svelte';
     import NumberField from '#lib/ui/NumberField.svelte';
-    import { Bell, BellPlus, Check, SlidersHorizontal, Square, SquareCheckBig, Trash2, X } from '@lucide/svelte';
+    import { Bell, BellPlus, CalendarCheck, Check, SlidersHorizontal, Square, SquareCheckBig, Trash2, X } from '@lucide/svelte';
     import { untrack, type Snippet } from 'svelte';
-    import { addReminder, removeReminder, updateReminder } from '../../routes/api/reminders.remote';
+    import { addReminder, completeReminderEarly, removeReminder, updateReminder } from '../../routes/api/reminders.remote';
 
     // PROPS
     let {
@@ -143,6 +143,14 @@
         else ondone?.()
     }
 
+    // Only on an open card, a closed one is too easy to tick by accident
+    async function completeEarly(){
+        if(!reminder) return
+        saving = true
+        await safeAction(completeReminderEarly(reminder.id))
+        saving = false
+    }
+
     // Last day on the line, in the zone the reminder was set in
     function endOf(reminder: Reminder): string {
         const date = parseTimestamp(reminder.until)
@@ -256,6 +264,11 @@
         </button>
         {#if due}
             <DoneButton class={['pointer-events-auto', !trailing && !editable && '-mr-1.5']} count={reminder.open} pulse aria-label={reminder.open > 1 ? `${reminder.open} open, show history` : 'Done'} onclick={done} />
+        {/if}
+        {#if editable && reminder.task && reminder.next}
+            <button class="icon-button shrink-0" aria-label="Mark Completed Early" disabled={saving} onclick={completeEarly} {@attach tip('Mark Completed Early')}>
+                <CalendarCheck class="size-4" />
+            </button>
         {/if}
         {#if editable}
             <button class={['quick-remove icon-button shrink-0', !trailing && '-mr-2']} aria-label="Remove reminder" disabled={saving} onclick={remove} {@attach tip('Remove reminder')}>

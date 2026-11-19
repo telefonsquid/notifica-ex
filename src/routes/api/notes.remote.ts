@@ -5,9 +5,10 @@ import { idSchema } from '#lib/schemas/base.ts';
 import { keyOf } from '#lib/note_crypto.ts';
 import { fileNameSchema, noteContentSchema, notePositionSchema, sealedSchema } from '#lib/schemas/notes.ts';
 import { error } from '@sveltejs/kit';
-import { collaboratorChanges, deleteRemindersOn, getAllNotesFor, ownLabels, removeFor, requireNote, requireOwnNote } from '#lib/server/note_access.ts';
+import { collaboratorChanges, deleteRemindersOn, getAllNotesFor, ownLabels, removeFor, requireEditableNote, requireNote, requireOwnNote } from '#lib/server/note_access.ts';
+import { peopleFor } from '#lib/server/contacts.ts';
 import { duplicateWithFiles, removeNoteFile } from '#lib/server/note_files.ts';
-import { getAll, insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
+import { insertOnePartial, updateOnePartial } from '#lib/server/queries.ts';
 import { unwrap } from '#lib/server/result.ts';
 import { command, query } from '#lib/server/remote_function_error_trace.ts';
 import { signedIn } from '#lib/server/signed_in.ts';
@@ -47,7 +48,7 @@ export const duplicateNote = command(idSchema, async (id) => {
 export const updateNote = command(noteContentSchema.partial().extend({ id: idSchema, sealed: sealedSchema.optional() }), async ({ id, ...changes }) => {
 
     const me = signedIn()
-    const stored = await requireNote(id, me.id) // Deleted or unshared meanwhile, the 404 tells the open note's writer
+    const stored = await requireEditableNote(id, me.id) // Deleted or unshared meanwhile, the 404 tells the open note's writer
 
     if(stored.sealed && changes.body !== undefined) error(409, 'This note is locked, reload the page to edit it.')
     if(changes.sealed !== undefined && (!stored.sealed || stored.owner !== me.id)) error(400, 'This note is not locked.')
@@ -64,7 +65,7 @@ export const lockNote = command(z.object({ id: idSchema, sealed: sealedSchema })
     const stored = await requireOwnNote(id, me.id)
 
     if(stored.sealed) error(409, 'This note is locked already.')
-    if(stored.shared.length) error(400, 'Shared notes cannot be locked, stop sharing it first.')
+    if(stored.shared.length || stored.linkMode) error(400, 'Shared notes cannot be locked, stop sharing it first.')
     if(stored.images.length || stored.attachments.length) error(400, 'Notes with files cannot be locked, remove the files first.')
     if(!me.noteLock || keyOf(sealed) !== me.noteLock.id) error(409, 'Locked notes changed meanwhile, reload the page and try again.')
 
@@ -95,7 +96,7 @@ export const moveNote = command(z.object({ id: idSchema, position: notePositionS
 export const removeFile = command(z.object({ id: idSchema, field: z.enum(['images', 'attachments']), name: fileNameSchema }), async ({ id, field, name }) => {
 
     const me = signedIn()
-    return await removeNoteFile(await requireNote(id, me.id), field, name)
+    return await removeNoteFile(await requireEditableNote(id, me.id), field, name)
 
 });
 
@@ -114,15 +115,15 @@ export const removeNote = command(idSchema, async (id) => {
 
 // SHARING ============================================================
 
-// Only the owner picks who else sees the note | inactive accounts and the owner themself drop out
+// Only the owner picks who else sees the note | only people they may see, inactive accounts and the owner themself drop out
 export const shareNote = command(z.object({ id: idSchema, people: z.array(idSchema).max(LIMITS.NOTE_SHARES, `A note can be shared with at most ${LIMITS.NOTE_SHARES} people.`) }), async ({ id, people }) => {
 
     const me = signedIn()
     const stored = await requireOwnNote(id, me.id)
     if(stored.sealed && people.length) error(400, 'Locked notes cannot be shared, unlock it first.')
 
-    const active = new Set(unwrap(await getAll('users', { filter: 'state = "active"', fields: 'id' }), 'Could not load people.').map((user) => user.id))
-    const shared = [...new Set(people)].filter((person) => person !== me.id && active.has(person))
+    const allowed = new Set((await peopleFor(me)).filter((person) => !person.viaLink).map((person) => person.id))
+    const shared = [...new Set(people)].filter((person) => person !== me.id && allowed.has(person))
     const note = unwrap(await updateOnePartial('notes', id, { shared }), 'Could not share the note.')
 
     // Whoever lost the note loses their reminders on it too, they would push about something they can't open

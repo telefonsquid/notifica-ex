@@ -132,14 +132,42 @@ Archive has no state of its own: `archiveChange()` in `#lib/notes.ts` sets it an
 `notes.shared` on the note. A person is owner, collaborator or nobody.
 
 | From | Event | To | Notes |
-|---|---|---|---|---|
-| Nobody | owner adds them | Collaborator | |
+|---|---|---|---|
+| Nobody | owner adds them, they are a contact or already on one of the owner's notes (any active account for an admin) | Collaborator | `peopleFor()`, anyone else is dropped |
 | Collaborator | owner removes them, or `removeNote` on a note they don't own | Nobody | Their reminders go (`deleteRemindersOn`), history stays |
 | Collaborator | note deleted | Nobody | Cascade |
 
 Invariant: nobody but the owner changes pin, archive, labels, order or membership, the server strips those fields.
 
 PocketBase sends no realtime event to someone who just lost view access, so their card stays until the next load or their next action on it (see [SM-2](#sm-2-losing-a-note-loses-what-was-typed)).
+
+## Invite link
+
+`invites` row, `contacts` rows. Only the hash of the link is stored.
+
+| From | Event | To | Notes |
+|---|---|---|---|
+| None | New invite link | Open | Shown once, expires in 7 days |
+| Open | someone else opens it and Connects | None | Both contact rows written (kept if there), invite deleted |
+| Open | Revoke, or listed after expiry | None | The link answers as invalid |
+| Contacts | either side removes the other | None | Both rows go, shared notes stay shared |
+
+The inviter's own account opening the link, or a deactivated inviter, leaves it Open.
+
+## Note link
+
+`linkMode`, `linkToken` and `linked` on the note, `#lib/server/note_links.ts`. The token is stored plain so the owner can copy it again.
+
+| From | Event | To | Notes |
+|---|---|---|---|
+| Off | owner picks view or edit | On | New token, `linked` empty |
+| On | owner switches view and edit | On | Same token, joined people follow the new mode |
+| On | New link | On | New token, the old one answers as invalid, joined people stay |
+| On | No link | Off | Token and `linked` emptied, their reminders go unless the note is also shared with them |
+| Joined | signed in visitor opens the link | Joined | `linked+`, then redirect to the note, nothing for owner and collaborators |
+| Joined | owner removes them, or they leave | Nobody | Reminders go like a collaborator's |
+
+Invariants: access through `linked` holds only while `linkMode` is set (the PocketBase rule and `canSee()` both check it). A locked note gets no link. Guests change title and body only, refused with 409 when `updated` moved since their page loaded, the page then asks for a reload. An inactive owner's link answers as invalid.
 
 ## Note lock
 
@@ -215,6 +243,7 @@ Invariants:
 | Due | owner inactive | Waiting or Finished, nothing logged |
 | Retrying | same as Due | |
 | Waiting | edit or snooze | Waiting or Snoozed |
+| Waiting | Mark Completed Early, task over a minute ahead | Waiting or Finished, the skipped time logged as Completed early |
 | Finished | edit | Waiting |
 | Any | delete | Removed |
 
@@ -228,6 +257,7 @@ One row per time a reminder went off.
 | Open | empty, `task` | set |
 | Done | time | set |
 | Snoozed | time, comment `Snoozed` | set |
+| Completed early | time, comment `Completed early`, logged before `at` | set |
 | Orphaned | either | empty, reminder removed |
 
 Invariants: never pruned. Done keeps the first press. A signature covers the id, so a button needs no login.
