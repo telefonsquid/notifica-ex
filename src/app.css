@@ -600,7 +600,7 @@ body:has([data-sorting]) * {
     border-radius: var(--layout-radius-control);
     font-size: 0.875rem;
     color: var(--theme-ink-muted);
-    cursor: default;
+    cursor: pointer;
     outline: none;
     transition: color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out);
 
@@ -611,6 +611,7 @@ body:has([data-sorting]) * {
 
     &[data-disabled] {
         opacity: 0.4;
+        cursor: default;
     }
 }
 
@@ -676,6 +677,11 @@ body:has([data-sorting]) * {
     ::selection {
         background: var(--theme-accent);
         color: var(--theme-on-accent);
+    }
+
+    /* Tailwind leaves buttons on the arrow, everything that reacts to a click shows the hand */
+    :is(button, summary, select, label:has(input), [role='button'], [role='checkbox'], [role='radio'], [role='switch'], [role='tab'], [role='option'], [role='menuitem'], [role='menuitemcheckbox'], [role='menuitemradio'], input:is([type='checkbox'], [type='radio'], [type='color'], [type='file'], [type='range'])):not(:disabled, [aria-disabled='true'], [data-disabled]) {
+        cursor: pointer;
     }
 
     :focus-visible {
