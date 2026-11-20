@@ -1,114 +1,202 @@
-# Notifica Ex
+<div align="center">
+<br>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.png">
+  <img src="docs/assets/logo-light.png" alt="Notifica Ex" width="300">
+</picture>
 
-Self-hosted notes in the spirit of Google Keep, with reminders pushed to the Android app, the browser and [ntfy](https://ntfy.sh).
+**Self-hosted notes in the spirit of Google Keep, with reminders that actually reach you.**
+
+<a href="#host-it-yourself"><b>Host it yourself</b></a>
+&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+<a href="#android-app"><b>Get the Android app</b></a>
+&nbsp;&nbsp;&bull;&nbsp;&nbsp;
+<a href="CHANGELOG.md"><b>Changelog</b></a>
+
+<br>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/notes-dark.png">
+  <img src="docs/assets/notes-light.png" alt="The notes grid of a demo account: coloured cards with checklists, recipes, a photo, label tabs on their edges and reminders with Done buttons" width="80%">
+</picture>
+
+</div>
+<br>
+
+Notifica Ex keeps text, checklists, markdown and images on one grid and lets you share them with the people on your server. Its reminders repeat the way life does, every 3 days, every 16 hours, on Tuesdays, and arrive on your phone, in the browser or through [ntfy](https://ntfy.sh), with a Done button right on the notification.
+
+## Features
+
+- Markdown notes with checklists, images and attachments, edited in place on the card
+- Labels as coloured folder tabs, views as saved filters and sorts in the side rail
+- Reminders with any interval, weekdays, end dates and quiet hours, each in its own timezone
+- Task reminders with Done and Snooze on the notification and a history of every time they went off
+- Android app, browser push and ntfy, each with its own switch
+- Sharing with contacts on your server, or through a link that works without an account
+- Locked notes, encrypted in the browser with your password
+- Google Keep and Tasks import from Takeout
+- MCP endpoint with per-user API keys, so an AI assistant can read and write your notes
+- Light and dark theme, two densities, accounts by admin invite only
+
+## Screenshots
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/open-dark.png">
+    <img src="docs/assets/open-light.png" alt="An open note with a photo of Lisbon, a checklist and the formatting bar" width="32.5%">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/history-dark.png">
+    <img src="docs/assets/history-light.png" alt="The history of a daily task reminder with two open occurrences and Check all" width="32.5%">
+  </picture>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/settings-dark.png">
+    <img src="docs/assets/settings-light.png" alt="Appearance settings with theme, density, label tab and image options" width="32.5%">
+  </picture>
+</p>
 
 ## Android app
 
-The app comes from its own F-Droid repository and updates through it. In F-Droid (or a client like Droid-ify or Neo Store), add the repository by scanning the code or opening the link on the phone:
+<table>
+<tr>
+<td width="220"><img src="docs/assets/fdroid-qr.svg" alt="QR code that adds the Notifica Ex repository to F-Droid" width="200"></td>
+<td>
 
-<img src="docs/fdroid-qr.svg" alt="QR code of the F-Droid repository" width="200">
+1. Install [F-Droid](https://f-droid.org) or a client like [Droid-ify](https://github.com/Droid-ify/client).
+2. Scan the code, or open [this link](https://telefonsquid.github.io/notifica-ex/repo?fingerprint=447BC75EE4E4E98F1AE78A96C5D8AC35632ACADDA58C610FF84911D56D794888) on the phone, and add the repository.
+3. Install Notifica Ex from it. Updates arrive the same way.
+4. Enter your server's address on first start.
 
-```
-https://telefonsquid.github.io/notifica-ex/repo?fingerprint=447BC75EE4E4E98F1AE78A96C5D8AC35632ACADDA58C610FF84911D56D794888
-```
+</td>
+</tr>
+</table>
 
-On first start the app asks for your server's address.
+The app opens your server in a webview, takes text and images shared from other apps as new notes and sets exact alarms for your reminders, without a permanent notification. The APK is also attached to every [release](https://github.com/telefonsquid/notifica-ex/releases/latest).
 
-## Local development
+## Host it yourself
 
-Needs [Bun](https://bun.sh) and a PocketBase on port 8091 (the compose `pocketbase` service works, or a local binary).
+You need Docker with compose and, for anything beyond your own network, a domain with a reverse proxy that does TLS. The stack runs the web app, [PocketBase](https://pocketbase.io) and ntfy.
 
-1. `bun install`
-2. Copy `.env.example` to `.env` and fill in the marked values. Every variable is validated on startup in `src/env.ts`, so a missing or malformed one stops the server with a clear message.
-3. `bun run dev` serves the app on http://localhost:55560.
-4. On a fresh PocketBase, create the collections and the first user once:
+**1. Get a release**
 
-```bash
-curl -X POST -H "Authorization: Bearer <SERVER_AUTH_SECRET>" -H "Content-Type: application/json" http://localhost:55560/api/migration
-```
-
-The first user logs in with the superuser email and password from `.env`. Until the first release, `pb_schema.json` is the only schema: in dev the same call imports it again, so run it after every schema change.
-
-Reminders go out when something calls the dispatch endpoint. In compose the PocketBase cron hook does that every minute; locally, either run PocketBase with `pocketbase/cronjobs` as hooks dir and `WEB_INTERNAL_URL` pointing at the dev server, or trigger it by hand:
-
-```bash
-curl -X POST -H "Authorization: Bearer <SERVER_AUTH_SECRET>" -H "Content-Type: application/json" http://localhost:55560/api/reminders/dispatch
+```sh
+git clone https://github.com/telefonsquid/notifica-ex.git && cd notifica-ex
+git checkout $(git describe --tags --abbrev=0)
+cp docker-compose-example.yml docker-compose.yml
 ```
 
-For actual pushes, run an open ntfy on port 8092 and read a topic with `curl "http://localhost:8092/<TOPIC>/json?poll=1"`:
+**2. Fill in `docker-compose.yml`**
 
-```bash
-docker run -d --name notifica-ex-ntfy --restart unless-stopped -p 8092:80 binwiederhier/ntfy:v2.11.0 serve
-```
+| Value | Where | Note |
+| :-- | :-- | :-- |
+| `ORIGIN` | `web` build args and environment | Public address of the app, e.g. `https://notes.example.com` |
+| `PUBLIC_POCKETBASE_URL`, `PUBLIC_NTFY_URL` | `web` | Public addresses of PocketBase and ntfy |
+| `POCKETBASE_SUPERUSER_EMAIL`, `_PASSWORD` | `web`, `pocketbase` | Same in both. Also your first login, at least 8 characters |
+| `SERVER_AUTH_SECRET` | `web`, `pocketbase`, `migration` | One long random string, same in all three |
+| `SMTP_*` | `web` | Optional, needed for invites and password mails |
 
-Checks: `bun run check` for types, `bun run lint` for eslint, `bun run test` for the unit tests next to the code (`*.test.ts`).
+Ports default to `3000` (web), `8091` (PocketBase) and `8092` (ntfy), change the left side of `ports` for others.
 
-## Deploying with Docker
+**3. Start**
 
-### 1. Configure docker compose
-
-Rename `docker-compose-example.yml` to `docker-compose.yml` and fill in the marked values. On the first start the stack creates the PocketBase superuser, the collections and the first web app user by itself.
-
-- `POCKETBASE_SUPERUSER_EMAIL` and `POCKETBASE_SUPERUSER_PASSWORD` must match in `web` and `pocketbase`. They are also the login of the first web app user, so change that password once you are in.
-- `SERVER_AUTH_SECRET` must match in `web`, `pocketbase` and the `migration` command. `SIGNING_SECRET` is optional and signs the buttons in reminders, without it they use `SERVER_AUTH_SECRET`. Changing either one breaks the buttons in reminders already sent.
-- `ORIGIN` must match in the `web` build args and its environment. SvelteKit 3 bakes it into the build as the origin it trusts for logins and every other call, without it only https behind a proxy that passes the `Host` header works.
-- SMTP is optional, but without it the app cannot send password emails, and that includes the invites under Settings → Users.
-
-Exposed ports default to `3000` (web), `8091` (PocketBase) and `8092` (ntfy). Change the left side of `ports` to use others.
-
-### 2. Run
-
-```bash
+```sh
 docker compose up --build -d
 ```
 
-The `migration` container waits for the others, triggers the setup and exits. It exits with an error if the setup does not go through, so check its log if the app comes up empty.
+The one-shot `migration` container sets up the database and exits. Log in with the superuser email and password, change the password, then invite everyone else under Settings → Users.
 
-### 3. Set up notifications
+**4. Put it behind your proxy**
 
-Everyone picks their ways to get reminders under Settings, Notifications. The Android app needs nothing on the server.
+Realtime and the Android stream are long-lived connections, so the proxy must not buffer, and attachments go up to 100 MB.
 
-Browser notifications need https and a key pair. Run `bunx web-push generate-vapid-keys` and give both keys to the `web` service as `PUBLIC_VAPID_KEY` and `VAPID_PRIVATE_KEY`. They stay off while those are empty, and changing the keys later means everyone has to turn them on again.
-
-ntfy is optional. It denies all access by default, since reminders are private. Create a user the app publishes with and give its token to the `web` service as `NTFY_TOKEN`:
-
-```bash
-docker exec -it notifica-ex-ntfy ntfy user add --role=admin notifica-ex
-```
-
-```bash
-docker exec -it notifica-ex-ntfy ntfy token add notifica-ex
-```
-
-Everyone who gets reminders needs their own ntfy login that may read their topic. Pick the topic in the app under Settings first, then:
-
-```bash
-docker exec -it notifica-ex-ntfy ntfy user add alex
-```
-
-```bash
-docker exec -it notifica-ex-ntfy ntfy access alex <TOPIC> read-only
-```
-
-In the ntfy phone app, add the server from `NTFY_BASE_URL` with that login and subscribe to the topic. Settings shows the full address and can send a test.
-
-Task reminders carry a Done button that calls back into the app, so `ORIGIN` must be the address the phone reaches the app at.
-
-### 4. Routing
-
-Put web, PocketBase and ntfy behind a reverse proxy with TLS, and make sure `ORIGIN`, `PUBLIC_POCKETBASE_URL`, `NTFY_BASE_URL` and `PUBLIC_NTFY_URL` match the public addresses. The app keeps every screen live over PocketBase realtime (server sent events), and the Android app holds a stream open to web, so the proxy must not buffer either. File attachments go up to 100 MB, so its body limit has to allow that too (`client_max_body_size 101m;` in nginx). With nginx:
+<details>
+<summary>nginx</summary>
 
 ```nginx
+client_max_body_size 101m;
+
 location / {
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto $scheme;
 
-    # POCKETBASE REALTIME, THE APP STREAM AND NTFY STREAMS
     proxy_http_version 1.1;
     proxy_set_header Upgrade $http_upgrade;
     proxy_set_header Connection "upgrade";
     proxy_buffering off;
 }
 ```
+
+</details>
+
+**5. Notifications**
+
+The Android app needs nothing on the server. Everyone picks their channels under Settings → Notifications.
+
+<details>
+<summary>Browser push</summary>
+
+Needs https. Generate a key pair with `bunx web-push generate-vapid-keys` and give it to `web` as `PUBLIC_VAPID_KEY` and `VAPID_PRIVATE_KEY`. Changing the keys later means everyone turns browser push on again.
+
+</details>
+
+<details>
+<summary>ntfy</summary>
+
+ntfy denies all access by default. Create the user the app publishes with and put its token into `NTFY_TOKEN`:
+
+```sh
+docker exec -it notifica-ex-ntfy ntfy user add --role=admin notifica-ex
+docker exec -it notifica-ex-ntfy ntfy token add notifica-ex
+```
+
+Then give everyone a login that may read their topic (Settings → Notifications shows it):
+
+```sh
+docker exec -it notifica-ex-ntfy ntfy user add alex
+docker exec -it notifica-ex-ntfy ntfy access alex <TOPIC> read-only
+```
+
+</details>
+
+**Updating**
+
+```sh
+git fetch --tags && git checkout $(git describe --tags --abbrev=0 origin/master)
+docker compose up --build -d
+```
+
+Only tagged releases are meant for servers. Each one migrates the database on start and keeps older Android apps working.
+
+## Feedback
+
+Found a bug, or missing something you used in Keep? Please [open an issue](https://github.com/telefonsquid/notifica-ex/issues/new). Leave your notes and anything that identifies you out of it.
+
+## AI disclosure
+
+> This project was supported by AI-assisted coding tools. In fact, about 90% of the code was generated using Claude Opus 5.5. I am a full stack developer and have been working with SvelteKit for years, so there was a lot of direction and code review involved. I'm all too aware and concerned about the negative effects of AI on society, the environment, and the world as a whole and in no way endorse it. Yet, while I had a project like this planned for years now, I would've never found the required time to see it through. So take it with a grain of salt but AI allowed this project to exist in the first place.
+
+## Development
+
+SvelteKit 3 with Svelte 5, Tailwind 4, TypeScript and PocketBase, [bun](https://bun.sh) as package manager and test runner.
+
+```sh
+bun install
+cp .env.example .env   # fill in the marked values
+bun run dev            # http://localhost:55560, PocketBase on 8091
+bun run check          # types
+bun run lint
+bun run test           # recurrence, markdown, views and other pure logic
+```
+
+- On a fresh PocketBase, import the schema once: `curl -X POST -H "Authorization: Bearer <SERVER_AUTH_SECRET>" -H "Content-Type: application/json" http://localhost:55560/api/migration`. Run it again after every schema change.
+- Reminders go out when something POSTs to `/api/reminders/dispatch` with the same header. In compose PocketBase's cron does it every minute.
+- For real pushes, run ntfy on 8092: `docker run -d --name notifica-ex-ntfy -p 8092:80 binwiederhier/ntfy:v2.11.0 serve`.
+- The Android app is a Tauri 2 shell in `src-tauri/`. Releases are built by CI from a version tag.
+
+Decisions and conventions live in [AGENTS.md](AGENTS.md) and the project skills under `.claude/skills/`.
+
+## License
+
+MIT. See [LICENSE](LICENSE).
