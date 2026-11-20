@@ -4,6 +4,7 @@
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Check } from '@lucide/svelte';
     import { Popover } from 'bits-ui';
+    import type { Snippet } from 'svelte';
 
     // PROPS
     let {
@@ -12,7 +13,8 @@
         label,
         labels = [],
         rainbow = false,
-        class: className = ''
+        class: className = '',
+        children
     }: {
         value: NoteColor
         onpick: (color: NoteColor) => void
@@ -20,6 +22,7 @@
         labels?: Label[]                        // the note's labels, their colors join Default as quick picks
         rainbow?: boolean                       // on a note, which already wears its color
         class?: string
+        children?: Snippet                      // a trigger of its own, it shows the color and name itself
     } = $props()
 
     // One swatch per color, the first label of each color names it
@@ -46,15 +49,21 @@
 <!-- Stays open while picking, so colors can be tried on the note behind it -->
 <!-- A note shows its color already, its trigger is a rainbow that says colors live here | elsewhere the color itself is what counts -->
 <Popover.Root>
-    <Popover.Trigger
-        class={['swatch-ring size-7 shrink-0 rounded-full', rainbow && 'rainbow', className]}
-        aria-label={`${label}: ${colorName(value)}`}
-        {@attach tip(`${label}: ${colorName(value)}`)}
-    >
-        {#if !rainbow}
-            <span class={['swatch note-surface block size-full rounded-full border border-line-strong', !value && 'default']} data-note={value || undefined}></span>
-        {/if}
-    </Popover.Trigger>
+    {#if children}
+        <Popover.Trigger class={className} aria-label={`${label}: ${colorName(value)}`}>
+            {@render children()}
+        </Popover.Trigger>
+    {:else}
+        <Popover.Trigger
+            class={['swatch-ring size-7 shrink-0 rounded-full', rainbow && 'rainbow', className]}
+            aria-label={`${label}: ${colorName(value)}`}
+            {@attach tip(`${label}: ${colorName(value)}`)}
+        >
+            {#if !rainbow}
+                <span class={['swatch note-surface block size-full rounded-full border border-line-strong', !value && 'default']} data-note={value || undefined}></span>
+            {/if}
+        </Popover.Trigger>
+    {/if}
     <Popover.Portal>
         <Popover.Content
             sideOffset={10}
