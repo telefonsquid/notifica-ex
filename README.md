@@ -1,24 +1,20 @@
 <div align="center">
 <br>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo-dark.png">
-  <img src="docs/assets/logo-light.png" alt="Notifica Ex" width="300">
-</picture>
+<img src="docs/assets/logo.png" alt="Notifica Ex" width="320">
 
-**Self-hosted notes in the spirit of Google Keep, with reminders that actually reach you.**
+<p><b>Self-hosted Google Keep Alternative with lots of extra features.</b></p>
 
+<p>
 <a href="#host-it-yourself"><b>Host it yourself</b></a>
 &nbsp;&nbsp;&bull;&nbsp;&nbsp;
 <a href="#android-app"><b>Get the Android app</b></a>
 &nbsp;&nbsp;&bull;&nbsp;&nbsp;
 <a href="CHANGELOG.md"><b>Changelog</b></a>
+</p>
 
 <br>
 
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/assets/notes-dark.png">
-  <img src="docs/assets/notes-light.png" alt="The notes grid of a demo account: brightly coloured cards with nonsense checklists, strange illustrations, label tabs on their edges and reminders with Done buttons" width="80%">
-</picture>
+<img src="docs/assets/notes.png" alt="The notes grid of a demo account: mostly yellow, lilac and blue cards with nonsense checklists, strange illustrations, label tabs on their edges and reminders with Done buttons" width="90%">
 
 </div>
 <br>
@@ -41,18 +37,19 @@ Notifica Ex keeps text, checklists, markdown and images on one grid and lets you
 ## Screenshots
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/open-dark.png">
-    <img src="docs/assets/open-light.png" alt="An open note with an illustration of a moon eye over a desert of chairs, a checklist and the formatting bar" width="32.5%">
-  </picture>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/history-dark.png">
-    <img src="docs/assets/history-light.png" alt="The history of a daily task reminder with two open occurrences and Check all" width="32.5%">
-  </picture>
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/settings-dark.png">
-    <img src="docs/assets/settings-light.png" alt="Appearance settings with theme, density, label tab and image options" width="32.5%">
-  </picture>
+  <img src="docs/assets/open.png" alt="An open note with an illustration of a moon eye over a desert of chairs, a checklist and the formatting bar" width="32.5%">
+  <img src="docs/assets/history.png" alt="The history of a daily task reminder with two open occurrences and Check all" width="32.5%">
+  <img src="docs/assets/settings.png" alt="Appearance settings with theme, density, label tab and image options" width="32.5%">
+</p>
+
+### On the phone
+
+<p align="center">
+  <img src="docs/assets/phone-notes.png" alt="The notes grid on a phone, two columns of compact cards with the menu, search and create buttons in one bottom row" width="24%">
+  &nbsp;
+  <img src="docs/assets/phone-open.png" alt="A note open on a phone, with its label tabs, the formatting bar and Add reminder" width="24%">
+  &nbsp;
+  <img src="docs/assets/phone-menu.png" alt="The phone menu spread out of its button, listing views, Settings and Logout" width="24%">
 </p>
 
 ## Android app
