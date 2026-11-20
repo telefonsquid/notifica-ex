@@ -163,7 +163,7 @@ The inviter's own account opening the link, or a deactivated inviter, leaves it 
 | Off | owner picks view or edit | On | New token, `linked` empty |
 | On | owner switches view and edit | On | Same token, joined people follow the new mode |
 | On | New link | On | New token, the old one answers as invalid, joined people stay |
-| On | No link | Off | Token and `linked` emptied, their reminders go unless the note is also shared with them |
+| On | Share via link (off) | Off | Token and `linked` emptied, their reminders go unless the note is also shared with them |
 | Joined | signed in visitor opens the link | Joined | `linked+`, then redirect to the note, nothing for owner and collaborators |
 | Joined | owner removes them, or they leave | Nobody | Reminders go like a collaborator's |
 

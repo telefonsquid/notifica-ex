@@ -41,7 +41,7 @@
     let matches = $derived(picks.filter((person) => person.name.toLowerCase().includes(query.trim().toLowerCase())))
 
     // LINK
-    const MODES: { value: NoteLinkMode, label: string }[][] = [[{ value: '', label: 'No link' }], [{ value: 'read', label: 'Anyone can view' }, { value: 'write', label: 'Anyone can edit' }]]
+    const MODES: { value: NoteLinkMode, label: string }[][] = [[{ value: '', label: 'Share via link' }], [{ value: 'read', label: 'Anyone can view' }, { value: 'write', label: 'Anyone can edit' }]]
 
     let open = $state(false)
     let address = $derived(open && link?.id && link.mode ? getNoteLink(link.id) : null)
