@@ -17,7 +17,7 @@
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/assets/notes-dark.png">
-  <img src="docs/assets/notes-light.png" alt="The notes grid of a demo account: coloured cards with checklists, recipes, a photo, label tabs on their edges and reminders with Done buttons" width="80%">
+  <img src="docs/assets/notes-light.png" alt="The notes grid of a demo account: brightly coloured cards with nonsense checklists, strange illustrations, label tabs on their edges and reminders with Done buttons" width="80%">
 </picture>
 
 </div>
@@ -43,7 +43,7 @@ Notifica Ex keeps text, checklists, markdown and images on one grid and lets you
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/open-dark.png">
-    <img src="docs/assets/open-light.png" alt="An open note with a photo of Lisbon, a checklist and the formatting bar" width="32.5%">
+    <img src="docs/assets/open-light.png" alt="An open note with an illustration of a moon eye over a desert of chairs, a checklist and the formatting bar" width="32.5%">
   </picture>
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/history-dark.png">
