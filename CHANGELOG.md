@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.6 · 2026-11-26
+
+- added passkeys for sign in and locked notes
+- readme and android start screen are light only
+- added phone screenshots
+- new readme blurb
+- updated readme screenshots
+- rewrote the readme with screenshots, setup guide and f-droid qr
+- added mit license
+- default color card shows a skeleton note
+- fixed hover cursor
+- made the whole default color card clickable
+- updated logo hover and font
+- renamed no link to share via link
+- added note links anyone can view or edit
+- sharing now goes through contacts from invite links
+- updated share marks, selection, list dragging and filter wording
+- tasks can be completed early
+- fixed colour button wiggle and empty list rendering
+- dragged notes mark their landing spot with a bar in the gap instead of moving the grid
+- cards show how long a task has waited to be checked off
+
 ## 0.4.5 · 2026-11-15
 
 - added more mcp tools
