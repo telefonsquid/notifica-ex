@@ -1,6 +1,7 @@
 /*
     State of the one password dialog in the root layout. askPassword() opens it, check() decides
-    on each try: null lets it close, a text stays as the error.
+    on each try: null lets it close, a text stays as the error. Where a passkey works too, its check
+    does the same.
 */
 
 type PasswordRequest = {
@@ -8,6 +9,7 @@ type PasswordRequest = {
     message: string
     action: string
     check: (password: string) => Promise<string | null>
+    passkey?: Promise<(() => Promise<string | null>) | null>      // Null when there is none to use
 }
 
 export const passwordPrompt = $state({

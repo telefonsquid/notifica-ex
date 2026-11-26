@@ -222,6 +222,25 @@ export function appear(node: Element): TransitionConfig {
     return rise(node, { y: 4, scale: 1, duration: 'base', delay: 120 })
 }
 
+// GLIDE ROWS | a reordered list, measured before and glided after | tops counts from the list's own top, in the new order
+export function rowTops(list: Element): number[] {
+    const top = list.getBoundingClientRect().top
+    return [...list.children].map((row) => row.getBoundingClientRect().top - top)
+}
+
+export function glideRows(list: Element, tops: number[]){
+    const time = duration('base')
+    if(!time) return
+
+    const rows = [...list.children]
+    rows.forEach((row) => row.getAnimations().forEach((animation) => { if(animation.id === 'row') animation.cancel() }))
+    const now = rowTops(list)
+    rows.forEach((row, i) => {
+        const dy = tops[i] - now[i]
+        if(dy) row.animate({ transform: [`translateY(${dy}px)`, 'none'] }, { id: 'row', duration: time, easing: cssEasing('in-out') })
+    })
+}
+
 // STAGGER | delay for the nth item of a group entering together, capped so long lists don't drag
 export function stagger(index: number, step = 45, max = 8): number {
     return Math.min(index, max) * step

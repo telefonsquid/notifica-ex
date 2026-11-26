@@ -21,6 +21,14 @@ describe('formatAgo', () => {
         expect(formatAgo('', now)).toBe('')
     })
 
+    test.each([
+        [-5 * 60_000, '5m'],
+        [-86_400_000, '1d'],
+        [-15 * 86_400_000, '2w'],
+    ])('short, %d ms reads %s', (offset, text) => {
+        expect(formatAgo(at(offset), now, true)).toBe(text)
+    })
+
 })
 
 describe('formatDistance', () => {

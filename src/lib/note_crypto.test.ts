@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
-import { createLock, keyOf, openLock, relock, seal, unseal } from '#lib/note_crypto.ts';
+import { createLock, keyOf, lockForPasskey, openLock, openWithPasskey, relock, seal, unseal } from '#lib/note_crypto.ts';
 import { sealedSchema } from '#lib/schemas/notes.ts';
+import { passkeyNoteKeyInputSchema } from '#lib/schemas/passkeys.ts';
 import { noteLockSchema } from '#lib/schemas/users.ts';
 
 // The lowest count the schema takes, keeps the tests quick
@@ -67,5 +68,44 @@ describe('sealed bodies', () => {
         expect(await unseal(other.key, sealed)).toBeNull()
         expect(await unseal(key, sealed.replace(lock.id, other.lock.id))).toBeNull()
         expect(await unseal(key, 'not sealed')).toBeNull()
+    })
+})
+
+describe('passkeys', () => {
+    const secret = () => crypto.getRandomValues(new Uint8Array(32))
+
+    test('a passkey opens what the password sealed', async () => {
+        const { lock, key } = await createLock('correct horse', ITERATIONS)
+        const mine = secret()
+        const noteKey = await lockForPasskey(lock, 'correct horse', mine)
+        expect(await unseal((await openWithPasskey(noteKey!, mine))!, await seal(key, lock.id, 'secret'))).toBe('secret')
+    })
+
+    test('another passkey does not', async () => {
+        const { lock } = await createLock('correct horse', ITERATIONS)
+        const noteKey = await lockForPasskey(lock, 'correct horse', secret())
+        expect(await openWithPasskey(noteKey!, secret())).toBeNull()
+    })
+
+    test('needs the right password to set up', async () => {
+        const { lock } = await createLock('correct horse', ITERATIONS)
+        expect(await lockForPasskey(lock, 'wrong horse', secret())).toBeNull()
+    })
+
+    test('keeps opening after a password change', async () => {
+        const { lock, key } = await createLock('old password', ITERATIONS)
+        const mine = secret()
+        const noteKey = await lockForPasskey(lock, 'old password', mine)
+        const sealed = await seal(key, lock.id, 'secret')
+
+        const next = await relock(lock, 'old password', 'new password')
+        expect(noteKey!.id).toBe(next!.id)
+        expect(await unseal((await openWithPasskey(noteKey!, mine))!, sealed)).toBe('secret')
+    })
+
+    test('fits the schema the server checks', async () => {
+        const { lock } = await createLock('correct horse', ITERATIONS)
+        const noteKey = await lockForPasskey(lock, 'correct horse', secret())
+        expect(passkeyNoteKeyInputSchema.safeParse({ id: 'a'.repeat(15), noteKey }).error).toBeUndefined()
     })
 })

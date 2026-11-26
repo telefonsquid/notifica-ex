@@ -17,6 +17,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.IntentCompat
 import androidx.core.view.WindowCompat
+import androidx.webkit.WebSettingsCompat
+import androidx.webkit.WebViewFeature
 import java.io.IOException
 import org.json.JSONArray
 import org.json.JSONObject
@@ -122,6 +124,10 @@ class MainActivity : TauriActivity() {
 
   override fun onWebViewCreate(webView: WebView) {
     this.webView = webView
+
+    // PASSKEYS | the server vouches for the app in /.well-known/assetlinks.json
+    val passkeys = WebViewFeature.isFeatureSupported(WebViewFeature.WEB_AUTHENTICATION)
+    if (passkeys) WebSettingsCompat.setWebAuthenticationSupport(webView.settings, WebSettingsCompat.WEB_AUTHENTICATION_SUPPORT_FOR_APP)
 
     // BRIDGE | the only native calls pages of the server get
     webView.addJavascriptInterface(object {
@@ -231,6 +237,9 @@ class MainActivity : TauriActivity() {
       // Shown on the About page
       @JavascriptInterface
       fun appVersion(): String = BuildConfig.VERSION_NAME
+
+      @JavascriptInterface
+      fun passkeysSupported() = passkeys
 
       @JavascriptInterface
       fun hasShare() = pendingShare != null

@@ -4,6 +4,7 @@
     import ApiKeys from '#lib/components/ApiKeys.svelte';
     import Contacts from '#lib/components/Contacts.svelte';
     import GoogleImport from '#lib/components/GoogleImport.svelte';
+    import Passkeys from '#lib/components/Passkeys.svelte';
     import { androidApp } from '#lib/device_notifications.ts';
     import { unfold } from '#lib/motion.ts';
     import { relock } from '#lib/note_crypto.ts';
@@ -139,6 +140,8 @@
         </div>
     </form>
 {/if}
+
+<Passkeys />
 
 <Contacts />
 

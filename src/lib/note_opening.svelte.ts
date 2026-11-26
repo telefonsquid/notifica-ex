@@ -1,5 +1,5 @@
 import type { SharedNote } from '#lib/android_share.ts';
-import { duration, easing, rise, stagger } from '#lib/motion.ts';
+import { duration, easing, rise, stagger, type DurationToken } from '#lib/motion.ts';
 import { noteEditor } from '#lib/note_editor.svelte.ts';
 import { readable } from '#lib/note_lock.svelte.ts';
 import type { NoteGrid } from '#lib/note_grid.svelte.ts';
@@ -45,6 +45,7 @@ function reveal(cell: HTMLElement | null){
 export class NoteOpening {
     current = $state<{ key: number, id: string | null, fresh: boolean, focus?: string, shared: SharedNote | null, afloat: Afloat | null } | null>(null)      // The key changes per opening, so every note starts with a fresh draft
     closing = $state(false)
+    landing = $state.raw<{ id: string, speed: DurationToken } | null>(null)     // The floating note on its way back to the grid
     freshNote = $state<{ flush: () => Promise<string | null> }>()
     createButton = $state<HTMLElement>()
 
@@ -82,6 +83,7 @@ export class NoteOpening {
             await noteEditor.load()     // One glide only, a late editor would move the grid a second time | touch screens never preload it
 
             this.#grid.frozen = this.#ids()
+            this.#land('slow')
             this.#grid.snapshot(note ? null : this.createButton?.getBoundingClientRect())
             this.current = { key: ++this.#opened, id: note?.id ?? null, fresh: !note, focus, shared, afloat: this.#afloat(note) }
             this.closing = false
@@ -91,10 +93,13 @@ export class NoteOpening {
     }
 
     // A full grid on a wide screen keeps still, the note floats to the centre of the screen instead of pushing the others aside
+    // Compact phones always float, their two narrow columns have no room for an open note in place
     // A new note floats too and joins the grid only once it closes with something in it
     #afloat(note: Note | null): Afloat | null {
         const grid = this.#grid.element
-        if(!grid || !this.#wide.current || this.#ids().length < FLOAT_FROM) return null
+        const compact = document.documentElement.dataset.density === 'compact'
+        const floats = this.#wide.current ? this.#ids().length >= FLOAT_FROM : compact
+        if(!grid || !floats) return null
         if(!note) return afloatAt(grid.getBoundingClientRect(), grid, 0)
 
         const cell = cellById(grid, note.id)
@@ -127,6 +132,7 @@ export class NoteOpening {
         this.#busy = this.#busy.then(async () => {
             if(!this.current) return
             await this.#fold()
+            this.#land('base')
             this.#grid.snapshot(null, true)
             this.shut()
         })
@@ -136,6 +142,17 @@ export class NoteOpening {
         this.current = null
         this.#grid.frozen = null
         this.closing = false
+    }
+
+    // Keeps the ghost of a floating note until it glided home and the shadow faded
+    #land(speed: DurationToken){
+        const id = this.current?.id
+        const time = duration(speed)
+        if(!id || !this.current?.afloat || this.current.fresh || !time) return
+
+        const landing = { id, speed }
+        this.landing = landing
+        setTimeout(() => { if(this.landing === landing) this.landing = null }, time + duration('fast'))
     }
 
     // A new note got stored, its card is followed by id from then on

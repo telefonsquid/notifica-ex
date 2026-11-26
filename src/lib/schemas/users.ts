@@ -72,11 +72,12 @@ export type User = RecordModel & z.infer<typeof userInputSchema> & {
     streamEpoch?: number;
     noteLock?: NoteLock | null;
     noteColor?: NoteColor;      // New notes start with it
+    checkedLast?: boolean;      // Checked items move to the end of their list
 }
 
 // NOTE LOCK | the key of locked notes, itself locked by the account password
 export type NoteLock = z.infer<typeof noteLockSchema>;
-const base64url = (length: number) => z.string().length(length).regex(/^[\w-]+$/)
+export const base64url = (length: number) => z.string().length(length).regex(/^[\w-]+$/)
 export const noteLockSchema = z.object({
     id: base64url(12),                                  // Sealed bodies name the key they need
     salt: base64url(22),

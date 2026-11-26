@@ -187,21 +187,21 @@ Invariants:
 
 | From | Event | To | Notes |
 |---|---|---|---|
-| Open text | Lock (card or menu) | Locked | Asks for the password first when the tab holds no key, the very first time sets up `noteLock` |
+| Open text | Lock (card or menu) | Locked | Asks for the password or a passkey first when the tab holds no key, the very first time sets up `noteLock` |
 | Locked | Unlock | Open text | Needs the key, the decrypted text goes back into `body` |
 | Locked | password changed in Settings | Locked | `relock()` wraps the same key anew, nothing gets encrypted again |
-| Locked | password reset by mail | Lost | `setPassword` clears `noteLock` |
+| Locked | password reset by mail | Lost | `setPassword` clears `noteLock`, passkeys can't open it either |
 | Lost | delete | removed | Nothing else is offered |
 
 ## Tab key
 
-The account key in memory of one tab (`state` in `note_lock.svelte.ts`) and the notes unlocked with it (`revealed`). Each locked note asks the password itself, the key alone shows no text.
+The account key in memory of one tab (`state` in `note_lock.svelte.ts`) and the notes unlocked with it (`revealed`). Each locked note asks for the password or a passkey itself, the key alone shows no text. A passkey only counts while its `noteKey` names the account's current key.
 
 | From | Event | To |
 |---|---|---|
-| Closed | right password on opening a locked note | Open, that one note decrypts and shows its text |
-| Closed | right password on locking a note | Open, the note just locked stays readable |
-| Open | right password on another locked note | Open, that note joins the readable ones |
+| Closed | right password or passkey on opening a locked note | Open, that one note decrypts and shows its text |
+| Closed | right password or passkey on locking a note | Open, the note just locked stays readable |
+| Open | right password or passkey on another locked note | Open, that note joins the readable ones |
 | Open | reload, logout | Closed, every note shows its lock again |
 | Open | tab hidden over 5 minutes, no locked note open | Closed, every note shows its lock again |
 
@@ -333,6 +333,7 @@ Invariants:
 1. At most one alarm is armed, always for the soonest stored entry, a past one fires at once.
 2. A sync replaces the stored schedule but keeps unfired past entries up to 12 h old, the server already moved past them.
 3. A reminder time shows once per phone, whichever of alarm and stream brings it first.
+4. A time checked off or snoozed elsewhere leaves the phone: its notification is cancelled and its stored entry dropped (`settle()`), from the sync's `settled` list (12 h back) or at once from a stream `dismiss` line.
 
 Done or Snooze from an alarm can land before the server logged the occurrence: 409, the notification stays and a WorkManager job retries every minute, ten times, removing it once through. A slot the reminder moved past without logging (edited, snoozed or deleted before the phone's next sync) answers 410 and the notification goes. A sync leaves out entries already shown, the server lists a due time until dispatch moved `next` on.
 
@@ -398,6 +399,20 @@ Invariant: an inactive user never gets a push and never gets past `hooks.server.
 | Valid | Connection failure, page | `serverDown`, error page, cookie stays |
 | Valid | Connection failure, api or remote | 503, cookie stays |
 
+## Passkey challenge
+
+`src/lib/server/passkey_challenges.ts`. Nothing is stored for an open one, it carries its end and a signature over its purpose.
+
+| From | Event | To |
+|---|---|---|
+| | login page or adding a passkey asks for options | Open, for that purpose only |
+| Open | right answer | Used, remembered in memory until it ends |
+| Open | wrong answer | Open, the answer is refused (400) |
+| Open | 10 minutes | Ended |
+| Used, Ended | any answer | unchanged, refused (400) |
+
+Invariants: one challenge lets in at most once, one made for adding never signs in. A server restart forgets the used ones, a replayed answer would need to be stolen and sent within the 10 minutes.
+
 ## Logout
 
 `Rail.svelte`. Sequence: stop device notifications, finish removals, save an open card, log out, disconnect realtime, go to login.
@@ -429,7 +444,7 @@ Invariant: logout always reaches the login page when the server answered, unsave
 
 `editing` in `(app)/[[view]]/+page.svelte`: null, or `{ id, fresh, key, focus, shared, afloat }`. One card at a time. Opening another saves the first (it closes, `save` runs). `frozen` holds the grid order while open.
 
-`afloat` is set at opening, never after: a stored note in a grid of 8 or more on a screen 40rem wide or more. Then the cell keeps its closed height as a ghost (`--ghost`) and the note floats to the screen centre, page scroll locked (`float` attachment, it also recentres on resize). Otherwise the cell spans two columns and scrolls into view. A new note never floats.
+`afloat` is set at opening, never after: a grid of 8 or more on a screen 40rem wide or more, below that width always with the compact density and never without. Then the cell keeps its closed height as a ghost (`--ghost`) and the note floats to the screen centre, page scroll locked (`float` attachment, it also recentres on resize). Otherwise the cell spans two columns and scrolls into view. A new note floats too, without a ghost. `landing` (`{ id, speed }`) is set as a floating stored note leaves, so its ghost stays until the note glided home, and goes after the glide plus `fast`. The next landing replaces it, reduced motion and new notes skip it.
 
 ## Selection
 

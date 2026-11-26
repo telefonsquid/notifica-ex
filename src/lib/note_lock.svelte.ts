@@ -1,16 +1,19 @@
 import { invalidateAll } from '$app/navigation';
 import { page } from '$app/state';
-import { createLock, keyOf, openLock, seal, unseal } from '#lib/note_crypto.ts';
+import { createLock, keyOf, openLock, openWithPasskey, seal, unseal } from '#lib/note_crypto.ts';
 import type { Note } from '#lib/schemas/notes.ts';
+import type { NoteLock } from '#lib/schemas/users.ts';
 import { kept } from '#lib/note_list.ts';
+import { passkeyProblem, passkeysAvailable, passkeySecret } from '#lib/passkeys.ts';
 import { safeAction } from '#lib/safe_action.ts';
 import { askPassword } from '#lib/singletons/password.svelte.ts';
 import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 import { lockNote, unlockNote } from '../routes/api/notes.remote';
+import { getPasskeys } from '../routes/api/passkeys.remote';
 import { startNoteLock } from '../routes/api/users.remote';
 
 /*
-    The unlocked state of locked notes in this tab. Each note opens with its own password entry and stays
+    The unlocked state of locked notes in this tab. Each note opens with its own password or passkey and stays
     open until the key goes. The key lives in memory only, a reload or a long absence forgets it.
     Bodies get decrypted once and cached by their ciphertext.
 */
@@ -69,7 +72,7 @@ function open(sealed: string){
     })
 }
 
-// Asks the password for this one note before its card opens, false when it stays closed
+// Asks for the key for this one note before its card opens, false when it stays closed
 export async function readable(note: Pick<Note, 'id' | 'sealed'>): Promise<boolean> {
     const { sealed } = note
     if(!sealed) return true
@@ -78,21 +81,12 @@ export async function readable(note: Pick<Note, 'id' | 'sealed'>): Promise<boole
 
     const stored = page.data.user?.noteLock
     if(!stored) return false
-    return askPassword({
-        title: 'Unlock note',
-        message: 'Your account password opens this note.',
-        action: 'Unlock',
-        check: async (password) => {
-            const key = await openLock(stored, password)
-            if(!key) return 'Wrong password.'
-            take(key, stored.id)
-
-            const body = bodies.get(sealed) ?? await unseal(key, sealed)
-            if(body === null) return 'This note does not open with your password.'
-            bodies.set(sealed, body)
-            revealed.add(note.id)
-            return null
-        }
+    return askKey(stored, { title: 'Unlock note', message: 'Your account password opens this note.', action: 'Unlock' }, async (key) => {
+        const body = bodies.get(sealed) ?? await unseal(key, sealed)
+        if(body === null) return 'This note can not be opened.'
+        bodies.set(sealed, body)
+        revealed.add(note.id)
+        return null
     })
 }
 
@@ -132,17 +126,7 @@ export async function ensureKey(): Promise<boolean> {
     if(state.key) return true
     const stored = page.data.user?.noteLock
 
-    if(stored) return askPassword({
-        title: 'Lock note',
-        message: 'Your account password locks this note.',
-        action: 'Lock',
-        check: async (password) => {
-            const key = await openLock(stored, password)
-            if(!key) return 'Wrong password.'
-            take(key, stored.id)
-            return null
-        }
-    })
+    if(stored) return askKey(stored, { title: 'Lock note', message: 'Your account password locks this note.', action: 'Lock' })
 
     return askPassword({
         title: 'Lock notes',
@@ -160,6 +144,42 @@ export async function ensureKey(): Promise<boolean> {
             return null
         }
     })
+}
+
+// By password, or by a passkey that was set up for it | use() has the last word on whether the dialog closes
+function askKey(stored: NoteLock, texts: { title: string, message: string, action: string }, use: (key: CryptoKey) => Promise<string | null> = async () => null): Promise<boolean> {
+    const taken = (key: CryptoKey) => {
+        take(key, stored.id)
+        return use(key)
+    }
+
+    return askPassword({
+        ...texts,
+        check: async (password) => {
+            const key = await openLock(stored, password)
+            return key ? taken(key) : 'Wrong password.'
+        },
+        passkey: passkeyCheck(stored.id, taken)
+    })
+}
+
+async function passkeyCheck(id: string, taken: (key: CryptoKey) => Promise<string | null>) {
+    if(!passkeysAvailable()) return null
+    const passkeys = (await getPasskeys().catch(() => [])).filter(({ noteKey }) => noteKey?.id === id)
+    if(!passkeys.length) return null
+
+    return async () => {
+        try {
+            const answer = await passkeySecret(passkeys)
+            if(!answer) return ''
+
+            const noteKey = passkeys.find(({ credential }) => credential === answer.credential)?.noteKey
+            const key = noteKey ? await openWithPasskey(noteKey, answer.secret) : null
+            return key ? taken(key) : 'This passkey does not open your notes.'
+        } catch (err) {
+            return passkeyProblem(err)
+        }
+    }
 }
 
 // After a password change the same key stays, only the lock around it changed

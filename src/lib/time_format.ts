@@ -50,6 +50,7 @@ export function formatDay(value: string, timezone: string, now: number): string 
 }
 
 const relative = new Intl.RelativeTimeFormat('en', { numeric: 'always' })
+const narrow = new Intl.RelativeTimeFormat('en', { numeric: 'always', style: 'narrow' })    // "3d ago", for lines with no room, the "ago" goes too
 
 const STEPS: [Intl.RelativeTimeFormatUnit, number][] = [
     ['minute', 60_000],
@@ -72,23 +73,23 @@ export function formatDistance(value: string, now: number): string {
     return inUnits(left)
 }
 
-// Time passed as "3 hours ago" or "1 week ago"
-export function formatAgo(value: string, now: number): string {
+// Time passed as "3 hours ago" or "1 week ago", short as "3h"
+export function formatAgo(value: string, now: number, short = false): string {
     const date = parseTimestamp(value)
     if(!date) return ''
 
     const passed = now - date.getTime()
     if(passed < 60_000) return 'now'
-    return inUnits(-passed)
+    return short ? inUnits(-passed, narrow).replace(/ ago$/, '') : inUnits(-passed)
 }
 
 // Largest unit that fits at least once | rounding may reach the next unit, 59.6 minutes read as 1 hour, not 60 minutes
-function inUnits(span: number): string {
+function inUnits(span: number, format = relative): string {
     const size = Math.abs(span)
     let index = Math.max(0, STEPS.findLastIndex(([, step]) => size >= step))
     if(index < STEPS.length - 1 && Math.round(size / STEPS[index][1]) * STEPS[index][1] >= STEPS[index + 1][1]) index++
     const [unit, step] = STEPS[index]
-    return relative.format(Math.round(span / step), unit)
+    return format.format(Math.round(span / step), unit)
 }
 
 // Value format of datetime-local inputs, in the browser's own zone

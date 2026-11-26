@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { markdownToText, renderMarkdown, tasksOf, toggleTask } from '#lib/markdown.ts';
+import { markdownToText, renderMarkdown, sinkTask, tasksOf, toggleTask } from '#lib/markdown.ts';
 
 // CHECKLISTS ====================================================================================================
 // Cards tick tasks by their index among the rendered checkboxes, so all three must agree
@@ -38,6 +38,34 @@ describe('checklists', () => {
     test('an index without a task changes nothing', () => {
         expect(toggleTask('- [ ] a', 3)).toBe('- [ ] a')
     })
+})
+
+// Source, ticked or unticked task, result
+const SINKS: Record<string, [string, number, string]> = {
+    ticked: ['- [x] a\n- [ ] b\n- [ ] c', 0, '- [ ] b\n- [ ] c\n- [x] a'],
+    unticked: ['- [ ] a\n- [x] b\n- [x] c\n- [ ] d', 3, '- [ ] a\n- [ ] d\n- [x] b\n- [x] c'],
+    afterChecked: ['- [x] a\n- [ ] b\n- [x] c', 0, '- [ ] b\n- [x] c\n- [x] a'],
+    surroundings: ['text\n\n- [x] a\n- [ ] b\n\nmore', 0, 'text\n\n- [ ] b\n- [x] a\n\nmore'],
+    subtasksTravel: ['- [x] a\n  - [ ] a1\n  - [x] a2\n- [ ] b', 0, '- [ ] b\n- [x] a\n  - [ ] a1\n  - [x] a2'],
+    onlyItsOwnList: ['- [x] a\n  - [x] a1\n  - [ ] a2\n- [ ] b', 1, '- [x] a\n  - [ ] a2\n  - [x] a1\n- [ ] b'],
+    loose: ['- [x] a\n\n  continued\n\n- [ ] b\n\n- [ ] c\n', 0, '- [ ] b\n\n- [ ] c\n\n- [x] a\n\n  continued\n'],
+    quote: ['> - [x] a\n> - [ ] b\n\nafter', 0, '> - [ ] b\n> - [x] a\n\nafter'],
+    empty: ['- [x]\n- [ ] b', 0, '- [ ] b\n- [x]'],
+    ordered: ['1. [x] a\n2. [ ] b', 0, '1. [x] a\n2. [ ] b'],
+    mixed: ['- [x] a\n- plain\n- [ ] b', 0, '- [x] a\n- plain\n- [ ] b'],
+    inPlace: ['- [ ] a\n- [x] b', 1, '- [ ] a\n- [x] b'],
+    secondList: ['- [x] a\n- [ ] b\n\ntext\n\n- [x] c\n- [ ] d', 2, '- [x] a\n- [ ] b\n\ntext\n\n- [ ] d\n- [x] c'],
+    codeLookalike: ['text\n\n    - [ ] code\n\ntext\n\n- [x] a\n- [ ] b', 0, 'text\n\n    - [ ] code\n\ntext\n\n- [x] a\n- [ ] b'],
+}
+
+describe('sinking', () => {
+    for(const [name, [source, index, result]] of Object.entries(SINKS)){
+        test(name, () => {
+            const sunk = sinkTask(source, index)
+            expect(sunk.source).toBe(result)
+            expect(sunk.order === null).toBe(source === result)
+        })
+    }
 })
 
 

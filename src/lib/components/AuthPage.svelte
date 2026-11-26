@@ -19,12 +19,14 @@
         title,
         action,
         onsubmit,
-        children
+        children,
+        more
     }: {
         title: string                                   // browser tab
         action: string                                  // label of the submit button
         onsubmit: () => Promise<boolean>                // false shakes the form and lets it be sent again
         children: Snippet                               // the inputs
+        more?: Snippet                                  // below the submit button
     } = $props()
 
     let submitting = $state(false)
@@ -84,6 +86,7 @@
             <form bind:this={form} class="sheet grid gap-3" onsubmit={submit}>
                 {@render children()}
                 <Button type="submit" class="submit mt-2 w-full" loading={submitting}>{action}</Button>
+                {@render more?.()}
             </form>
         </div>
     {/if}

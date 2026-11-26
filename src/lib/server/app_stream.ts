@@ -7,7 +7,9 @@ const listeners = new Map<string, Set<Listener>>()
 // Below what phones and proxies tolerate as silence, a dead connection shows on the app's read timeout
 const HEARTBEAT = 55_000
 
-type Listener = { send: (push: Push) => void, end: () => void }
+// A notification, where a new connection starts, or slots settled elsewhere whose notifications go
+type Line = Push | { cursor: string } | { dismiss: string[] }
+type Listener = { send: (line: Line) => void, end: () => void }
 
 function listen(user: string, listener: Listener) {
     const own = listeners.get(user) ?? new Set()
@@ -27,12 +29,21 @@ export function endStreams(user: string) {
 
 // How many phones got it | one that is away now catches up from the history once it reconnects
 export function broadcast(user: string, push: Push) {
+    return sendAll(user, push)
+}
+
+// Clears what was checked off elsewhere | a phone that is away clears it on its next schedule sync
+export function dismiss(user: string, slots: string[]) {
+    return slots.length ? sendAll(user, { dismiss: slots }) : 0
+}
+
+function sendAll(user: string, line: Line) {
     const own = listeners.get(user)
     if(!own) return 0
     let reached = 0
     for(const listener of own){
         try {
-            listener.send(push)
+            listener.send(line)
             reached++
         } catch {
             own.delete(listener) // Closed in the same moment, one dead phone must not stop the rest
@@ -48,7 +59,7 @@ export function streamFor(user: string, cursor: string, catchUp: () => Promise<P
 
     return new ReadableStream<Uint8Array>({
         async start(controller) {
-            const send = (line: Push | { cursor: string }) => controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`))
+            const send = (line: Line) => controller.enqueue(encoder.encode(`${JSON.stringify(line)}\n`))
             const finish = () => {
                 stop()
                 try { controller.close() } catch { /* Closed by the other side in the same moment */ }

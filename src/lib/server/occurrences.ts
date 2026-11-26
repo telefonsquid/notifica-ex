@@ -1,6 +1,8 @@
 import { describeRule, occurrenceAfter, parseTimestamp, pbTime } from '#lib/reminders.ts';
 import { LIMITS } from '#lib/schema_limits.ts';
 import type { Occurrence, Reminder } from '#lib/schemas/reminders.ts';
+import { dismiss } from '#lib/server/app_stream.ts';
+import { slotOf } from '#lib/server/push.ts';
 import { deleteOne, findOne, getOne, insertOnePartial, run, updateOnePartial } from '#lib/server/queries.ts';
 import { orNull, unwrap } from '#lib/server/result.ts';
 import type PocketBase from 'pocketbase';
@@ -18,6 +20,14 @@ export async function getOccurrencesSince(owner: string, after: string, limit: n
     return run((pb) => {
         const filter = pb.filter('owner = {:owner} && created > {:after} && done = ""', { owner, after })   // What got checked off meanwhile stays quiet
         return pb.collection('occurrences').getList(1, limit, { filter, sort: '-created', expand: 'note', skipTotal: true }) as Promise<ListResult<Occurrence>>
+    })
+}
+
+// Times checked off or snoozed since then, a phone clears their notifications on its next sync
+export async function getSettledSince(owner: string, after: Date, limit: number) {
+    return run((pb) => {
+        const filter = pb.filter('owner = {:owner} && reminder != "" && done >= {:after}', { owner, after: pbTime(after) })
+        return pb.collection('occurrences').getList(1, limit, { filter, sort: '-done', fields: 'reminder,at', skipTotal: true }) as Promise<ListResult<Pick<Occurrence, 'reminder' | 'at'>>>
     })
 }
 
@@ -84,7 +94,20 @@ export async function setDone(occurrences: Checkable[], done: boolean, comment?:
 
         // Recount each reminder once
         for(const reminder of new Set(changing.map((occurrence) => occurrence.reminder).filter(Boolean))) await recount(pb, reminder)
+
+        // Phones listening live drop the notification right away
+        if(done) for(const owner of new Set(updated.map((occurrence) => occurrence.owner))) {
+            dismiss(owner, slotsOf(updated.filter((occurrence) => occurrence.owner === owner)))
+        }
         return updated
+    })
+}
+
+// The slots phones know these times by
+export function slotsOf(occurrences: Pick<Occurrence, 'reminder' | 'at'>[]) {
+    return occurrences.flatMap(({ reminder, at }) => {
+        const time = parseTimestamp(at)
+        return reminder && time ? [slotOf(reminder, time)] : []
     })
 }
 

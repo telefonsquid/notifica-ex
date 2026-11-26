@@ -23,6 +23,7 @@ Motion is deliberate: everything that changes place or size glides, nothing pops
 | `unfold` | Height changes inside a card, `in:` and `out:` both. Animates size, padding, margin and flex gap with a symmetric easing, so swapping two branches keeps the sum steady |
 | `morph` | Attachment, lets a band's height follow its content. Its own easing while the card is open and settled, the glide's while it closes. Animates to the height the layout grants, never past a capped scroll area, and never clips scroll areas (that reset the scroll and looped) |
 | `measure` / `glide` | FLIP for grids: `measure()` before the update, `glide()` after. `glide()` takes a duration token, `slow` by default, a closing note goes back with `base` |
+| `rowTops` / `glideRows` | FLIP for the items of one list after a reorder, with the Web Animations API |
 | `withoutLeaving` | Filters out cells mid outro |
 
 ## Grid glides
@@ -33,7 +34,7 @@ Motion is deliberate: everything that changes place or size glides, nothing pops
 - Opening and closing a card call the page's `snapshot()` themselves, since a card's blocks can update before the page's `$effect.pre`.
 - The page's glide runs from `queueMicrotask` + `flushSync`. `tick()` waits a frame in async mode.
 - `html` keeps `scrollbar-gutter: stable`, the grid `overflow-anchor: none`.
-- A floating note (`afloat` on the cell, from `NoteOpening`) is centred with `translate: -50% -50%` on its frame, so its top moves while its height glides. `data-flip-centred` makes `glide()` take dy from the centres. The ghost's `::before` fades in through `@starting-style` and out with `closing`, its 100vmax spread is the dim, no scrim element.
+- A floating note (`afloat` on the cell, from `NoteOpening`) is centred by `margin: auto` in an inset box around its spot, so its top moves while its height glides. Never centre it by a transform: Chrome then selects the wrong text once a drag leaves the note. `data-flip-centred` makes `glide()` take dy from the centres. The cell's `::before` is the dim, it fades in through `@starting-style` and out with `closing`, no scrim element. Its `::after` is the ghost, which stays through the glide home (`landing`) and fades only then.
 
 ## Masonry
 

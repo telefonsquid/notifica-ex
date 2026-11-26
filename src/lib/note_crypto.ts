@@ -1,8 +1,10 @@
+import type { PasskeyNoteKey } from '#lib/schemas/passkeys.ts';
 import type { NoteLock } from '#lib/schemas/users.ts';
 
 /*
     Encryption of locked notes, all of it in the browser. One random key per account seals the bodies,
     a key derived from the account password locks that one, so a new password only locks it again.
+    Each passkey that opens notes keeps a copy of it, locked with a secret only that passkey can give.
     Sealed bodies read v1.<key id>.<iv>.<ciphertext>, base64url throughout.
 */
 
@@ -85,6 +87,39 @@ export async function relock(lock: NoteLock, oldPassword: string, password: stri
     const next = await lockRaw(raw, lock.id, password, lock.iterations)
     raw.fill(0)
     return next
+}
+
+
+
+// PASSKEYS ===================================================================================================
+async function passkeyKey(secret: Uint8Array<ArrayBuffer>, id: string) {
+    const base = await crypto.subtle.importKey('raw', secret, 'HKDF', false, ['deriveKey'])
+    return crypto.subtle.deriveKey({ name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(), info: text.encode(`notifica-ex note key ${id}`) }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt'])
+}
+
+// Null for a wrong password
+export async function lockForPasskey(lock: NoteLock, password: string, secret: Uint8Array<ArrayBuffer>): Promise<PasskeyNoteKey | null> {
+    const raw = await rawOf(lock, password)
+    if(!raw) return null
+
+    const iv = random(12)
+    const kek = await passkeyKey(secret, lock.id)
+    const key = new Uint8Array(await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: text.encode(lock.id) }, kek, raw))
+    raw.fill(0)
+    return { id: lock.id, iv: toBase64(iv), key: toBase64(key) }
+}
+
+// Null when the secret is from another passkey
+export async function openWithPasskey({ id, iv, key }: PasskeyNoteKey, secret: Uint8Array<ArrayBuffer>): Promise<CryptoKey | null> {
+    const kek = await passkeyKey(secret, id)
+    try {
+        const raw = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: fromBase64(iv), additionalData: text.encode(id) }, kek, fromBase64(key)))
+        const opened = await noteKey(raw)
+        raw.fill(0)
+        return opened
+    } catch {
+        return null
+    }
 }
 
 

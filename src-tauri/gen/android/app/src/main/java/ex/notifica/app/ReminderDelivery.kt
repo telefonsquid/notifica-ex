@@ -80,6 +80,15 @@ object ReminderDelivery {
     else AlarmManagerCompat.setAndAllowWhileIdle(manager, AlarmManager.RTC_WAKEUP, soonest, alarmIntent(context)) // Permission taken back, a few minutes late beats none
   }
 
+  // SETTLED ELSEWHERE | done or snoozed in a browser, so the phone neither keeps showing it nor fires it later
+  fun settle(context: Context, slots: Set<String>) {
+    if (slots.isEmpty()) return
+    ReminderNotifier(context).dismiss(slots)
+    val prefs = ReminderPrefs(context)
+    prefs.schedule = JSONArray(prefs.schedule.entries().filterNot { pushKey(it) in slots })
+    arm(context)
+  }
+
   private fun cancelAlarm(context: Context) {
     context.getSystemService(AlarmManager::class.java).cancel(alarmIntent(context))
   }
@@ -94,6 +103,8 @@ object ReminderDelivery {
 fun atOf(entry: JSONObject): Long = entry.optString("slot").substringAfterLast('@').toLongOrNull() ?: 0L
 
 fun JSONArray.entries(): List<JSONObject> = (0 until length()).mapNotNull { optJSONObject(it) }
+
+fun JSONArray.strings(): Set<String> = (0 until length()).map { optString(it) }.filter { it.isNotEmpty() }.toSet()
 
 fun originOf(url: String) = URL(url).let { "${it.protocol}://${it.authority}" }
 
@@ -125,7 +136,9 @@ class ScheduleSync(context: Context, params: WorkerParameters) : Worker(context,
     val answer = request(url)
     when (answer.status) {
       200 -> try {
-        store(prefs, JSONObject(answer.text).getJSONArray("entries"))
+        val schedule = JSONObject(answer.text)
+        store(prefs, schedule.getJSONArray("entries"))
+        ReminderDelivery.settle(applicationContext, schedule.optJSONArray("settled")?.strings().orEmpty()) // An older server sends none
       } catch (_: JSONException) {
         return Result.success() // A newer server's answer, the next app update reads it
       }

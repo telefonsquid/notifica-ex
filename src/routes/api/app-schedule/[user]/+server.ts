@@ -2,6 +2,7 @@ import { upcomingTimes } from '#lib/reminders.ts';
 import type { Note } from '#lib/schemas/notes.ts';
 import type { Reminder } from '#lib/schemas/reminders.ts';
 import { canSee } from '#lib/server/note_access.ts';
+import { getSettledSince, slotsOf } from '#lib/server/occurrences.ts';
 import { scheduledPushFor } from '#lib/server/push.ts';
 import { run } from '#lib/server/queries.ts';
 import { unwrap } from '#lib/server/result.ts';
@@ -13,6 +14,9 @@ import type { RequestHandler } from './$types';
 const AHEAD = 48 * 60 * 60 * 1000
 const PER_REMINDER = 20
 const TOTAL = 200
+
+// Times checked off elsewhere lately, the phone drops their notifications | as far back as it keeps missed ones
+const SETTLED_WINDOW = 12 * 60 * 60 * 1000
 
 async function getPendingReminders(owner: string) {
     return run((pb) => {
@@ -29,6 +33,7 @@ export const GET: RequestHandler = async ({ params, url }) => {
     if(user.appPaused) return json({ entries: [], until: until.toISOString() }, { headers: { 'Cache-Control': 'no-store' } })
 
     const reminders = unwrap(await getPendingReminders(user.id), 'Could not load reminders.')
+    const settled = unwrap(await getSettledSince(user.id, new Date(now.getTime() - SETTLED_WINDOW), TOTAL), 'Could not load reminders.')
     const entries = reminders
         .flatMap((reminder) => {
             const note = reminder.expand?.note as Note | undefined
@@ -38,5 +43,5 @@ export const GET: RequestHandler = async ({ params, url }) => {
         .sort((a, b) => a.at.localeCompare(b.at))
         .slice(0, TOTAL)
 
-    return json({ entries, until: until.toISOString() }, { headers: { 'Cache-Control': 'no-store' } })
+    return json({ entries, settled: slotsOf(settled.items), until: until.toISOString() }, { headers: { 'Cache-Control': 'no-store' } })
 }

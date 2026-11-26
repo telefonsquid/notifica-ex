@@ -258,14 +258,16 @@
             {#each visible as note, index (note.id)}
                 {@const open = editing?.id === note.id}
                 {@const afloat = open ? editing?.afloat : null}
+                {@const landing = !open && opening.landing?.id === note.id ? opening.landing : null}
                 <!-- A finger opens the menu with a long press, selecting goes through it | the open note keeps the trigger but turns it off -->
                 <!-- A floating note keeps its cell as a ghost, the frame inside carries the note to the centre -->
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
                 <div
-                    class={['note-cell', open && !afloat && 'wide', afloat && 'afloat', afloat && opening.closing && 'closing']}
+                    class={['note-cell', open && !afloat && 'wide', afloat && 'afloat', afloat && opening.closing && 'closing', landing && 'landing']}
                     data-flip={note.id}
                     data-flip-centred={afloat ? '' : undefined}
                     style:--ghost={afloat && `${afloat.ghost}px`}
+                    style:--landing={landing && `var(--duration-${landing.speed})`}
                     style:--float-x={afloat && `${afloat.x}px`}
                     style:--float-y={afloat && `${afloat.y}px`}
                     style:--float-width={afloat && `${afloat.width}px`}
@@ -401,13 +403,14 @@
         min-height: var(--ghost);
     }
 
+    /* Centred by margins in a box around its spot | under a transform Chrome selects the wrong text once the mouse leaves the note */
     .afloat > .frame {
         position: absolute;
-        left: var(--float-x);
-        top: var(--float-y);
+        inset: calc(var(--float-y) - 100vmax) calc(100% - var(--float-x) - 100vmax) calc(100% - var(--float-y) - 100vmax) calc(var(--float-x) - 100vmax);
         width: var(--float-width);
+        height: fit-content;
         max-height: calc(100dvh - 10rem);
-        translate: -50% -50%;
+        margin: auto;
     }
 
     .afloat :global([data-flip-card]) {
@@ -443,7 +446,7 @@
 
     /* The dim covers the whole page and takes its clicks, which land outside the note and close it | the toolbar stays above */
     .note-cell.afloat::before,
-    .note-cell.afloat::after {
+    .note-cell:is(.afloat, .landing)::after {
         content: '';
         position: absolute;
         z-index: -1;
@@ -460,7 +463,7 @@
     }
 
     /* The ghost is a faint black card with a wide soft shadow, as if the note still floated above it */
-    .note-cell.afloat::after {
+    .note-cell:is(.afloat, .landing)::after {
         inset: 0;
         border-radius: var(--layout-radius-card);
         background: black;
@@ -479,9 +482,24 @@
         display: none;
     }
 
-    .note-cell.afloat.closing::before,
-    .note-cell.afloat.closing::after {
+    .note-cell.afloat.closing::before {
         opacity: 0;
+    }
+
+    /* The ghost waits until the note is back on it, only then its shadow fades */
+    .note-cell.landing {
+        position: relative;
+        z-index: 1;
+    }
+
+    .note-cell.landing::after {
+        animation: ghost-fade var(--duration-fast) var(--ease-out) var(--landing) forwards;
+    }
+
+    @keyframes ghost-fade {
+        to {
+            opacity: 0;
+        }
     }
 
     /* DRAG | the held card lifts above the rest */

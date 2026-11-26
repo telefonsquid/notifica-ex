@@ -17,6 +17,11 @@ export const LIMITS = {
     VIEW_NAME: 64,
     VIEW_ICON: 64,                      // a lucide icon name
     API_KEY_NAME: 64,
+    PASSKEY_NAME: 64,
+    PASSKEY_CREDENTIAL: 1400,           // base64url id, webauthn allows up to 1023 bytes
+    PASSKEY_PUBLIC_KEY: 2048,           // base64url cose key
+    PASSKEY_ANSWER: 8192,               // each base64url part of what a browser answers
+    PASSKEY_TRANSPORTS: 10,             // ways a browser can reach the passkey, like usb
     NTFY_TOPIC: 64,                     // ntfy rejects longer topics
     PUSH_ENDPOINT: 1024,                // address a browser hands out for web push
     PUSH_P256DH: 256,                   // public key of a web push subscription
@@ -46,6 +51,7 @@ export const LIMITS = {
     VIEW_LABELS: 200,                   // labels one view includes or excludes
     VIEWS: 50,                          // views per user, the rail has to fit them
     API_KEYS: 20,                       // keys per user
+    PASSKEYS: 20,                       // passkeys per user
     INVITES: 20,                        // open invite links per user
     IMPORT_BATCH: 25,                   // notes one import call creates
     IMPORT_REMINDERS: 100,              // reminders an imported note brings along

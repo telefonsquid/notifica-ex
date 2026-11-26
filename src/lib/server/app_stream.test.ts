@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { broadcast, endStreams, streamFor } from '#lib/server/app_stream.ts';
+import { broadcast, dismiss, endStreams, streamFor } from '#lib/server/app_stream.ts';
 import type { Push } from '#lib/server/push.ts';
 
 const USER = 'stream-test'
@@ -35,6 +35,17 @@ describe('the phone stream', () => {
         endStreams(USER)
         answer([push])
         expect(await reading).toEqual([{ cursor: 'cursor' }])
+    })
+
+    test('times checked off elsewhere go out as one line', async () => {
+        const stream = streamFor(USER, 'cursor', async () => [])
+        const reading = lines(stream)
+        await sleep(5)
+
+        expect(dismiss(USER, [])).toBe(0)
+        expect(dismiss(USER, ['reminder@1', 'reminder@2'])).toBe(1)
+        endStreams(USER)
+        expect(await reading).toEqual([{ cursor: 'cursor' }, { dismiss: ['reminder@1', 'reminder@2'] }])
     })
 
     test('a phone that left hears nothing more', async () => {

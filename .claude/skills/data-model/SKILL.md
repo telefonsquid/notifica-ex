@@ -11,7 +11,7 @@ Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas/` holds zod for what 
 
 | Collection | Fields | List/view rule |
 |---|---|---|
-| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it), appPaused, appResumed (phone reminders, see the `reminders` skill), limits (json, per user overrides), noteLock (json, the wrapped key for locked notes), noteColor (new notes start with it) | own record, admins all (names for sharing come from `getPeople()` on the server, see Sharing) |
+| `users` (auth) | name, authorizationLevel, state, ntfyTopic, ntfyPaused, streamEpoch (part of the app stream key, a new password raises it), appPaused, appResumed (phone reminders, see the `reminders` skill), limits (json, per user overrides), noteLock (json, the wrapped key for locked notes), noteColor (new notes start with it), checkedLast (checked items sink to the end of their list) | own record, admins all (names for sharing come from `getPeople()` on the server, see Sharing) |
 | `labels` | owner, name, color, autoColor, colorPriority (order in the auto color chart, lowest first) | owner |
 | `notes` | owner, title, body (markdown), color, labels, pinned, archived, position, images and attachments (protected files), fileInfo (json, original name and size per file), shared (users, max 20), sealed (the body encrypted, body empty then), colorDefault (the colour came from the account default, a picked colour clears it), linkMode (read or write, empty while off), linkToken (hidden), linked (users who joined through the link, max 100) | `owner = @request.auth.id \|\| shared.id ?= @request.auth.id \|\| (linkMode != "" && linked.id ?= @request.auth.id)` (a multi relation needs `.id ?=`, plain `?=` silently matches nothing) |
 | `reminders` | note, owner, at, repeat, weekdays, until, every, timezone, task, next, open, openSince (oldest open time, a closed card counts from it) | owner, so a collaborator's reminders stay private |
@@ -21,6 +21,7 @@ Schema lives in `pocketbase/pb_schema.json`. `#lib/schemas/` holds zod for what 
 | `invites` | owner, hash (sha256 of the link token, unique), expires (a week) | superuser only, the link is shown once |
 | `contacts` | owner, person (one row each way, unique pair) | superuser only |
 | `push_subscriptions` | owner, endpoint (unique), p256dh, auth | superuser only, one per browser |
+| `passkeys` | owner, name, credential (unique), publicKey, counter, transports, prf (can open locked notes), noteKey (json, the locked notes key wrapped for it), lastUsed | superuser only, the browser gets `PasskeySummary` without the public key |
 | `app_settings` | limits (json, server defaults, one row, none until first changed) | superuser only |
 | `migrations` | bookkeeping | superuser only |
 
@@ -49,7 +50,16 @@ Colours are stored as names from `NOTE_COLORS`, see the `theming` skill.
 - The browser encrypts, the server only stores. `#lib/note_crypto.ts` holds the format: a random AES-GCM account key, wrapped by PBKDF2 from the account password into `users.noteLock`. Sealed bodies read `v1.<keyId>.<iv>.<ct>`.
 - `lockNote` and `unlockNote` in `notes.remote.ts` switch a note, owner only, unshared and without files. `updateNote` takes `sealed` in place of `body` for a locked note and refuses a plain body (409). Share, uploads and MCP body changes are refused, MCP reports the note as `locked`.
 - `changePassword` takes a rewrapped lock (`relock()` in the browser), `setPassword` from a mail link clears `noteLock`, which leaves sealed notes unreadable. Duplicate copies `sealed`.
+- A passkey with PRF opens them too: its secret goes through HKDF and wraps the same account key into `passkeys.noteKey` (`lockForPasskey()`, `openWithPasskey()`). It names the key by id, so it survives a password change and is ignored after a mail reset. A passkey added before the first locked note gets its own button in Settings, some devices hand out the secret only on use. The text passed to PRF (`SECRET_FOR`) must never change.
 - States: [Note lock](../../../docs/state-machines.md#note-lock).
+
+## Passkeys
+
+- `#lib/server/passkeys.ts` makes options and checks answers, `passkeys.remote.ts` exposes them. Adding asks for the account password, an open browser alone must not be enough.
+- Challenges (`passkey_challenges.ts`) are stateless: random bytes, an end 10 minutes ahead and a signature over both and the purpose (`login` or `add:<user>`). Used ones are kept in memory until they end, so each works once.
+- Login options list no credentials, so they tell nobody which accounts exist.
+- PocketBase has no password free login: `openSession()` (`accounts.ts`) asks `pocketbase/cronjobs/session.pb.js` (superuser only) for a token. An older image answers 404, shown as a 501 that asks for a rebuild. Deactivated accounts get a 403.
+- To test: Chrome over CDP, `WebAuthn.addVirtualAuthenticator` with `hasPrf`.
 
 ## Images
 
@@ -84,6 +94,6 @@ Sort `manual` is the default. `position` stays 0 until a note is dragged, `posit
 ## Schema changes
 
 - Edit `pb_schema.json`, then `POST /api/migration` with `SERVER_AUTH_SECRET`. A fresh install and dev import the whole schema (dev also drops fields it no longer lists) and record every migration as done.
-- An existing install only runs what `MIGRATIONS` in `#lib/server/migrations.ts` lists and hasn't recorded yet, oldest first, each named by the release that brings it. Every schema change that ships needs an entry there, i.e. `addCollections('api_keys')` for 0.3.0. New choices for a select field go through `syncSelect()`, which merges the values from `pb_schema.json` into the live field (0.4.0-colors). A renamed choice also rewrites the stored values (0.4.0-patterns). Plain and the flags came as 0.4.0-flags, the asexual flag as 0.4.0-asexual-flag. Never edit an entry that already went out, add a new one.
+- An existing install only runs what `MIGRATIONS` in `#lib/server/migrations.ts` lists and hasn't recorded yet, oldest first, each named by the release that brings it. Every schema change that ships needs an entry there, i.e. `addCollections('api_keys')` for 0.3.0. New choices for a select field go through `syncSelect()`, which merges the values from `pb_schema.json` into the live field (0.4.0-colors). A renamed choice also rewrites the stored values (0.4.0-patterns). Plain and the flags came as 0.4.0-flags, the asexual flag as 0.4.0-asexual-flag, passkeys as 0.4.6-passkeys. Never edit an entry that already went out, add a new one.
 - A new field touches `pb_schema.json`, `#lib/schemas/`, the queries that write it, and any remote function schema that accepts it.
 - PocketBase refuses to change a field's type. Give the field a new id in `pb_schema.json` and add a dev one off in `bootstrap.ts` that reads the values, drops the old field, adds the new one and refills them. Delete it once every dev database ran it.

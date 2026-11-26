@@ -21,6 +21,7 @@ declare global {
             takeShare?(): string | null
             sharedImage?(index: number): string | null
             appVersion?(): string
+            passkeysSupported?(): boolean
         }
     }
 }

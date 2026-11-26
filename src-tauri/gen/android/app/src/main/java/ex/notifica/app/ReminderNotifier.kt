@@ -80,6 +80,11 @@ class ReminderNotifier(private val context: Context) {
     manager.notify(id, builder.build())
   }
 
+  // Checked off elsewhere, nothing left to ask
+  fun dismiss(slots: Collection<String>) {
+    for (slot in slots) manager.cancel(slot.hashCode())
+  }
+
   private fun open(link: String?, requestCode: Int): PendingIntent {
     val intent = Intent(context, MainActivity::class.java)
       .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)

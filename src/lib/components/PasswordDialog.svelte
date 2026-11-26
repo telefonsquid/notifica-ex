@@ -4,7 +4,7 @@
     import { passwordPrompt, settlePassword } from '#lib/singletons/password.svelte.ts';
     import Button from '#lib/ui/Button.svelte';
     import Input from '#lib/ui/Input.svelte';
-    import { LockKeyhole } from '@lucide/svelte';
+    import { KeyRound, LockKeyhole } from '@lucide/svelte';
     import { Dialog } from 'bits-ui';
     import { fade } from 'svelte/transition';
 
@@ -22,13 +22,16 @@
         checking = false
     })
 
-    async function submit(event: SubmitEvent) {
+    function submit(event: SubmitEvent) {
         event.preventDefault()
         const request = passwordPrompt.request
-        if(!request || !password || checking) return
+        if(request && password) settleBy(() => request.check(password))
+    }
 
+    async function settleBy(check: () => Promise<string | null>) {
+        if(checking) return
         checking = true
-        const answer = await request.check(password).catch(() => 'Something went wrong, try again.')
+        const answer = await check().catch(() => 'Something went wrong, try again.')
         checking = false
         if(answer === null) settlePassword(true)
         else problem = answer
@@ -65,7 +68,12 @@
                                 {#if problem}<p class="text-sm text-accent" role="alert">{problem}</p>{/if}
                             </div>
 
-                            <div class="mt-6 flex justify-end gap-2">
+                            <div class="mt-6 flex flex-wrap justify-end gap-2">
+                                {#await request.passkey then passkey}
+                                    {#if passkey}
+                                        <Button type="button" style="ghost" class="mr-auto" icon={KeyRound} disabled={checking} onclick={() => settleBy(passkey)}>Use passkey</Button>
+                                    {/if}
+                                {/await}
                                 <Button type="button" style="ghost" disabled={checking} onclick={() => settlePassword(false)}>Cancel</Button>
                                 <Button type="submit" loading={checking} disabled={!password}>{request.action}</Button>
                             </div>

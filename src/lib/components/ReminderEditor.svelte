@@ -254,10 +254,11 @@
     <div class={['line flex min-h-9 items-center gap-2', due && 'due', !editable && 'quiet']} in:enter|global>
         <button class={['type-meta flex min-w-0 flex-1 items-center gap-2 text-left', editable ? 'hover:text-ink' : 'pointer-events-none']} tabindex={editable ? 0 : -1} aria-label={`Edit reminder ${describeRule(reminder)}`} onclick={() => open = true}>
             {#if reminder.task}<SquareCheckBig class="size-3.5 shrink-0" />{:else}<Bell class="size-3.5 shrink-0" />{/if}
-            <span class="truncate">{summary(reminder)}</span>
+            <span class="summary truncate">{summary(reminder)}</span>
             <!-- An unchecked task counts from its oldest open time, not the next one -->
             {#if !editable && due && reminder.openSince}
-                <span class="ml-auto shrink-0">{formatAgo(reminder.openSince, now())}</span>
+                <span class="ago ml-auto shrink-0">{formatAgo(reminder.openSince, now())}</span>
+                <span class="ago-short truncate">{formatAgo(reminder.openSince, now(), true)}</span>
             {:else if !editable && reminder.next}
                 <span class="ml-auto shrink-0">{formatDistance(reminder.next, now())}</span>
             {/if}
@@ -300,6 +301,35 @@
 
     .line.due {
         color: var(--theme-ink);
+    }
+
+    /* NARROW CARD | beside the Done pill the rule would shrink to a letter, so only the time waited stays, short on the narrowest */
+    .line.due.quiet {
+        container-type: inline-size;
+    }
+
+    .ago-short {
+        display: none;
+    }
+
+    @container (width < 18rem) {
+        .summary {
+            display: none;
+        }
+
+        .ago {
+            margin-left: 0;
+        }
+    }
+
+    @container (width < 12rem) {
+        .ago {
+            display: none;
+        }
+
+        .ago-short {
+            display: inline;
+        }
     }
 
     /* QUICK REMOVE | mouse only, shows while the line is hovered | touch removes through the form */

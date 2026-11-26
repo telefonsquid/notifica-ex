@@ -23,13 +23,14 @@
     import { onCollectionChange } from '#lib/realtime.ts'
     import { safeAction } from '#lib/safe_action.ts'
     import Button from '#lib/ui/Button.svelte'
+    import Switch from '#lib/ui/Switch.svelte'
     import { SettingsScroll } from '#lib/settings_scroll.svelte.ts'
     import { hasPermission } from '#lib/user.ts'
     import { Bell, CircleUserRound, Info, Palette, PanelsTopLeft, Plus, ScrollText, ShieldCheck, Tag, Users } from '@lucide/svelte'
     import { untrack } from 'svelte'
     import { createLabel, getLabels } from '../../api/labels.remote'
     import type { NoteColor } from '#lib/schemas/notes.ts'
-    import { setNoteColor } from '../../api/settings.remote'
+    import { setCheckedLast, setNoteColor } from '../../api/settings.remote'
     import type { PageProps } from './$types';
 
     // PROPS
@@ -43,6 +44,11 @@
     // NEW NOTES | auto color labels still paint over this color
     async function pickNoteColor(color: NoteColor){
         if(await safeAction(setNoteColor(color))) await invalidateAll()
+    }
+
+    // CHECKLISTS
+    async function pickCheckedLast(on: boolean){
+        if(await safeAction(setCheckedLast(on))) await invalidateAll()
     }
 
     // SECTIONS | each one lives here, the tabs and the stage follow | the app group sits apart from the settings
@@ -117,6 +123,13 @@
         <div>
             <h3 class="type-meta mb-4 text-ink-faint">Default note color</h3>
             <DefaultColorPicker value={data.user.noteColor ?? ''} onpick={pickNoteColor} />
+        </div>
+        <div>
+            <h3 class="type-meta mb-4 text-ink-faint">Checklists</h3>
+            <div class="flex min-h-14 items-center gap-3 rounded-card border border-line bg-card px-card">
+                <span class="flex-1 text-ink">Move checked items to the bottom</span>
+                <Switch checked={data.user.checkedLast ?? false} label="Move checked items to the bottom" onchange={pickCheckedLast} />
+            </div>
         </div>
     </div>
 {/snippet}

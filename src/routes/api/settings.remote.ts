@@ -21,3 +21,10 @@ export const setNoteColor = command(noteColorSchema, async (color) => {
     unwrap(await updateOnePartial('users', me.id, { noteColor: color }), 'Could not save the color.')
     return true
 });
+
+// CHECKLISTS ============================================================
+export const setCheckedLast = command(z.boolean(), async (checkedLast) => {
+    const me = signedIn()
+    unwrap(await updateOnePartial('users', me.id, { checkedLast }), 'Could not save the setting.')
+    return true
+});

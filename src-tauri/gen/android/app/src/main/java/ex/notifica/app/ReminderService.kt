@@ -123,6 +123,13 @@ class ReminderService : Service() {
     wake.acquire(WAKE_TIME)
     try {
       val json = JSONObject(line)
+
+      // Checked off in a browser
+      json.optJSONArray("dismiss")?.let {
+        ReminderDelivery.settle(this, it.strings())
+        return
+      }
+
       val cursor = json.optString("cursor")
       val first = !json.has("id")
 

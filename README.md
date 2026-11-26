@@ -30,6 +30,7 @@ Notifica Ex keeps text, checklists, markdown and images on one grid and lets you
 - Android app, browser push and ntfy, each with its own switch
 - Sharing with contacts on your server, or through a link that works without an account
 - Locked notes, encrypted in the browser with your password
+- Passkeys to sign in and open locked notes
 - Google Keep and Tasks import from Takeout
 - MCP endpoint with per-user API keys, so an AI assistant can read and write your notes
 - Light and dark theme, two densities, accounts by admin invite only
@@ -126,6 +127,8 @@ location / {
 ```
 
 </details>
+
+Passkeys need https and a domain, they don't work on a bare IP address. They belong to the host in `ORIGIN`, after a move to another domain everyone adds theirs again.
 
 **5. Notifications**
 

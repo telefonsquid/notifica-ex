@@ -1,8 +1,9 @@
 <script lang="ts">
-    import { isSafeUrl } from '#lib/markdown.ts';
+    import { page } from '$app/state';
+    import { isSafeUrl, sunkOrder } from '#lib/markdown.ts';
     import { markVisited } from '#lib/visited_links.ts';
     import { sortable } from '#lib/drag_list.ts';
-    import { appear } from '#lib/motion.ts';
+    import { appear, glideRows, rowTops } from '#lib/motion.ts';
     import { tip } from '#lib/tooltip.svelte.ts';
     import { Bold, Check, FileCode, Heading, Italic, Link, List, ListOrdered, ListTodo, Unlink, X } from '@lucide/svelte';
     import { Editor, type NodeViewRenderer } from '@tiptap/core';
@@ -10,6 +11,7 @@
     import { Placeholder } from '@tiptap/extensions';
     import { Markdown } from '@tiptap/markdown';
     import { Fragment } from '@tiptap/pm/model';
+    import { TextSelection } from '@tiptap/pm/state';
     import type { ViewMutationRecord } from '@tiptap/pm/view';
     import StarterKit from '@tiptap/starter-kit';
     import { untrack } from 'svelte';
@@ -108,6 +110,7 @@
             return (props) => {
                 const view = base(props)
                 view.dom.prepend(dragHandle())
+                view.dom.querySelector('input')?.addEventListener('change', () => sinkItem(props.editor, props.getPos()))     // Runs after Tiptap's own, which ticks the item
                 return { ...view, ignoreMutation: (mutation) => draggingStyle(mutation, view.dom) }
             }
         }
@@ -119,6 +122,39 @@
         const items = [...Array(list.childCount).keys()].map((index) => list.child(index))
         items.splice(to, 0, ...items.splice(from, 1))
         instance.view.dispatch(instance.state.tr.replaceWith(at + 1, at + list.nodeSize - 1, Fragment.fromArray(items)))
+    }
+
+    // Checked items go last when the account wants that, the caret stays in its text
+    function sinkItem(instance: Editor, at: number | undefined){
+        if(at === undefined || !page.data.user?.checkedLast) return
+        const { doc, selection, tr } = instance.state
+        const place = doc.resolve(at)
+        const list = place.parent
+        if(list.type.name !== 'taskList') return
+
+        const items = [...Array(list.childCount).keys()].map((index) => list.child(index))
+        const order = sunkOrder(items.map((item) => !!item.attrs.checked), place.index())
+        if(order.every((from, to) => from === to)) return
+
+        // Where each item starts, before and after
+        const start = place.start()
+        const before: number[] = []
+        items.reduce((position, item, i) => (before[i] = position) + item.nodeSize, start)
+        const after: number[] = []
+        order.reduce((position, from) => (after[from] = position) + items[from].nodeSize, start)
+        const moved = (position: number) => {
+            const item = before.findLastIndex((from) => position >= from)
+            return position < start || position >= place.end() ? position : position - before[item] + after[item]
+        }
+
+        const rows = instance.view.nodeDOM(place.before())
+        const tops = rows instanceof Element ? rowTops(rows) : []
+        tr.replaceWith(start, place.end(), Fragment.fromArray(order.map((from) => items[from])))
+        if(selection instanceof TextSelection) tr.setSelection(TextSelection.create(tr.doc, moved(selection.anchor), moved(selection.head)))
+        instance.view.dispatch(tr)
+
+        const sunk = instance.view.nodeDOM(place.before())
+        if(sunk instanceof Element) glideRows(sunk, order.map((from) => tops[from]))
     }
 
     // The item goes in first, then leaves its old list, which goes too once empty

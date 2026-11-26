@@ -41,7 +41,9 @@ const MIGRATIONS: Migration[] = [
     { version: '0.4.6-note-links', run: async () => {
         await addFields('notes', 'linkMode', 'linkToken', 'linked')
         await syncRules('notes')
-    } }
+    } },
+    { version: '0.4.6-checked-last', run: () => addFields('users', 'checkedLast') },
+    { version: '0.4.6-passkeys', run: () => addCollections('passkeys') }
 ]
 
 

@@ -140,3 +140,71 @@ function flip(source: string, lineNumber: number): string {
     lines[lineNumber] = lines[lineNumber].replace(TASK_LINE, (_, start: string, mark: string) => `${start}${mark === ' ' ? 'x' : ' '}]`)
     return lines.join('\n')
 }
+
+// Order of a list after one of its items got ticked or unticked, checked ones last | that item lands at the end of its part
+export function sunkOrder(done: boolean[], index: number): number[] {
+    const rank = (i: number) => (done[i] ? 2 : 0) + (i === index ? 1 : 0)
+    return [...done.keys()].sort((a, b) => rank(a) - rank(b) || a - b)
+}
+
+const EMPTY_LINE = /^[\s>]*$/
+
+// Moves checked items below open ones in the list of that task, subtasks travel along
+// No order means nothing moved, also for lists whose place in the source stays unclear
+export function sinkTask(source: string, index: number): { source: string, order: number[] | null } {
+    const still = { source, order: null }
+    const list = taskListAt(source, index)
+    const candidates = candidateLines(source)
+    if(!list || candidates.length !== tasksOf(source).length) return still
+
+    const order = sunkOrder(list.items.map((item) => !!item.checked), list.starts.indexOf(index))
+    if(order.every((from, to) => from === to)) return still
+
+    // Each item reaches to the next one, the last as far as the parser says
+    const lines = source.split('\n')
+    const starts = list.starts.map((task) => candidates[task])
+    const last = starts.length - 1
+    const end = starts[last] + list.items[last].raw.trimEnd().split('\n').length
+    const blocks = starts.map((start, i) => lines.slice(start, starts[i + 1] ?? end))
+
+    // Empty lines between items keep their place
+    const gaps = blocks.map((block) => {
+        const size = block.length - 1 - block.findLastIndex((line) => !EMPTY_LINE.test(line))
+        return size ? block.splice(-size) : []
+    })
+
+    const moved = order.flatMap((from, to) => [...blocks[from], ...gaps[to]])
+    const result = [...lines.slice(0, starts[0]), ...moved, ...lines.slice(end)].join('\n')
+
+    // The parser has the last word here too, same items in the new order
+    const text = (item: Tokens.ListItem) => item.text.trim()
+    const after = taskListAt(result, list.starts[0])
+    const intact = after?.items.length === order.length && after.items.every((item, i) => text(item) === text(list.items[order[i]]))
+    return intact ? { source: result, order } : still
+}
+
+// The checklist one task stands in, with the index of each item's own task
+type TaskList = { items: Tokens.ListItem[], starts: number[] }
+
+function taskListAt(source: string, index: number): TaskList | null {
+    let count = 0
+    let found: TaskList | null = null
+
+    const walk = (tokens: Token[]) => {
+        for(const token of tokens){
+            if(token.type === 'list'){
+                const { items, ordered } = token as Tokens.List
+                const starts: number[] = []
+                for(const item of items){
+                    starts.push(count)
+                    if(item.task) count++
+                    walk(item.tokens)
+                }
+                if(!ordered && items.every((item) => item.task) && starts.includes(index)) found = { items, starts }
+            }
+            else if('tokens' in token && token.tokens) walk(token.tokens)
+        }
+    }
+    walk(marked.lexer(filled(source)))
+    return found
+}

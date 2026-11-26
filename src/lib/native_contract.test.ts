@@ -36,6 +36,11 @@ describe('reminder pushes', () => {
         expect(delivery).toContain('"entries"')
     })
 
+    test('the app clears what was checked off elsewhere', () => {
+        expect(delivery).toContain('"settled"')
+        expect(service).toContain('"dismiss"')
+    })
+
     test('the app resumes its stream from the cursor', () => {
         expect(service).toContain('"cursor"')
     })

@@ -10,8 +10,8 @@
     import { imagesIn } from '#lib/images.ts';
     import { IMAGE_TYPES } from '#lib/schema_limits.ts';
     import { longPress } from '#lib/long_press.ts';
-    import { toggleTask } from '#lib/markdown.ts';
-    import { appear, unfold } from '#lib/motion.ts';
+    import { sinkTask, toggleTask } from '#lib/markdown.ts';
+    import { appear, duration, glideRows, rowTops, unfold } from '#lib/motion.ts';
     import { noteEditor } from '#lib/note_editor.svelte.ts';
     import { NoteExtras } from '#lib/note_extras.svelte.ts';
     import { kept } from '#lib/note_list.ts';
@@ -185,10 +185,29 @@
     function clickTask(event: MouseEvent){
         const box = event.target
         if(open || !note || unreadable || readonly || !(box instanceof HTMLInputElement) || !box.classList.contains('task')) return
-        const tasks = [...(event.currentTarget as HTMLElement).querySelectorAll('input.task')]
+        const content = event.currentTarget as HTMLElement
         const { id } = note
-        const body = toggleTask(note.body, tasks.indexOf(box))
-        safeAction(kept(locked ? sealBody(body).then((sealed) => updateNote({ id, sealed })) : updateNote({ id, body })))
+        const index = [...content.querySelectorAll('input.task')].indexOf(box)
+        const toggled = toggleTask(note.body, index)
+        const { source: body, order } = page.data.user?.checkedLast ? sinkTask(toggled, index) : { source: toggled, order: null }
+        const stop = order && glideSunk(content, box, order)
+        safeAction(kept(locked ? sealBody(body).then((sealed) => updateNote({ id, sealed })) : updateNote({ id, body }))).finally(stop)
+    }
+
+    // The text renders anew once the server answered, its rows then glide from where the old ones were
+    function glideSunk(content: HTMLElement, box: Element, order: number[]){
+        const list = box.closest('ul')
+        if(!list) return
+        const at = [...content.querySelectorAll('ul')].indexOf(list)
+        const tops = rowTops(list)
+
+        const observer = new MutationObserver(() => {
+            observer.disconnect()
+            const sunk = content.querySelectorAll('ul')[at]
+            if(sunk?.children.length === order.length) glideRows(sunk, order.map((from) => tops[from]))
+        })
+        observer.observe(content, { childList: true, subtree: true })
+        return () => setTimeout(() => observer.disconnect(), duration('slow'))     // A failed save renders nothing
     }
 
     function pinClosed(){
